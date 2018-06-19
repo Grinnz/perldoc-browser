@@ -26,13 +26,11 @@ my (@stable_versions, @dev_versions);
 my $latest_version = app->config->{latest_perl_version};
 foreach my $perl_version (@$perl_versions) {
   my $v = eval { version->parse($perl_version =~ s/^perl-//r) };
-  if (defined $v and !($v->{version}[1] % 2)) {
-    push @stable_versions, $perl_version;
-    $latest_version //= $perl_version;
-  } elsif (defined $v) {
+  if (defined $v and $v->{version}[1] % 2) {
     push @dev_versions, $perl_version;
   } else {
     push @stable_versions, $perl_version;
+    $latest_version //= $perl_version if defined $v;
   }
 }
 
