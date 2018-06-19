@@ -45,7 +45,7 @@
         font-weight: bold;
         margin-left: 0.9em;
       }
-      ul {
+      #perldoc ul {
         margin-bottom: 1em;
         margin-top: 1em;
       }
