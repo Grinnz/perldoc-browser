@@ -59,17 +59,16 @@ sub _html ($c, $src) {
   }
 
   # Rewrite headers
-  my $toc = Mojo::URL->new->fragment('toc');
   my @parts;
   for my $e ($dom->find('h1, h2, h3, h4, dt')->each) {
  
     push @parts, [] if $e->tag eq 'h1' || !@parts;
     my $link = Mojo::URL->new->fragment($e->{id});
     my $text = $e->all_text;
-    my $tags = $e->children->grep(sub { $_->type eq 'tag' })->join;
+    my $tags = $e->children->join;
     push @{$parts[-1]}, $text, $link unless $e->tag eq 'dt';
     my $permalink = $c->link_to('#' => $link, class => 'permalink');
-    $e->content($permalink . $tags . $c->link_to($text => $toc));
+    $e->content($permalink . $tags . $text);
   }
 
   # Try to find a title
