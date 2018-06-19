@@ -7,11 +7,11 @@ package PerldocBrowser::Plugin::PerldocRenderer;
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
 use IPC::System::Simple 'capturex';
+use MetaCPAN::Pod::XHTML;
 use Mojo::ByteStream;
 use Mojo::DOM;
 use Mojo::File 'path';
 use Mojo::URL;
-use Pod::Simple::XHTML;
 use Pod::Simple::Search;
 use experimental 'signatures';
 
@@ -45,10 +45,6 @@ sub _inc_dirs ($perl_dir) {
   return $inc_dirs{$perl_dir} = [split /\n+/, capturex $perl_dir->child('bin', 'perl'), '-e', 'print "$_\n" for @INC'];
 }
 
-sub _indentation {
-  (sort map {/^(\s+)/} @{shift()})[0];
-}
-
 sub _html ($c, $src) {
   # Rewrite links
   my $dom = Mojo::DOM->new(_pod_to_html($src, $c->stash('url_perl_version')));
@@ -70,9 +66,10 @@ sub _html ($c, $src) {
     push @parts, [] if $e->tag eq 'h1' || !@parts;
     my $link = Mojo::URL->new->fragment($e->{id});
     my $text = $e->all_text;
+    my $tags = $e->children->grep(sub { $_->type eq 'tag' })->join;
     push @{$parts[-1]}, $text, $link unless $e->tag eq 'dt';
     my $permalink = $c->link_to('#' => $link, class => 'permalink');
-    $e->content($permalink . $c->link_to($text => $toc));
+    $e->content($permalink . $tags . $c->link_to($text => $toc));
   }
 
   # Try to find a title
@@ -115,10 +112,9 @@ sub _perldoc ($c) {
 }
 
 sub _pod_to_html ($pod, $perl_version) {
-  my $parser = Pod::Simple::XHTML->new;
+  my $parser = MetaCPAN::Pod::XHTML->new;
   $parser->perldoc_url_prefix($perl_version ? "/$perl_version/" : '/');
   $parser->$_('') for qw(html_header html_footer);
-#  $parser->strip_verbatim_indent(\&_indentation); # Screws up tab-formatting
   $parser->anchor_items(1);
   $parser->output_string(\(my $output));
   return $@ unless eval { $parser->parse_string_document("$pod"); 1 };
