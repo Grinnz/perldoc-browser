@@ -65,10 +65,9 @@ sub _html ($c, $src) {
     push @parts, [] if $e->tag eq 'h1' || !@parts;
     my $link = Mojo::URL->new->fragment($e->{id});
     my $text = $e->all_text;
-    my $anchors = $e->children->grep(sub { $_->tag eq 'a' and $_->content eq '' })->join;
     push @{$parts[-1]}, $text, $link unless $e->tag eq 'dt';
     my $permalink = $c->link_to('#' => $link, class => 'permalink');
-    $e->content($permalink . $anchors . $text);
+    $e->content($permalink . $e->content);
   }
 
   # Try to find a title
