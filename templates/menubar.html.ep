@@ -5,7 +5,7 @@
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-stable" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><%= $perl_version %></a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-stable">
-% foreach my $perl_option (@$stable_perl_versions, @$other_perl_versions) {
+% foreach my $perl_option (@$perl_versions) {
           <a class="dropdown-item" href="/<%= $perl_option %>/<%= $module %>"><%= $perl_option %></a>
 % }
         </div>

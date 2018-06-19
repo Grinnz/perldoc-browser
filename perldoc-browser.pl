@@ -22,7 +22,7 @@ my $perl_versions = -d $perls_dir ? $perls_dir->list({dir => 1})
   ->map(sub { $_->basename })->sort(sub { versioncmp($b, $a) }) : [];
 die "No perls found in $perls_dir\n" unless @$perl_versions;
 
-my (@stable_versions, @dev_versions, @other_versions);
+my (@stable_versions, @dev_versions);
 my $latest_version = app->config->{latest_perl_version};
 foreach my $perl_version (@$perl_versions) {
   my $v = eval { version->parse($perl_version =~ s/^perl-//r) };
@@ -32,16 +32,15 @@ foreach my $perl_version (@$perl_versions) {
   } elsif (defined $v) {
     push @dev_versions, $perl_version;
   } else {
-    push @other_versions, $perl_version;
+    push @stable_versions, $perl_version;
   }
 }
 
 $latest_version //= $perl_versions->first;
 
 plugin PerldocRenderer => {
-  stable_versions => \@stable_versions,
+  perl_versions => \@stable_versions,
   dev_versions => \@dev_versions,
-  other_versions => \@other_versions,
   latest_version => $latest_version,
   perls_dir => $perls_dir,
 };

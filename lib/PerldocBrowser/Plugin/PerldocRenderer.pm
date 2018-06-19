@@ -16,21 +16,19 @@ use Pod::Simple::Search;
 use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
-  my $stable_versions = $conf->{stable_versions} // [];
+  my $perl_versions = $conf->{perl_versions} // [];
   my $dev_versions = $conf->{dev_versions} // [];
-  my $other_versions = $conf->{other_versions} // [];
 
   my %defaults = (
-    stable_perl_versions => $stable_versions,
+    perl_versions => $perl_versions,
     dev_perl_versions => $dev_versions,
-    other_perl_versions => $other_versions,
     perls_dir => $conf->{perls_dir},
     module => 'perl',
     perl_version => $conf->{latest_version},
     url_perl_version => '',
   );
 
-  foreach my $perl_version (@$stable_versions, @$dev_versions, @$other_versions) {
+  foreach my $perl_version (@$perl_versions, @$dev_versions) {
     $app->routes->any("/$perl_version/:module"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version}
       => [module => qr/[^.]+/] => \&_perldoc);
