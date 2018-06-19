@@ -72,10 +72,12 @@
         text-shadow: #eee 0 1px 0;
         white-space: pre-wrap;
       }
-      #perldoc ul {
-        list-style-type: square;
+      #perldoc dl, #perldoc ol, #perldoc ul {
         margin-bottom: 1em;
         margin-top: 1em;
+      }
+      #perldoc ul {
+        list-style-type: square;
       }
       #perldoc ul ul {
         margin-bottom: 0px;
