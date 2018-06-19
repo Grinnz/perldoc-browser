@@ -63,11 +63,11 @@ sub _html ($c, $src) {
   # Rewrite headers
   my $toc = Mojo::URL->new->fragment('toc');
   my @parts;
-  for my $e ($dom->find('h1, h2, h3, h4')->each) {
+  for my $e ($dom->find('h1, h2, h3, h4, dt')->each) {
  
     push @parts, [] if $e->tag eq 'h1' || !@parts;
     my $link = Mojo::URL->new->fragment($e->{id});
-    push @{$parts[-1]}, my $text = $e->all_text, $link;
+    push @{$parts[-1]}, my $text = $e->all_text, $link unless $e->tag eq 'dt';
     my $permalink = $c->link_to('#' => $link, class => 'permalink');
     $e->content($permalink . $c->link_to($text => $toc));
   }
@@ -102,6 +102,7 @@ sub _pod_to_html ($pod, $perl_version) {
   $parser->perldoc_url_prefix($perl_version ? "/$perl_version/" : '/');
   $parser->$_('') for qw(html_header html_footer);
   $parser->strip_verbatim_indent(\&_indentation);
+  $parser->anchor_items(1);
   $parser->output_string(\(my $output));
   return $@ unless eval { $parser->parse_string_document("$pod"); 1 };
 

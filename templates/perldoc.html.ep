@@ -20,15 +20,6 @@
         line-height: 1.5em;
         margin: 0;
       }
-      dd {
-        margin: 0;
-        margin-left: 2em;
-      }
-      dt {
-        color: #2a2a2a;
-        font-weight: bold;
-        margin-left: 0.9em;
-      }
       :not(pre) > code {
         background-color: rgba(0, 0, 0, 0.04);
         border-radius: 3px;
@@ -39,12 +30,22 @@
       h2 { font-size: 1.3em }
       h3 { font-size: 1.1em }
       h4 { font-size: 0.9em }
-      h1, h2, h3, h4 {
+      h1, h2, h3, h4, dt {
         color: #2a2a2a;
         margin: 0;
         position: relative;
       }
-      #perldoc h1 a, #perldoc h2 a, #perldoc h3 a, #perldoc h4 a { text-decoration: none }
+      dd {
+        margin: 0;
+        margin-left: 2em;
+      }
+      dt {
+        color: #2a2a2a;
+        font-weight: bold;
+        margin-left: 0.9em;
+      }
+      #perldoc h1 a, #perldoc h2 a, #perldoc h3 a, #perldoc h4 a,
+      #perldoc dt a { text-decoration: none }
       li > p {
         margin-bottom: 0;
         margin-top: 0;
@@ -95,7 +96,7 @@
         padding-right: 0.25em;
       }
       h1:hover .permalink, h2:hover .permalink, h3:hover .permalink,
-      h4:hover .permalink {
+      h4:hover .permalink, dt:hover .permalink {
         display: block;
       }
     </style>
