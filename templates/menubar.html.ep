@@ -1,0 +1,16 @@
+<nav class="navbar navbar-expand navbar-dark bg-dark justify-content-between mb-2">
+  <a class="navbar-brand" href="/">Perldoc Browser</a>
+  <div class="collapse navbar-collapse" id="navbarNav">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><%= $perl_version %></a>
+        <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+% foreach my $perl_option (@$perl_versions) {
+          <a class="dropdown-item" href="/<%= $perl_option %>/<%= $module %>"><%= $perl_option %></a>
+% }
+        </div>
+      </li>
+    </ul>
+    <a class="navbar-text" href="https://github.com/Grinnz/perldoc-browser">Source on GitHub</a>
+  </div>
+</nav>

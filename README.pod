@@ -1,0 +1,27 @@
+=head1 NAME
+
+Perldoc Browser
+
+=head1 AUTHOR
+
+Dan Book <dbook@cpan.org>
+
+PerldocBrowser::Plugin::PerldocRenderer is a fork of the L<Mojolicious|https://mojolicious.org>
+team's L<Mojolicious::Plugin::PODRenderer> and its associated template.
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is Copyright (c) 2018 by Dan Book <dbook@cpan.org>.
+
+PerldocBrowser::Plugin::PerldocRenderer is Copyright (c) 2008-2018 Sebastian
+Riedel and others, 2018 Dan Book <dbook@cpan.org>.
+
+This is free software, licensed under:
+
+  The Artistic License 2.0 (GPL Compatible)
+
+prettify.js is Copyright (c) 2006, 2013 Google Inc., licensed under the Apache
+License, Version 2.0 L<http://www.apache.org/licenses/LICENSE-2.0>.
+
+Bundled Perl 5 Raptor is Copyright (c) 2012, Sebastian Riedel, licensed under
+the CC-SA License, Version 4.0 L<http://creativecommons.org/licenses/by-sa/4.0>.
