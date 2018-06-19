@@ -67,7 +67,8 @@ sub _html ($c, $src) {
  
     push @parts, [] if $e->tag eq 'h1' || !@parts;
     my $link = Mojo::URL->new->fragment($e->{id});
-    push @{$parts[-1]}, my $text = $e->all_text, $link unless $e->tag eq 'dt';
+    my $text = $e->all_text;
+    push @{$parts[-1]}, $text, $link unless $e->tag eq 'dt';
     my $permalink = $c->link_to('#' => $link, class => 'permalink');
     $e->content($permalink . $c->link_to($text => $toc));
   }
