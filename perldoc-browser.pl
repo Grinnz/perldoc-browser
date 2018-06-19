@@ -17,8 +17,14 @@ push @{app->plugins->namespaces}, 'PerldocBrowser::Plugin';
 plugin Config => {file => 'perldoc-browser.conf', default => {}};
 
 my $perls_dir = path(app->config->{perls_dir} // app->home->child('perls'));
-my $perl_versions = -d $perls_dir ? $perls_dir->list({dir => 1})->grep(sub { -d })->map(sub { $_->basename })->sort(sub { versioncmp($b, $a) }) : [];
-my $latest_perl_version = app->config->{latest_perl_version} // $perl_versions->first(sub { my $v = eval { version->parse($_) }; defined $v and !($v->{version}[1] % 2) });
+my $perl_versions = -d $perls_dir ? $perls_dir->list({dir => 1})
+  ->grep(sub { -d && -x path($_)->child('bin', 'perl') })
+  ->map(sub { $_->basename })->sort(sub { versioncmp($b, $a) }) : [];
+die "No perls found in $perls_dir\n" unless @$perl_versions;
+
+my $latest_perl_version = app->config->{latest_perl_version}
+  // $perl_versions->first(sub { my $v = eval { version->parse($_) }; defined $v and !($v->{version}[1] % 2) })
+  // $perl_versions->first;
 
 plugin PerldocRenderer => {perl_versions => $perl_versions, latest_perl_version => $latest_perl_version, perls_dir => $perls_dir};
 
