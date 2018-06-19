@@ -3,13 +3,23 @@
   <div class="collapse navbar-collapse" id="navbarNav">
     <ul class="navbar-nav mr-auto">
       <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><%= $perl_version %></a>
-        <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-% foreach my $perl_option (@$perl_versions) {
+        <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-stable" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><%= $perl_version %></a>
+        <div class="dropdown-menu" aria-labelledby="dropdownlink-stable">
+% foreach my $perl_option (@$stable_perl_versions, @$other_perl_versions) {
           <a class="dropdown-item" href="/<%= $perl_option %>/<%= $module %>"><%= $perl_option %></a>
 % }
         </div>
       </li>
+% if (@$dev_perl_versions) {
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-dev" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Dev</a>
+        <div class="dropdown-menu" aria-labelledby="dropdownlink-dev">
+%   foreach my $perl_option (@$dev_perl_versions) {
+          <a class="dropdown-item" href="/<%= $perl_option %>/<%= $module %>"><%= $perl_option %></a>
+%   }
+        </div>
+      </li>
+% }
     </ul>
     <a class="navbar-text" href="https://github.com/Grinnz/perldoc-browser">Source on GitHub</a>
   </div>

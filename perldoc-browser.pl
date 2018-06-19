@@ -22,10 +22,28 @@ my $perl_versions = -d $perls_dir ? $perls_dir->list({dir => 1})
   ->map(sub { $_->basename })->sort(sub { versioncmp($b, $a) }) : [];
 die "No perls found in $perls_dir\n" unless @$perl_versions;
 
-my $latest_perl_version = app->config->{latest_perl_version}
-  // $perl_versions->first(sub { my $v = eval { version->parse($_) }; defined $v and !($v->{version}[1] % 2) })
-  // $perl_versions->first;
+my (@stable_versions, @dev_versions, @other_versions);
+my $latest_version = app->config->{latest_perl_version};
+foreach my $perl_version (@$perl_versions) {
+  my $v = eval { version->parse($perl_version =~ s/^perl-//r) };
+  if (defined $v and !($v->{version}[1] % 2)) {
+    push @stable_versions, $perl_version;
+    $latest_version //= $perl_version;
+  } elsif (defined $v) {
+    push @dev_versions, $perl_version;
+  } else {
+    push @other_versions, $perl_version;
+  }
+}
 
-plugin PerldocRenderer => {perl_versions => $perl_versions, latest_perl_version => $latest_perl_version, perls_dir => $perls_dir};
+$latest_version //= $perl_versions->first;
+
+plugin PerldocRenderer => {
+  stable_versions => \@stable_versions,
+  dev_versions => \@dev_versions,
+  other_versions => \@other_versions,
+  latest_version => $latest_version,
+  perls_dir => $perls_dir,
+};
 
 app->start;
