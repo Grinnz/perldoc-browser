@@ -28,6 +28,8 @@ foreach my $perl_version (@$perl_versions) {
   my $v = eval { version->parse($perl_version =~ s/^perl-//r) };
   if (defined $v and $v->{version}[1] % 2) {
     push @dev_versions, $perl_version;
+  } elsif ($perl_version =~ m/-RC\d+$/) {
+    push @dev_versions, $perl_version;
   } else {
     push @stable_versions, $perl_version;
     $latest_version //= $perl_version if defined $v;
