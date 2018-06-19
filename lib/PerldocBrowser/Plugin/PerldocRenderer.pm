@@ -77,6 +77,20 @@ sub _html ($c, $src) {
   my $title = 'Perldoc';
   $dom->find('h1 + p')->first(sub { $title = shift->text });
 
+  # Rewrite perldoc links on perldoc perl
+  if ($c->param('module') eq 'perl') {
+    my $url_perl_version = $c->stash('url_perl_version');
+    my $prefix = $url_perl_version ? "/$url_perl_version" : '';
+    for my $e ($dom->find('pre > code')->each) {
+      my $str = $e->content;
+      $e->content($str) if $str =~ s/^\s*\K(perl\S+)/$c->link_to("$1" => "$prefix\/$1")/mge;
+    }
+    for my $e ($dom->find('code')->each) {
+      my $str = $e->content;
+      $e->content($str) if $str =~ s/^(perldoc (\w+)$)/$c->link_to("$1" => "$prefix\/$2")/e;
+    }
+  }
+
   # Combine everything to a proper response
   $c->content_for(perldoc => "$dom");
   $c->render('perldoc', title => $title, parts => \@parts);
@@ -102,7 +116,7 @@ sub _pod_to_html ($pod, $perl_version) {
   my $parser = Pod::Simple::XHTML->new;
   $parser->perldoc_url_prefix($perl_version ? "/$perl_version/" : '/');
   $parser->$_('') for qw(html_header html_footer);
-  $parser->strip_verbatim_indent(\&_indentation);
+#  $parser->strip_verbatim_indent(\&_indentation); # Screws up tab-formatting
   $parser->anchor_items(1);
   $parser->output_string(\(my $output));
   return $@ unless eval { $parser->parse_string_document("$pod"); 1 };
