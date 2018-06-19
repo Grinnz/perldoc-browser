@@ -34,6 +34,7 @@
         color: #2a2a2a;
         margin: 0;
         position: relative;
+        font-weight: bold;
       }
       dd {
         margin: 0;
