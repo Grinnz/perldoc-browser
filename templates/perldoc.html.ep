@@ -45,6 +45,10 @@
         font-weight: bold;
         margin-left: 0.9em;
       }
+      ul {
+        margin-bottom: 1em;
+        margin-top: 1em;
+      }
       #perldoc h1 a, #perldoc h2 a, #perldoc h3 a, #perldoc h4 a,
       #perldoc dt a { text-decoration: none }
       li > p {
