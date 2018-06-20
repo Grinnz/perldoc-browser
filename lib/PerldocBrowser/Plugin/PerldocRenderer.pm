@@ -29,11 +29,15 @@ sub register ($self, $app, $conf) {
   );
 
   foreach my $perl_version (@$perl_versions, @$dev_versions) {
+    $app->routes->any("/$perl_version/functions/:function"
+      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'perlfunc'}
+      => [function => qr/[^.]+/] => \&_function);
     $app->routes->any("/$perl_version/:module"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version}
       => [module => qr/[^.]+/] => \&_perldoc);
   }
 
+  $app->routes->any("/functions/:function" => {%defaults, module => 'perlfunc'} => [function => qr/[^.]+/] => \&_function);
   $app->routes->any("/:module" => {%defaults} => [module => qr/[^.]+/] => \&_perldoc);
 }
 
@@ -45,7 +49,7 @@ sub _inc_dirs ($perl_dir) {
   return $inc_dirs{$perl_dir} = [split /\n+/, capturex $perl_dir->child('bin', 'perl'), '-e', 'print "$_\n" for @INC'];
 }
 
-sub _html ($c, $src) {
+sub _html ($c, $src, $func) {
   my $dom = Mojo::DOM->new(_pod_to_html($src, $c->stash('url_perl_version')));
 
   # Rewrite code blocks for syntax highlighting and correct indentation
@@ -83,6 +87,17 @@ sub _html ($c, $src) {
     }
   }
 
+  # Rewrite links on function pages
+  if ($func) {
+    my $url_perl_version = $c->stash('url_perl_version');
+    my $prefix = $url_perl_version ? "/$url_perl_version" : '';
+    for my $e ($dom->find('a[href]')->each) {
+      next unless $e->attr('href') =~ /^#([^-]+)/;
+      my $function = $1;
+      $e->attr(href => $prefix . "/functions/$function");
+    }
+  }
+
   # Try to find a title
   my $title = 'Perldoc';
   $dom->find('h1 + p')->first(sub { $title = shift->text });
@@ -104,7 +119,39 @@ sub _perldoc ($c) {
   return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
 
   my $src = path($path)->slurp;
-  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
+  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src, 0) });
+}
+
+sub _function ($c) {
+  my $function = $c->param('function');
+  $c->stash(cpan => "https://metacpan.org/pod/perlfunc#$function");
+
+  my $perl_dir = $c->stash('perls_dir')->child($c->stash('perl_version'));
+  my $inc_dirs = _inc_dirs($perl_dir);
+
+  my $path = Pod::Simple::Search->new->inc(0)->find('perlfunc', @$inc_dirs);
+
+  my $src = _get_function_pod($path, $function);
+
+  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src, 1) });
+}
+
+sub _get_function_pod ($path, $function) {
+  my $src = path($path)->slurp;
+
+  my ($found, @result) = (0);
+
+  foreach my $line (split /\n\n/, $src) {
+    next if $line =~ /^=for Pod::Functions/;
+    last if $found == 2 and $line =~ /^=item/m;
+    $found = 1 if $line =~ /^=item \Q$function\E/mi;
+    $found = 2 if $found and $line !~ /^=item/m;
+    if ($line !~ /^=item/m and not $found) { @result = (); next; }
+
+    push @result, $line;
+  }
+
+  return join "\n\n", '=over 4', @result, '=back';
 }
 
 sub _pod_to_html ($pod, $perl_version) {
