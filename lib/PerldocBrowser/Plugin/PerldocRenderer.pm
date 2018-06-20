@@ -86,15 +86,14 @@ sub _html ($c, $src) {
   my $url_perl_version = $c->stash('url_perl_version');
   my $url_prefix = $url_perl_version ? "/$url_perl_version" : '';
 
-  # Rewrite perldoc links on perldoc perl
+  # Insert perldoc links on perldoc perl
   if ($c->param('module') eq 'perl') {
     for my $e ($dom->find('pre > code')->each) {
       my $str = $e->content;
       $e->content($str) if $str =~ s/^\s*\K(perl\S+)/$c->link_to("$1" => "$url_prefix\/$1")/mge;
     }
     for my $e ($dom->find(':not(pre) > code')->each) {
-      my $str = $e->content;
-      $e->content($str) if $str =~ s/^(perldoc (\w+)$)/$c->link_to("$1" => "$url_prefix\/$2")/e;
+      $e->wrap($c->link_to('' => "$url_prefix/$1")) if $e->all_text =~ m/^perldoc (\w+)$/;
     }
   }
 
@@ -109,8 +108,9 @@ sub _html ($c, $src) {
     # Insert links on functions index
     if (!defined $c->param('function')) {
       for my $e ($dom->find(':not(a) > code')->each) {
+        my $text = $e->all_text;
         $e->wrap($c->link_to('' => "$url_prefix/functions/$1"))
-          if $e->all_text =~ m/^([-\w]+)\/*$/ or $e->all_text =~ m/^([-\w\/]+)$/;
+          if $text =~ m/^([-\w]+)\/*$/ or $text =~ m/^([-\w\/]+)$/;
       }
     }
   }
