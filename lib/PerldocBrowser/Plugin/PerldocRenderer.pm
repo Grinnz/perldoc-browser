@@ -82,7 +82,7 @@ sub _html ($c, $src) {
       my $str = $e->content;
       $e->content($str) if $str =~ s/^\s*\K(perl\S+)/$c->link_to("$1" => "$prefix\/$1")/mge;
     }
-    for my $e ($dom->find('code')->each) {
+    for my $e ($dom->find(':not(pre) > code')->each) {
       my $str = $e->content;
       $e->content($str) if $str =~ s/^(perldoc (\w+)$)/$c->link_to("$1" => "$prefix\/$2")/e;
     }
