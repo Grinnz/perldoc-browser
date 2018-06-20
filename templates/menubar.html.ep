@@ -23,6 +23,13 @@
         </div>
       </li>
 % }
+% my $current_prefix = $url_perl_version ? "/$url_perl_version" : '';
+      <li class="nav-item">
+        <a class="nav-link" href="<%= $current_prefix %>">perl</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="<%= $current_prefix %>/functions">functions</a>
+      </li>
     </ul>
     <a class="navbar-text" href="https://github.com/Grinnz/perldoc-browser">Source on GitHub</a>
   </div>
