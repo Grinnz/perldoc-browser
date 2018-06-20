@@ -109,7 +109,7 @@ sub _html ($c, $src) {
     # Insert links on functions index
     if (!defined $c->param('function')) {
       for my $e ($dom->find(':not(a) > code')->each) {
-        $e->wrap($c->link_to('' => "$url_prefix/functions/$1")) if $e->all_text =~ m/^([-\w\/]+)$/;
+        $e->wrap($c->link_to('' => "$url_prefix/functions/$1")) if $e->all_text =~ m/^([-\w]+)\/*$/;
       }
     }
   }
