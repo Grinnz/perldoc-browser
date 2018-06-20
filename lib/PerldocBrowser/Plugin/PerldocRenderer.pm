@@ -30,7 +30,7 @@ sub register ($self, $app, $conf) {
 
   foreach my $perl_version (@$perl_versions, @$dev_versions) {
     $app->routes->any("/$perl_version/functions/:function"
-      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'perlfunc'}
+      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'functions'}
       => [function => qr/[^.]+/] => \&_function);
     $app->routes->any("/$perl_version/functions"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'functions'}
@@ -40,7 +40,7 @@ sub register ($self, $app, $conf) {
       => [module => qr/[^.]+/] => \&_perldoc);
   }
 
-  $app->routes->any("/functions/:function" => {%defaults, module => 'perlfunc'} => [function => qr/[^.]+/] => \&_function);
+  $app->routes->any("/functions/:function" => {%defaults, module => 'functions'} => [function => qr/[^.]+/] => \&_function);
   $app->routes->any("/functions" => {%defaults, module => 'functions'} => \&_functions_index);
   $app->routes->any("/:module" => {%defaults} => [module => qr/[^.]+/] => \&_perldoc);
 }
@@ -59,7 +59,7 @@ sub _inc_dirs ($perl_dir) {
   return $inc_dirs{$perl_dir} = [split /\n+/, capturex $perl_dir->child('bin', 'perl'), '-e', 'print "$_\n" for @INC'];
 }
 
-sub _html ($c, $src, $func) {
+sub _html ($c, $src) {
   my $dom = Mojo::DOM->new(_pod_to_html($src, $c->stash('url_perl_version')));
 
   # Rewrite code blocks for syntax highlighting and correct indentation
@@ -99,16 +99,23 @@ sub _html ($c, $src, $func) {
   }
 
   # Rewrite links on function pages
-  if ($func) {
+  if ($c->param('module') eq 'functions') {
     for my $e ($dom->find('a[href]')->each) {
       next unless $e->attr('href') =~ /^#([^-]+)/;
       my $function = $1;
-      $e->attr(href => $url_prefix . "/functions/$function");
+      $e->attr(href => "$url_prefix/functions/$function");
+    }
+    
+    # Insert links on functions index
+    if (!defined $c->param('function')) {
+      for my $e ($dom->find(':not(a) > code')->each) {
+        $e->wrap($c->link_to('' => "$url_prefix/functions/$1")) if $e->all_text =~ m/^([-\w\/]+)$/;
+      }
     }
   }
 
   # Try to find a title
-  my $title = $func ? $c->param('function') : 'Perldoc';
+  my $title = $c->param('function') // $c->param('module');
   $dom->find('h1 + p')->first(sub { $title = shift->text });
 
   # Combine everything to a proper response
@@ -125,7 +132,7 @@ sub _perldoc ($c) {
   return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
 
   my $src = path($path)->slurp;
-  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src, 0) });
+  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
 }
 
 sub _function ($c) {
@@ -138,7 +145,7 @@ sub _function ($c) {
   my $src = _get_function_pod($path, $function);
   return $c->redirect_to($c->stash('cpan')) unless defined $src;
 
-  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src, 1) });
+  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
 }
 
 sub _functions_index ($c) {
@@ -150,7 +157,7 @@ sub _functions_index ($c) {
   my $src = _get_function_categories($path);
   return $c->redirect_to($c->stash('cpan')) unless defined $src;
 
-  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src, 1) });
+  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
 }
 
 sub _get_function_pod ($path, $function) {
