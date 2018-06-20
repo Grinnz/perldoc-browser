@@ -109,7 +109,8 @@ sub _html ($c, $src) {
     # Insert links on functions index
     if (!defined $c->param('function')) {
       for my $e ($dom->find(':not(a) > code')->each) {
-        $e->wrap($c->link_to('' => "$url_prefix/functions/$1")) if $e->all_text =~ m/^([-\w]+)\/*$/;
+        $e->wrap($c->link_to('' => "$url_prefix/functions/$1"))
+          if $e->all_text =~ m/^([-\w]+)\/*$/ or $e->all_text =~ m/^([-\w\/]+)$/;
       }
     }
   }
@@ -142,7 +143,7 @@ sub _function ($c) {
   my $path = _find_pod($c, 'perlfunc');
   return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
 
-  my $src = _get_function_pod($path, $function);
+  my $src = _get_function_pod(path($path)->slurp, $function);
   return $c->redirect_to($c->stash('cpan')) unless defined $src;
 
   $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
@@ -154,35 +155,31 @@ sub _functions_index ($c) {
   my $path = _find_pod($c, 'perlfunc');
   return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
 
-  my $src = _get_function_categories($path);
+  my $src = _get_function_categories(path($path)->slurp);
   return $c->redirect_to($c->stash('cpan')) unless defined $src;
 
   $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
 }
 
-sub _get_function_pod ($path, $function) {
-  my $src = path($path)->slurp;
-
+sub _get_function_pod ($src, $function) {
   my ($found, @result) = (0);
 
-  foreach my $line (split /\n\n/, $src) {
-    next if $line =~ /^=for Pod::Functions/;
-    last if $found and $line =~ /^=back/m and !(grep { /^=over/m } @result);
-    last if $found == 2 and $line =~ /^=item/m;
-    $found = 1 if $line =~ /^=item \Q$function\E(\W|$)/m;
-    $found = 2 if $found and $line !~ /^=item/m;
-    if ($line !~ /^=item/m and not $found) { @result = (); next; }
+  foreach my $para (split /\n\n/, $src) {
+    next if $para =~ m/^=for Pod::Functions/;
+    last if $found and $para =~ m/^=back/ and !(grep { m/^=over/ } @result);
+    last if $found == 2 and $para =~ m/^=item/;
+    $found = 1 if $para =~ m/^=item \Q$function\E(\W|$)/;
+    $found = 2 if $found and $para !~ m/^=item/;
+    if ($para !~ m/^=item/ and not $found) { @result = (); next; }
 
-    push @result, $line;
+    push @result, $para;
   }
 
   return undef unless @result;
-  return join "\n\n", '=over 4', @result, '=back';
+  return join "\n\n", '=over', @result, '=back';
 }
 
-sub _get_function_categories ($path) {
-  my $src = path($path)->slurp;
-
+sub _get_function_categories ($src) {
   my ($started, @result);
   foreach my $para (split /\n\n/, $src) {
     if (!$started and $para =~ m/^=head\d Perl Functions by Category/) {
