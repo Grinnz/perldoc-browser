@@ -73,28 +73,27 @@ sub _html ($c, $src, $func) {
     $e->content($permalink . $e->content);
   }
 
+  my $url_perl_version = $c->stash('url_perl_version');
+  my $url_prefix = $url_perl_version ? "/$url_perl_version" : '';
+
   # Rewrite perldoc links on perldoc perl
   if ($c->param('module') eq 'perl') {
-    my $url_perl_version = $c->stash('url_perl_version');
-    my $prefix = $url_perl_version ? "/$url_perl_version" : '';
     for my $e ($dom->find('pre > code')->each) {
       my $str = $e->content;
-      $e->content($str) if $str =~ s/^\s*\K(perl\S+)/$c->link_to("$1" => "$prefix\/$1")/mge;
+      $e->content($str) if $str =~ s/^\s*\K(perl\S+)/$c->link_to("$1" => "$url_prefix\/$1")/mge;
     }
     for my $e ($dom->find(':not(pre) > code')->each) {
       my $str = $e->content;
-      $e->content($str) if $str =~ s/^(perldoc (\w+)$)/$c->link_to("$1" => "$prefix\/$2")/e;
+      $e->content($str) if $str =~ s/^(perldoc (\w+)$)/$c->link_to("$1" => "$url_prefix\/$2")/e;
     }
   }
 
   # Rewrite links on function pages
   if ($func) {
-    my $url_perl_version = $c->stash('url_perl_version');
-    my $prefix = $url_perl_version ? "/$url_perl_version" : '';
     for my $e ($dom->find('a[href]')->each) {
       next unless $e->attr('href') =~ /^#([^-]+)/;
       my $function = $1;
-      $e->attr(href => $prefix . "/functions/$function");
+      $e->attr(href => $url_prefix . "/functions/$function");
     }
   }
 
@@ -109,7 +108,7 @@ sub _html ($c, $src, $func) {
 
 sub _perldoc ($c) {
   # Find module or redirect to CPAN
-  my $module = join '::', split('/', $c->param('module'));
+  my $module = $c->param('module');
   $c->stash(cpan => "https://metacpan.org/pod/$module");
 
   my $perl_dir = $c->stash('perls_dir')->child($c->stash('perl_version'));
@@ -158,9 +157,9 @@ sub _get_function_pod ($path, $function) {
   return join "\n\n", '=over 4', @result, '=back';
 }
 
-sub _pod_to_html ($pod, $perl_version) {
+sub _pod_to_html ($pod, $url_perl_version) {
   my $parser = MetaCPAN::Pod::XHTML->new;
-  $parser->perldoc_url_prefix($perl_version ? "/$perl_version/" : '/');
+  $parser->perldoc_url_prefix($url_perl_version ? "/$url_perl_version/" : '/');
   $parser->$_('') for qw(html_header html_footer);
   $parser->anchor_items(1);
   $parser->output_string(\(my $output));
