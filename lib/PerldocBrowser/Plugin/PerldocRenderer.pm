@@ -101,7 +101,7 @@ sub _perldoc ($c) {
   my $inc_dirs = _inc_dirs($perl_dir);
 
   my $path
-    = Pod::Simple::Search->new->find($module, map { $_, "$_/pod", "$_/pods" } @$inc_dirs);
+    = Pod::Simple::Search->new->inc(0)->find($module, map { $_, "$_/pods" } @$inc_dirs);
   return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
 
   my $src = path($path)->slurp;
