@@ -46,7 +46,6 @@ sub _inc_dirs ($perl_dir) {
 }
 
 sub _html ($c, $src) {
-  # Rewrite links
   my $dom = Mojo::DOM->new(_pod_to_html($src, $c->stash('url_perl_version')));
 
   # Rewrite code blocks for syntax highlighting and correct indentation
@@ -70,10 +69,6 @@ sub _html ($c, $src) {
     $e->content($permalink . $e->content);
   }
 
-  # Try to find a title
-  my $title = 'Perldoc';
-  $dom->find('h1 + p')->first(sub { $title = shift->text });
-
   # Rewrite perldoc links on perldoc perl
   if ($c->param('module') eq 'perl') {
     my $url_perl_version = $c->stash('url_perl_version');
@@ -87,6 +82,10 @@ sub _html ($c, $src) {
       $e->content($str) if $str =~ s/^(perldoc (\w+)$)/$c->link_to("$1" => "$prefix\/$2")/e;
     }
   }
+
+  # Try to find a title
+  my $title = 'Perldoc';
+  $dom->find('h1 + p')->first(sub { $title = shift->text });
 
   # Combine everything to a proper response
   $c->content_for(perldoc => "$dom");
