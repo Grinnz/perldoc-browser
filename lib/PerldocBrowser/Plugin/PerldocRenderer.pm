@@ -187,7 +187,7 @@ sub _get_function_categories ($path) {
   foreach my $para (split /\n\n/, $src) {
     if (!$started and $para =~ m/^=head\d Perl Functions by Category/) {
       $started = 1;
-      push @result, $para;
+      push @result, '=pod';
     } elsif ($started) {
       last if $para =~ m/^=head/;
       push @result, $para;
