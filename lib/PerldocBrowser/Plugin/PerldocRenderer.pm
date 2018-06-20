@@ -32,13 +32,23 @@ sub register ($self, $app, $conf) {
     $app->routes->any("/$perl_version/functions/:function"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'perlfunc'}
       => [function => qr/[^.]+/] => \&_function);
+    $app->routes->any("/$perl_version/functions"
+      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'functions'}
+      => \&_functions_index);
     $app->routes->any("/$perl_version/:module"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version}
       => [module => qr/[^.]+/] => \&_perldoc);
   }
 
   $app->routes->any("/functions/:function" => {%defaults, module => 'perlfunc'} => [function => qr/[^.]+/] => \&_function);
+  $app->routes->any("/functions" => {%defaults, module => 'functions'} => \&_functions_index);
   $app->routes->any("/:module" => {%defaults} => [module => qr/[^.]+/] => \&_perldoc);
+}
+
+sub _find_pod($c, $module) {
+  my $perl_dir = $c->stash('perls_dir')->child($c->stash('perl_version'));
+  my $inc_dirs = _inc_dirs($perl_dir);
+  return Pod::Simple::Search->new->inc(0)->find($module, @$inc_dirs);
 }
 
 my %inc_dirs;
@@ -111,10 +121,7 @@ sub _perldoc ($c) {
   my $module = $c->param('module');
   $c->stash(cpan => "https://metacpan.org/pod/$module");
 
-  my $perl_dir = $c->stash('perls_dir')->child($c->stash('perl_version'));
-  my $inc_dirs = _inc_dirs($perl_dir);
-
-  my $path = Pod::Simple::Search->new->inc(0)->find($module, @$inc_dirs);
+  my $path = _find_pod($c, $module);
   return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
 
   my $src = path($path)->slurp;
@@ -125,13 +132,22 @@ sub _function ($c) {
   my $function = $c->param('function');
   $c->stash(cpan => "https://metacpan.org/pod/perlfunc#$function");
 
-  my $perl_dir = $c->stash('perls_dir')->child($c->stash('perl_version'));
-  my $inc_dirs = _inc_dirs($perl_dir);
-
-  my $path = Pod::Simple::Search->new->inc(0)->find('perlfunc', @$inc_dirs);
+  my $path = _find_pod($c, 'perlfunc');
   return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
 
   my $src = _get_function_pod($path, $function);
+  return $c->reply->not_found unless defined $src;
+
+  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src, 1) });
+}
+
+sub _functions_index ($c) {
+  $c->stash(cpan => 'https://metacpan.org/pod/perlfunc#Perl-Functions-by-Category');
+
+  my $path = _find_pod($c, 'perlfunc');
+  return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
+
+  my $src = _get_function_categories($path);
   return $c->reply->not_found unless defined $src;
 
   $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src, 1) });
@@ -155,6 +171,24 @@ sub _get_function_pod ($path, $function) {
 
   return undef unless @result;
   return join "\n\n", '=over 4', @result, '=back';
+}
+
+sub _get_function_categories ($path) {
+  my $src = path($path)->slurp;
+
+  my ($started, @result);
+  foreach my $para (split /\n\n/, $src) {
+    if (!$started and $para =~ m/^=head\d Perl Functions by Category/) {
+      $started = 1;
+      push @result, $para;
+    } elsif ($started) {
+      last if $para =~ m/^=head/;
+      push @result, $para;
+    }
+  }
+
+  return undef unless @result;
+  return join "\n\n", @result;
 }
 
 sub _pod_to_html ($pod, $url_perl_version) {
