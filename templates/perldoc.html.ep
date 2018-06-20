@@ -117,6 +117,17 @@
         display: block;
       }
     </style>
+% if (defined $c->config->{google_analytics_tracking_id}) {
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=<%= $c->config->{google_analytics_tracking_id} %>"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', '<%= $c->config->{google_analytics_tracking_id} %>');
+    </script>
+% }
   </head>
   <body>
     %= include 'menubar'
@@ -124,10 +135,15 @@
       <div id="perldoc">
         <div id="links">
           % my $display = join '::', split /\//, $module;
-          % my $path = $url_perl_version ? "/$url_perl_version/$display" : "/$display";
-          %= link_to $display => url_for($path)
+          % my $prefix = $url_perl_version ? "/$url_perl_version/" : '/';
+          % my $source = "$display.txt";
+          %= link_to $display => url_for($prefix . $display)
+          % if (defined stash('function')) {
+            % $source = 'functions/' . stash('function') . '.txt';
+            / <%= link_to stash('function') => url_for($prefix . 'functions/' . stash('function')) %>
+          % }
           <div id="more">
-            (<%= link_to 'source' => url_for("$path.txt") %>,
+            (<%= link_to 'source' => url_for($prefix . $source) %>,
             <%= link_to 'CPAN' => $cpan %>)
           </div>
         </div>
