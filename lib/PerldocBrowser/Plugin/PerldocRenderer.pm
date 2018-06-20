@@ -143,8 +143,9 @@ sub _get_function_pod ($path, $function) {
 
   foreach my $line (split /\n\n/, $src) {
     next if $line =~ /^=for Pod::Functions/;
+    last if $found and $line =~ /^=back/m and !(grep { /^=over/m } @result);
     last if $found == 2 and $line =~ /^=item/m;
-    $found = 1 if $line =~ /^=item \Q$function\E/mi;
+    $found = 1 if $line =~ /^=item \Q$function\E(\W|$)/m;
     $found = 2 if $found and $line !~ /^=item/m;
     if ($line !~ /^=item/m and not $found) { @result = (); next; }
 
