@@ -136,7 +136,7 @@ sub _function ($c) {
   return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
 
   my $src = _get_function_pod($path, $function);
-  return $c->reply->not_found unless defined $src;
+  return $c->redirect_to($c->stash('cpan')) unless defined $src;
 
   $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src, 1) });
 }
@@ -148,7 +148,7 @@ sub _functions_index ($c) {
   return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
 
   my $src = _get_function_categories($path);
-  return $c->reply->not_found unless defined $src;
+  return $c->redirect_to($c->stash('cpan')) unless defined $src;
 
   $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src, 1) });
 }
