@@ -130,8 +130,10 @@ sub _function ($c) {
   my $inc_dirs = _inc_dirs($perl_dir);
 
   my $path = Pod::Simple::Search->new->inc(0)->find('perlfunc', @$inc_dirs);
+  return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
 
   my $src = _get_function_pod($path, $function);
+  return $c->reply->not_found unless defined $src;
 
   $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src, 1) });
 }
@@ -152,6 +154,7 @@ sub _get_function_pod ($path, $function) {
     push @result, $line;
   }
 
+  return undef unless @result;
   return join "\n\n", '=over 4', @result, '=back';
 }
 
