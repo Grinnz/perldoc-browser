@@ -25,7 +25,7 @@
 % }
 % my $current_prefix = $url_perl_version ? "/$url_perl_version" : '';
       <li class="nav-item">
-        <a class="nav-link" href="<%= $current_prefix %>">perl</a>
+        <a class="nav-link" href="<%= $current_prefix %>/perl">perl</a>
       </li>
       <li class="nav-item">
         <a class="nav-link" href="<%= $current_prefix %>/functions">functions</a>
