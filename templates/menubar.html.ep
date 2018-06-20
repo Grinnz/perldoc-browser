@@ -5,8 +5,9 @@
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-stable" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><%= $perl_version %></a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-stable">
+% my $current_path = defined stash('function') ? 'functions/' . stash('function') : $module;
 % foreach my $perl_option (@$perl_versions) {
-          <a class="dropdown-item" href="/<%= $perl_option %>/<%= $module %>"><%= $perl_option %></a>
+          <a class="dropdown-item" href="/<%= $perl_option %>/<%= $current_path %>"><%= $perl_option %></a>
 % }
         </div>
       </li>
@@ -15,7 +16,7 @@
         <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-dev" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Dev</a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-dev">
 %   foreach my $perl_option (@$dev_perl_versions) {
-          <a class="dropdown-item" href="/<%= $perl_option %>/<%= $module %>"><%= $perl_option %></a>
+          <a class="dropdown-item" href="/<%= $perl_option %>/<%= $current_path %>"><%= $perl_option %></a>
 %   }
         </div>
       </li>
