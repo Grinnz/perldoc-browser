@@ -123,14 +123,11 @@
     <div id="wrapperlicious">
       <div id="perldoc">
         <div id="links">
-          % my $path;
-          % for my $part (split '/', $module) {
-            %= '::' if $path
-            % $path .= "/$part";
-            %= link_to $part => url_for($url_perl_version ? "/${url_perl_version}$path" : $path)
-          % }
+          % my $display = join '::', split /\//, $module;
+          % my $path = $url_perl_version ? "/$url_perl_version/$display" : "/$display";
+          %= link_to $display => url_for($path)
           <div id="more">
-            (<%= link_to 'source' => url_for($url_perl_version ? "/${url_perl_version}$path.txt" : "$path.txt") %>,
+            (<%= link_to 'source' => url_for("$path.txt") %>,
             <%= link_to 'CPAN' => $cpan %>)
           </div>
         </div>
