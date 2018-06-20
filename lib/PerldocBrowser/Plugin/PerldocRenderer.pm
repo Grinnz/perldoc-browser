@@ -99,7 +99,7 @@ sub _html ($c, $src, $func) {
   }
 
   # Try to find a title
-  my $title = 'Perldoc';
+  my $title = $func ? $c->param('function') : 'Perldoc';
   $dom->find('h1 + p')->first(sub { $title = shift->text });
 
   # Combine everything to a proper response
