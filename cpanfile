@@ -6,5 +6,6 @@ requires 'MetaCPAN::Pod::XHTML';
 requires 'Perl::Build';
 requires 'Pod::Simple::Search';
 requires 'Sort::Versions';
+requires 'experimental';
 requires 'lib::relative';
 requires 'version';

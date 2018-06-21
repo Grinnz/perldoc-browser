@@ -6,7 +6,6 @@ package PerldocBrowser::Plugin::PerldocRenderer;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
-use IPC::System::Simple 'capturex';
 use MetaCPAN::Pod::XHTML;
 use Mojo::ByteStream;
 use Mojo::DOM;
@@ -22,7 +21,6 @@ sub register ($self, $app, $conf) {
   my %defaults = (
     perl_versions => $perl_versions,
     dev_perl_versions => $dev_versions,
-    perls_dir => $conf->{perls_dir},
     module => 'perl',
     perl_version => $conf->{latest_version},
     url_perl_version => '',
@@ -46,17 +44,8 @@ sub register ($self, $app, $conf) {
 }
 
 sub _find_pod($c, $module) {
-  my $perl_dir = $c->stash('perls_dir')->child($c->stash('perl_version'));
-  my $inc_dirs = _inc_dirs($perl_dir);
+  my $inc_dirs = $c->inc_dirs($c->stash('perl_version'));
   return Pod::Simple::Search->new->inc(0)->find($module, @$inc_dirs);
-}
-
-my %inc_dirs;
-sub _inc_dirs ($perl_dir) {
-  return $inc_dirs{$perl_dir} if defined $inc_dirs{$perl_dir};
-  local $ENV{PERLLIB} = '';
-  local $ENV{PERL5LIB} = '';
-  return $inc_dirs{$perl_dir} = [split /\n+/, capturex $perl_dir->child('bin', 'perl'), '-e', 'print "$_\n" for @INC'];
 }
 
 sub _html ($c, $src) {
