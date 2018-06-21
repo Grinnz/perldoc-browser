@@ -18,29 +18,29 @@ push @{app->plugins->namespaces}, 'PerldocBrowser::Plugin';
 plugin Config => {file => 'perldoc-browser.conf', default => {}};
 
 my $perls_dir = path(app->config->{perls_dir} // app->home->child('perls'));
-my $perl_versions = -d $perls_dir ? $perls_dir->list({dir => 1})
+my $all_versions = -d $perls_dir ? $perls_dir->list({dir => 1})
   ->grep(sub { -d && -x path($_)->child('bin', 'perl') })
   ->map(sub { $_->basename })->sort(sub { versioncmp($b, $a) }) : [];
-die "No perls found in $perls_dir\n" unless @$perl_versions;
+die "No perls found in $perls_dir\n" unless @$all_versions;
 
-my (@stable_versions, @dev_versions);
+my (@perl_versions, @dev_versions);
 my $latest_version = app->config->{latest_perl_version};
-foreach my $perl_version (@$perl_versions) {
+foreach my $perl_version (@$all_versions) {
   my $v = eval { version->parse($perl_version =~ s/^perl-//r) };
   if (defined $v and $v->{version}[1] % 2) {
     push @dev_versions, $perl_version;
   } elsif ($perl_version =~ m/-RC\d+$/) {
     push @dev_versions, $perl_version;
   } else {
-    push @stable_versions, $perl_version;
+    push @perl_versions, $perl_version;
     $latest_version //= $perl_version if defined $v;
   }
 }
 
-$latest_version //= $perl_versions->first;
+$latest_version //= $all_versions->first;
 
 my %inc_dirs;
-foreach my $perl_version (@$perl_versions) {
+foreach my $perl_version (@$all_versions) {
   my $perl_bin = $perls_dir->child($perl_version, 'bin', 'perl');
   local $ENV{PERLLIB} = '';
   local $ENV{PERL5LIB} = '';
@@ -48,7 +48,7 @@ foreach my $perl_version (@$perl_versions) {
 }
 
 plugin PerldocRenderer => {
-  perl_versions => \@stable_versions,
+  perl_versions => \@perl_versions,
   dev_versions => \@dev_versions,
   latest_version => $latest_version,
   inc_dirs => \%inc_dirs,
