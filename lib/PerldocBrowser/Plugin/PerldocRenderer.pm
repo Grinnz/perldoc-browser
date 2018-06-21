@@ -78,19 +78,25 @@ sub _html ($c, $src) {
   my $url_perl_version = $c->stash('url_perl_version');
   my $url_prefix = $url_perl_version ? "/$url_perl_version" : '';
 
-  # Insert perldoc links on perldoc perl
+  # Insert links on perldoc perl
   if ($c->param('module') eq 'perl') {
     for my $e ($dom->find('pre > code')->each) {
       my $str = $e->content;
       $e->content($str) if $str =~ s/^\s*\K(perl\S+)/$c->link_to("$1" => "$url_prefix\/$1")/mge;
     }
     for my $e ($dom->find(':not(pre) > code')->each) {
-      $e->wrap($c->link_to('' => "$url_prefix/$1")) if $e->all_text =~ m/^perldoc (\w+)$/;
+      my $text = $e->all_text;
+      $e->wrap($c->link_to('' => "$url_prefix/$1")) if $text =~ m/^perldoc (\w+)$/;
+      $e->content($text) if $text =~ s/^use \K([a-z]+)(;|$)/$c->link_to("$1" => "$url_prefix\/$1") . $2/e;
+    }
+    for my $e ($dom->find('p > b')->each) {
+      my $text = $e->all_text;
+      $e->content($text) if $text =~ s/^use \K([a-z]+)(;|$)/$c->link_to("$1" => "$url_prefix\/$1") . $2/e;
     }
   }
 
-  # Rewrite links on function pages
   if ($c->param('module') eq 'functions') {
+    # Rewrite links on function pages
     for my $e ($dom->find('a[href]')->each) {
       next unless $e->attr('href') =~ /^#([^-]+)/;
       my $function = $1;
