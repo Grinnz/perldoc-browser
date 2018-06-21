@@ -44,7 +44,7 @@ foreach my $perl_version (@$all_versions) {
   my $perl_bin = $perls_dir->child($perl_version, 'bin', 'perl');
   local $ENV{PERLLIB} = '';
   local $ENV{PERL5LIB} = '';
-  $inc_dirs{$perl_version} = [split /\n+/, capturex $perl_bin, '-e', 'print "$_\n" for @INC'];
+  $inc_dirs{$perl_version} = [split /\n+/, capturex $perl_bin, '-MConfig', '-e', 'print "$_\n" for @INC; print "$Config{scriptdir}\n"'];
 }
 
 plugin PerldocRenderer => {
