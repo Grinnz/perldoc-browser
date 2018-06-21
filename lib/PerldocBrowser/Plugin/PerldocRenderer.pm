@@ -6,8 +6,8 @@ package PerldocBrowser::Plugin::PerldocRenderer;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
+use List::Util 'first';
 use MetaCPAN::Pod::XHTML;
-use Module::CoreList;
 use Mojo::ByteStream;
 use Mojo::DOM;
 use Mojo::File 'path';
@@ -18,8 +18,6 @@ use experimental 'signatures';
 sub register ($self, $app, $conf) {
   my $inc_dirs = $conf->{inc_dirs} // {};
   $app->helper(inc_dirs => sub ($c, $perl_version) { $inc_dirs->{$perl_version} // [] });
-  my $canon_versions = $conf->{canonical_versions} // {};
-  $app->helper(canonical_perl_version => sub ($c, $perl_version) { $canon_versions->{$perl_version} });
 
   my $perl_versions = $conf->{perl_versions} // [];
   my $dev_versions = $conf->{dev_versions} // [];
@@ -70,20 +68,29 @@ sub _html ($c, $src) {
     $attrs->{class} = defined $class ? "$class prettyprint" : 'prettyprint';
   }
 
+  my $url_perl_version = $c->stash('url_perl_version');
+  my $url_prefix = $url_perl_version ? "/$url_perl_version" : '';
+
+  # Insert links on modules list
+  if ($c->param('module') eq 'modules') {
+    for my $e ($dom->find('dt')->each) {
+      my $module = $e->all_text;
+      $e->child_nodes->last->wrap($c->link_to('' => "$url_prefix/$module"));
+    }
+  }
+
   # Rewrite headers
+  my $highest = first { $dom->find($_)->size } qw(h1 h2 h3 h4);
   my @parts;
   for my $e ($dom->find('h1, h2, h3, h4, dt')->each) {
  
-    push @parts, [] if $e->tag eq 'h1' || !@parts;
+    push @parts, [] if $e->tag eq ($highest // 'h1') || !@parts;
     my $link = Mojo::URL->new->fragment($e->{id});
     my $text = $e->all_text;
     push @{$parts[-1]}, $text, $link unless $e->tag eq 'dt';
     my $permalink = $c->link_to('#' => $link, class => 'permalink');
     $e->content($permalink . $e->content);
   }
-
-  my $url_perl_version = $c->stash('url_perl_version');
-  my $url_prefix = $url_perl_version ? "/$url_perl_version" : '';
 
   # Insert links on perldoc perl
   if ($c->param('module') eq 'perl') {
@@ -169,11 +176,11 @@ sub _functions_index ($c) {
 sub _modules_index ($c) {
   $c->stash(cpan => 'https://metacpan.org');
 
-  my $core = $Module::CoreList::version{$c->canonical_perl_version($c->stash('perl_version'))} // {};
-  my $modules = sort keys %$core;
+  my $path = _find_pod($c, 'perlmodlib');
+  return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
 
-  my $src = join "\n\n", '=pod', 'List of modules included in the Perl core.', '=over',
-    (map { "=item * L<$_>" } sort keys %$core), '=back';
+  my $src = _get_module_list(path($path)->slurp);
+  return $c->redirect_to($c->stash('cpan')) unless defined $src;
 
   $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
 }
@@ -181,7 +188,7 @@ sub _modules_index ($c) {
 sub _get_function_pod ($src, $function) {
   my ($found, @result) = (0);
 
-  foreach my $para (split /\n\n/, $src) {
+  foreach my $para (split /\n\n+/, $src) {
     next if $para =~ m/^=for Pod::Functions/;
     last if $found and $para =~ m/^=back/ and !(grep { m/^=over/ } @result);
     last if $found == 2 and $para =~ m/^=item/;
@@ -198,13 +205,30 @@ sub _get_function_pod ($src, $function) {
 
 sub _get_function_categories ($src) {
   my ($started, @result);
-  foreach my $para (split /\n\n/, $src) {
+  foreach my $para (split /\n\n+/, $src) {
     if (!$started and $para =~ m/^=head\d Perl Functions by Category/) {
       $started = 1;
       push @result, '=pod';
     } elsif ($started) {
       last if $para =~ m/^=head/;
       push @result, $para;
+    }
+  }
+
+  return undef unless @result;
+  return join "\n\n", @result;
+}
+
+sub _get_module_list ($src) {
+  my ($started, $standard, @result);
+  foreach my $para (split /\n\n+/, $src) {
+    if (!$started and $para =~ m/^=head\d Pragmatic Modules/) {
+      $started = 1;
+      push @result, $para;
+    } elsif ($started) {
+      $standard = 1 if $para =~ m/^=head\d Standard Modules/;
+      push @result, $para;
+      last if $standard and $para =~ m/^=back/;
     }
   }
 
