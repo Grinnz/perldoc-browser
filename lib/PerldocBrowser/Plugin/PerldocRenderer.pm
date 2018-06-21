@@ -7,6 +7,7 @@ package PerldocBrowser::Plugin::PerldocRenderer;
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
 use MetaCPAN::Pod::XHTML;
+use Module::CoreList;
 use Mojo::ByteStream;
 use Mojo::DOM;
 use Mojo::File 'path';
@@ -17,6 +18,8 @@ use experimental 'signatures';
 sub register ($self, $app, $conf) {
   my $inc_dirs = $conf->{inc_dirs} // {};
   $app->helper(inc_dirs => sub ($c, $perl_version) { $inc_dirs->{$perl_version} // [] });
+  my $canon_versions = $conf->{canonical_versions} // {};
+  $app->helper(canonical_perl_version => sub ($c, $perl_version) { $canon_versions->{$perl_version} });
 
   my $perl_versions = $conf->{perl_versions} // [];
   my $dev_versions = $conf->{dev_versions} // [];
@@ -36,6 +39,9 @@ sub register ($self, $app, $conf) {
     $app->routes->any("/$perl_version/functions"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'functions'}
       => \&_functions_index);
+    $app->routes->any("/$perl_version/modules"
+      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'modules'}
+      => \&_modules_index);
     $app->routes->any("/$perl_version/:module"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version}
       => [module => qr/[^.]+/] => \&_perldoc);
@@ -43,6 +49,7 @@ sub register ($self, $app, $conf) {
 
   $app->routes->any("/functions/:function" => {%defaults, module => 'functions'} => [function => qr/[^.]+/] => \&_function);
   $app->routes->any("/functions" => {%defaults, module => 'functions'} => \&_functions_index);
+  $app->routes->any("/modules" => {%defaults, module => 'modules'} => \&_modules_index);
   $app->routes->any("/:module" => {%defaults} => [module => qr/[^.]+/] => \&_perldoc);
 }
 
@@ -155,6 +162,18 @@ sub _functions_index ($c) {
 
   my $src = _get_function_categories(path($path)->slurp);
   return $c->redirect_to($c->stash('cpan')) unless defined $src;
+
+  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
+}
+
+sub _modules_index ($c) {
+  $c->stash(cpan => 'https://metacpan.org');
+
+  my $core = $Module::CoreList::version{$c->canonical_perl_version($c->stash('perl_version'))} // {};
+  my $modules = sort keys %$core;
+
+  my $src = join "\n\n", '=pod', 'List of modules included in the Perl core.', '=over',
+    (map { "=item * L<$_>" } sort keys %$core), '=back';
 
   $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
 }
