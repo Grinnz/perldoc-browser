@@ -15,6 +15,9 @@ use Pod::Simple::Search;
 use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
+  my $inc_dirs = $conf->{inc_dirs} // {};
+  $app->helper(inc_dirs => sub ($c, $perl_version) { $inc_dirs->{$perl_version} // [] });
+
   my $perl_versions = $conf->{perl_versions} // [];
   my $dev_versions = $conf->{dev_versions} // [];
 

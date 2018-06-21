@@ -10,7 +10,6 @@ use IPC::System::Simple 'capturex';
 use Mojo::File 'path';
 use Sort::Versions;
 use version;
-use experimental 'signatures';
 use lib::relative 'lib';
 
 push @{app->commands->namespaces}, 'PerldocBrowser::Command';
@@ -48,12 +47,11 @@ foreach my $perl_version (@$perl_versions) {
   $inc_dirs{$perl_version} = [split /\n+/, capturex $perl_bin, '-e', 'print "$_\n" for @INC'];
 }
 
-helper inc_dirs => sub ($c, $perl_version) { $inc_dirs{$perl_version} // [] };
-
 plugin PerldocRenderer => {
   perl_versions => \@stable_versions,
   dev_versions => \@dev_versions,
   latest_version => $latest_version,
+  inc_dirs => \%inc_dirs,
 };
 
 app->start;
