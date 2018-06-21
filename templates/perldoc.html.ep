@@ -10,6 +10,7 @@
     %= stylesheet '/mojo/prettify/prettify-mojo-light.css'
     <style>
       #perldoc a { color: inherit; text-decoration: underline }
+      #perldoc #toc { text-decoration: none }
       #perldoc a:hover { color: #2a2a2a }
       #perldoc a img { border: 0 }
       body {
@@ -20,33 +21,31 @@
         line-height: 1.5em;
         margin: 0;
       }
-      :not(pre) > code {
+      #perldoc :not(pre) > code {
         background-color: rgba(0, 0, 0, 0.04);
         border-radius: 3px;
         font: 0.9em Consolas, Menlo, Monaco, Courier, monospace;
         padding: 0.3em;
       }
-      h1 { font-size: 1.5em }
-      h2 { font-size: 1.3em }
-      h3 { font-size: 1.1em }
-      h4 { font-size: 0.9em }
-      h1, h2, h3, h4, dt {
+      #perldoc h1 { font-size: 1.5em }
+      #perldoc h2 { font-size: 1.3em }
+      #perldoc h3 { font-size: 1.1em }
+      #perldoc h4 { font-size: 0.9em }
+      #perldoc h1, #perldoc h2, #perldoc h3, #perldoc h4, #perldoc dt {
         color: #2a2a2a;
         margin: 0;
         position: relative;
         font-weight: bold;
       }
-      dd {
+      #perldoc dd {
         margin: 0;
         margin-left: 2em;
       }
-      dt {
+      #perldoc dt {
         color: #2a2a2a;
         font-weight: bold;
         margin-left: 0.9em;
       }
-      #perldoc h1 a, #perldoc h2 a, #perldoc h3 a, #perldoc h4 a,
-      #perldoc dt a { text-decoration: none }
       #perldoc p {
         margin-bottom: 1em;
         margin-top: 1em;
@@ -55,7 +54,7 @@
         margin-bottom: 0;
         margin-top: 0;
       }
-      pre {
+      #perldoc pre {
         background-color: #fafafa;
         border: 1px solid #c1c1c1;
         border-radius: 3px;
@@ -64,7 +63,7 @@
         margin-bottom: 1em;
         margin-top: 1em;
       }
-      pre > code {
+      #perldoc pre > code {
         color: #4d4d4c;
         font: 0.9em Consolas, Menlo, Monaco, Courier, monospace;
         line-height: 1.5em;
@@ -106,14 +105,16 @@
         max-width: 1000px;
         margin: 0 auto;
       }
-      .permalink {
+      #perldoc .permalink {
         display: none;
         left: -0.75em;
         position: absolute;
         padding-right: 0.25em;
+        text-decoration: none;
       }
-      h1:hover .permalink, h2:hover .permalink, h3:hover .permalink,
-      h4:hover .permalink, dt:hover .permalink {
+      #perldoc h1:hover .permalink, #perldoc h2:hover .permalink,
+      #perldoc h3:hover .permalink, #perldoc h4:hover .permalink,
+      #perldoc dt:hover .permalink {
         display: block;
       }
     </style>
