@@ -17,7 +17,7 @@ use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
   $app->helper(pod_to_html => sub { my $c = shift; _pod_to_html(@_) });
-  $app->helper(get_function_pod => \&_get_function_pod);
+  $app->helper(split_functions => \&_split_functions);
 
   my $perl_versions = $app->perl_versions;
   my $dev_versions = $app->dev_versions;
@@ -181,21 +181,43 @@ sub _get_function_pod ($c, $function) {
   return undef unless $path && -r $path;
   my $src = path($path)->slurp;
 
-  my ($found, @result) = (0);
+  my $result = _split_functions($src, $function);
+  return undef unless @$result;
+  return join "\n\n", '=over', @$result, '=back';
+}
+
+sub _split_functions ($src, $function = undef) {
+  my ($list_level, $found, @function, @functions) = (0,0);
 
   foreach my $para (split /\n\n+/, $src) {
     next if $para =~ m/^=for Pod::Functions/;
-    last if $found and $para =~ m/^=back/ and !(grep { m/^=over/ } @result);
-    last if $found == 2 and $para =~ m/^=item/;
-    $found = 1 if $para =~ m/^=item \Q$function\E(\W|$)/;
-    $found = 2 if $found and $para !~ m/^=item/;
-    if ($para !~ m/^=item/ and not $found) { @result = (); next; }
 
-    push @result, $para;
+    if ($para =~ m/^=over/) {
+      $list_level++;
+      next if $list_level == 1;
+    }
+    $list_level-- if $para =~ m/^=back/;
+    next unless $list_level >= 1;
+
+    if ($list_level == 1) {
+      if ($found == 2 and $para =~ m/^=item/) {
+        if (defined $function) {
+          last unless $para =~ m/^=item \Q$function\E(\W|$)/;
+        } else {
+          push @functions, [@function];
+          @function = ();
+          $found = 0;
+        }
+      }
+      $found = 1 if !$found and defined $function ? $para =~ m/^=item \Q$function\E(\W|$)/ : $para =~ m/^=item/;
+      $found = 2 if $found and $para !~ m/^=item/;
+      if (defined $function and $para !~ m/^=item/ and not $found) { @function = (); next; }
+    }
+
+    push @function, $para;
   }
 
-  return undef unless @result;
-  return join "\n\n", '=over', @result, '=back';
+  return defined $function ? \@function : \@functions;
 }
 
 sub _get_function_categories ($c) {

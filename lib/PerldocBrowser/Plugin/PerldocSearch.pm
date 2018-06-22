@@ -13,7 +13,9 @@ use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
   $app->helper(index_pod => \&_index_pod);
+  $app->helper(index_functions => \&_index_functions);
   $app->helper(clear_pod_index => \&_clear_pod_index);
+  $app->helper(clear_function_index => \&_clear_function_index);
 
   my $perl_versions = $app->perl_versions;
   my $dev_versions = $app->dev_versions;
@@ -83,19 +85,6 @@ sub _pod_search ($c, $query) {
     ORDER BY "rank" DESC, "name"}, $query, $c->stash('perl_version'))->hashes;
 }
 
-sub _index_function ($c, $db, $perl_version, $name, $src) {
-  my $dom = Mojo::DOM->new($c->pod_to_html($src));
-  my $contents = $dom->find('dd')->map('all_text')->join("\n");
-
-  $db->insert('functions', {
-    perl_version => $perl_version,
-    name => $name,
-    contents => $contents,
-  }, {on_conflict => \['("perl_version","name") do update set
-    "contents"=EXCLUDED."contents"']}
-  );
-}
-
 sub _index_pod ($c, $db, $perl_version, $name, $src) {
   my $dom = Mojo::DOM->new($c->pod_to_html($src));
   my $headings = $dom->find('h1');
@@ -127,8 +116,46 @@ sub _index_pod ($c, $db, $perl_version, $name, $src) {
   );
 }
 
+sub _index_functions ($c, $db, $perl_version, $src) {
+  my $blocks = $c->split_functions($src);
+  my %functions;
+  foreach my $block (@$blocks) {
+    my %names;
+    my $list_level = 0;
+    my @block_text;
+    foreach my $para (@$block) {
+      $list_level++ if $para =~ m/^=over/;
+      $list_level-- if $para =~ m/^=back/;
+      unless ($list_level) {
+        $names{"$1"} = 1 if $para =~ m/^=item ([-\w\/]+)/;
+        $names{"$1"} = 1 if $para =~ m/^=item ([-\w]+)/;
+      }
+      push @block_text, $para if $list_level or $para !~ m/^=item/;
+    }
+    push @{$functions{$_}}, @block_text for keys %names;
+  }
+  
+  foreach my $function (keys %functions) {
+    my $pod = join "\n\n", '=over', @{$functions{$function}}, '=back';
+    my $dom = Mojo::DOM->new($c->pod_to_html($pod));
+    my $contents = $dom->all_text;
+
+    $db->insert('functions', {
+      perl_version => $perl_version,
+      name => $function,
+      contents => $contents,
+    }, {on_conflict => \['("perl_version","name") do update set
+      "contents"=EXCLUDED."contents"']}
+    );
+  }
+}
+
 sub _clear_pod_index ($c, $db, $perl_version) {
   $db->delete('pods', {perl_version => $perl_version});
+}
+
+sub _clear_function_index ($c, $db, $perl_version) {
+  $db->delete('functions', {perl_version => $perl_version});
 }
 
 1;
