@@ -24,6 +24,7 @@ sub run ($self, @versions) {
     my $pod_paths = Pod::Simple::Search->new->inc(0)->survey(@$inc_dirs);
     my $tx = $db->begin;
     $self->app->clear_pod_index($db, $version);
+    $self->app->clear_function_index($db, $version);
     foreach my $pod (keys %$pod_paths) {
       print "Indexing $pod for $version ($pod_paths->{$pod})\n";
       my $src = path($pod_paths->{$pod})->slurp;

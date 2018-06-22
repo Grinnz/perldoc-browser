@@ -40,29 +40,44 @@ sub _search ($c) {
   $c->stash(cpan => Mojo::URL->new('https://metacpan.org/search')->query(q => $query));
 
   my $url_perl_version = $c->stash('url_perl_version');
-  my $prefix = $url_perl_version ? "/$url_perl_version" : '';
+  my $url_prefix = $url_perl_version ? "/$url_perl_version" : '';
 
   my $pod = _pod_name_match($c, $query);
-  return $c->redirect_to("$prefix/$pod") if defined $pod;
+  return $c->redirect_to("$url_prefix/$pod") if defined $pod;
 
   my $function = _function_name_match($c, $query);
-  return $c->redirect_to("$prefix/functions/$function") if defined $function;
+  return $c->redirect_to("$url_prefix/functions/$function") if defined $function;
 
   my $pod_results = _pod_search($c, $query);
-  $c->app->log->warn(join ' ', map { $_->{name} } @$pod_results);
 
-  my @paras = ('=head1 SEARCH RESULTS', 'B<>', '=head2 Functions');
-  push @paras, '=over', '=item I<No results>', '=back';
-  push @paras, '=head2 Pod';
-  if (@$pod_results) {
-    push @paras, '=over', (map { "=item L<$_->{name}> - $_->{abstract}" } @$pod_results), '=back';
+  my $function_results = _function_search($c, $query);
+
+  my @paras = ('=head1 SEARCH RESULTS', 'B<>', '=head2 Functions', '=over');
+  if (@$function_results) {
+    push @paras, map { "=item L<$_->{name}|perlfunc/$_->{name}>" } @$function_results;
   } else {
-    push @paras, '=over', '=item I<No results>', '=back';
+    push @paras, '=item I<No results>';
   }
+  push @paras, '=back', '=head2 Pod', '=over';
+  if (@$pod_results) {
+    push @paras, map { "=item L<$_->{name}> - $_->{abstract}" } @$pod_results;
+  } else {
+    push @paras, '=item I<No results>';
+  }
+  push @paras, '=back';
   my $src = join "\n\n", @paras;
 
+  my $dom = Mojo::DOM->new($c->pod_to_html($src, $url_perl_version));
+
+  # Rewrite links to function pages
+  for my $e ($dom->find('a[href]')->each) {
+    next unless $e->attr('href') =~ /^[^#]+perlfunc#(.[^-]*)/;
+    my $function = $1;
+    $e->attr(href => "$url_prefix/functions/$function");
+  }
+
   # Combine everything to a proper response
-  $c->content_for(perldoc => $c->pod_to_html($src, $url_perl_version));
+  $c->content_for(perldoc => "$dom");
   $c->respond_to(txt => {data => $src}, html => sub { $c->render('perldoc', title => 'search', parts => []) });
 }
 
@@ -79,9 +94,16 @@ sub _function_name_match ($c, $query) {
 }
 
 sub _pod_search ($c, $query) {
-  return $c->pg->db->query(q{SELECT "name", "abstract", "description",
+  return $c->pg->db->query(q{SELECT "name", "abstract",
     ts_rank_cd("indexed", plainto_tsquery('english', $1), 1) AS "rank"
     FROM "pods" WHERE "perl_version" = $2 AND "indexed" @@ plainto_tsquery('english', $1)
+    ORDER BY "rank" DESC, "name"}, $query, $c->stash('perl_version'))->hashes;
+}
+
+sub _function_search ($c, $query) {
+  return $c->pg->db->query(q{SELECT "name",
+    ts_rank_cd("indexed", plainto_tsquery('english', $1), 1) AS "rank"
+    FROM "functions" WHERE "perl_version" = $2 AND "indexed" @@ plainto_tsquery('english', $1)
     ORDER BY "rank" DESC, "name"}, $query, $c->stash('perl_version'))->hashes;
 }
 
@@ -127,25 +149,26 @@ sub _index_functions ($c, $db, $perl_version, $src) {
       $list_level++ if $para =~ m/^=over/;
       $list_level-- if $para =~ m/^=back/;
       unless ($list_level) {
+        # Make both names available for navigation but only index the full name
         $names{"$1"} = 1 if $para =~ m/^=item ([-\w\/]+)/;
-        $names{"$1"} = 1 if $para =~ m/^=item ([-\w]+)/;
+        $names{"$1"} //= 0 if $para =~ m/^=item ([-\w]+)/;
       }
       push @block_text, $para if $list_level or $para !~ m/^=item/;
     }
-    push @{$functions{$_}}, @block_text for keys %names;
+    push @{$functions{$_}}, $names{$_} ? @block_text : () for keys %names;
   }
-  
+
   foreach my $function (keys %functions) {
     my $pod = join "\n\n", '=over', @{$functions{$function}}, '=back';
     my $dom = Mojo::DOM->new($c->pod_to_html($pod));
-    my $contents = $dom->all_text;
+    my $description = $dom->all_text;
 
     $db->insert('functions', {
       perl_version => $perl_version,
       name => $function,
-      contents => $contents,
+      description => $description,
     }, {on_conflict => \['("perl_version","name") do update set
-      "contents"=EXCLUDED."contents"']}
+      "description"=EXCLUDED."description"']}
     );
   }
 }

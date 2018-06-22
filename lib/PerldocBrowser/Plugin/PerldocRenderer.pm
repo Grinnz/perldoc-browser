@@ -17,7 +17,7 @@ use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
   $app->helper(pod_to_html => sub { my $c = shift; _pod_to_html(@_) });
-  $app->helper(split_functions => \&_split_functions);
+  $app->helper(split_functions => sub { my $c = shift; _split_functions(@_) });
 
   my $perl_versions = $app->perl_versions;
   my $dev_versions = $app->dev_versions;
@@ -186,6 +186,7 @@ sub _get_function_pod ($c, $function) {
   return join "\n\n", '=over', @$result, '=back';
 }
 
+# Edge cases: eval, do, chop, y///, -X
 sub _split_functions ($src, $function = undef) {
   my ($list_level, $found, @function, @functions) = (0,0);
 
