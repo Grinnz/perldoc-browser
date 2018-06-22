@@ -7,7 +7,6 @@ package PerldocBrowser::Plugin::PerldocSearch;
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
 use Mojo::DOM;
-use Mojo::File 'path';
 use Mojo::URL;
 use Mojo::Util 'trim';
 use experimental 'signatures';
@@ -50,13 +49,13 @@ sub _search ($c) {
   my $pod_results = _pod_search($c, $query);
   $c->app->log->warn(join ' ', map { $_->{name} } @$pod_results);
 
-  my @paras = ('=head1 SEARCH RESULTS', '=head2 Functions');
-  push @paras, 'I<No results>';
+  my @paras = ('=head1 SEARCH RESULTS', 'B<>', '=head2 Functions');
+  push @paras, '=over', '=item I<No results>', '=back';
   push @paras, '=head2 Pod';
   if (@$pod_results) {
     push @paras, '=over', (map { "=item L<$_->{name}> - $_->{abstract}" } @$pod_results), '=back';
   } else {
-    push @paras, 'I<No results>';
+    push @paras, '=over', '=item I<No results>', '=back';
   }
   my $src = join "\n\n", @paras;
 
@@ -84,8 +83,21 @@ sub _pod_search ($c, $query) {
     ORDER BY "rank" DESC, "name"}, $query, $c->stash('perl_version'))->hashes;
 }
 
-sub _index_pod ($c, $db, $perl_version, $name, $path) {
-  my $dom = Mojo::DOM->new($c->pod_to_html(path($path)->slurp));
+sub _index_function ($c, $db, $perl_version, $name, $src) {
+  my $dom = Mojo::DOM->new($c->pod_to_html($src));
+  my $contents = $dom->find('dd')->map('all_text')->join("\n");
+
+  $db->insert('functions', {
+    perl_version => $perl_version,
+    name => $name,
+    contents => $contents,
+  }, {on_conflict => \['("perl_version","name") do update set
+    "contents"=EXCLUDED."contents"']}
+  );
+}
+
+sub _index_pod ($c, $db, $perl_version, $name, $src) {
+  my $dom = Mojo::DOM->new($c->pod_to_html($src));
   my $headings = $dom->find('h1');
 
   my $name_heading = $headings->first(sub { trim($_->all_text) eq 'NAME' });

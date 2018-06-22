@@ -17,6 +17,7 @@ use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
   $app->helper(pod_to_html => sub { my $c = shift; _pod_to_html(@_) });
+  $app->helper(get_function_pod => \&_get_function_pod);
 
   my $perl_versions = $app->perl_versions;
   my $dev_versions = $app->dev_versions;
@@ -151,10 +152,7 @@ sub _function ($c) {
   my $function = $c->param('function');
   $c->stash(cpan => "https://metacpan.org/pod/perlfunc#$function");
 
-  my $path = _find_pod($c, 'perlfunc');
-  return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
-
-  my $src = _get_function_pod(path($path)->slurp, $function);
+  my $src = _get_function_pod($c, $function);
   return $c->redirect_to($c->stash('cpan')) unless defined $src;
 
   $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
@@ -163,10 +161,7 @@ sub _function ($c) {
 sub _functions_index ($c) {
   $c->stash(cpan => 'https://metacpan.org/pod/perlfunc#Perl-Functions-by-Category');
 
-  my $path = _find_pod($c, 'perlfunc');
-  return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
-
-  my $src = _get_function_categories(path($path)->slurp);
+  my $src = _get_function_categories($c);
   return $c->redirect_to($c->stash('cpan')) unless defined $src;
 
   $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
@@ -175,16 +170,17 @@ sub _functions_index ($c) {
 sub _modules_index ($c) {
   $c->stash(cpan => 'https://metacpan.org');
 
-  my $path = _find_pod($c, 'perlmodlib');
-  return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
-
-  my $src = _get_module_list(path($path)->slurp);
+  my $src = _get_module_list($c);
   return $c->redirect_to($c->stash('cpan')) unless defined $src;
 
   $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
 }
 
-sub _get_function_pod ($src, $function) {
+sub _get_function_pod ($c, $function) {
+  my $path = _find_pod($c, 'perlfunc');
+  return undef unless $path && -r $path;
+  my $src = path($path)->slurp;
+
   my ($found, @result) = (0);
 
   foreach my $para (split /\n\n+/, $src) {
@@ -202,7 +198,11 @@ sub _get_function_pod ($src, $function) {
   return join "\n\n", '=over', @result, '=back';
 }
 
-sub _get_function_categories ($src) {
+sub _get_function_categories ($c) {
+  my $path = _find_pod($c, 'perlfunc');
+  return undef unless $path && -r $path;
+  my $src = path($path)->slurp;
+
   my ($started, @result);
   foreach my $para (split /\n\n+/, $src) {
     if (!$started and $para =~ m/^=head\d Perl Functions by Category/) {
@@ -218,7 +218,11 @@ sub _get_function_categories ($src) {
   return join "\n\n", @result;
 }
 
-sub _get_module_list ($src) {
+sub _get_module_list ($c) {
+  my $path = _find_pod($c, 'perlmodlib');
+  return undef unless $path && -r $path;
+  my $src = path($path)->slurp;
+
   my ($started, $standard, @result);
   foreach my $para (split /\n\n+/, $src) {
     if (!$started and $para =~ m/^=head\d Pragmatic Modules/) {

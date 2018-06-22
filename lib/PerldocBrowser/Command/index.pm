@@ -6,6 +6,7 @@ package PerldocBrowser::Command::index;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Command';
+use Mojo::File 'path';
 use Pod::Simple::Search;
 use experimental 'signatures';
 
@@ -25,7 +26,7 @@ sub run ($self, @versions) {
     $self->app->clear_pod_index($db, $version);
     foreach my $pod (keys %$pod_paths) {
       print "Indexing $pod for $version ($pod_paths->{$pod})\n";
-      $self->app->index_pod($db, $version, $pod, $pod_paths->{$pod});
+      $self->app->index_pod($db, $version, $pod, path($pod_paths->{$pod})->slurp);
     }
     $tx->commit;
   }
