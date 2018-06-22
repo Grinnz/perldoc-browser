@@ -192,7 +192,7 @@ sub _split_functions ($src, $function = undef) {
   my ($list_level, $started, $found_header, $found_content, $find_filetest, $found_filetest, @function, @functions) = (0);
 
   foreach my $para (split /\n\n+/, $src) {
-    $started = 1 if $para =~ m/^=head\d Alphabetical Listing of Perl Functions/;
+    $started = 1 if !$started and $para =~ m/^=head\d Alphabetical Listing of Perl Functions/;
     next unless $started;
     next if $para =~ m/^=for Pod::Functions/;
 
