@@ -12,6 +12,7 @@ use Mojo::ByteStream;
 use Mojo::DOM;
 use Mojo::File 'path';
 use Mojo::URL;
+use Mojo::Util 'url_unescape';
 use Pod::Simple::Search;
 use experimental 'signatures';
 
@@ -75,7 +76,7 @@ sub _html ($c, $src) {
   if ($c->param('module') eq 'modules') {
     for my $e ($dom->find('dt')->each) {
       my $module = $e->all_text;
-      $e->child_nodes->last->wrap($c->link_to('' => "$url_prefix/$module"));
+      $e->child_nodes->last->wrap($c->link_to('' => Mojo::URL->new("$url_prefix/$module")));
     }
   }
 
@@ -96,32 +97,32 @@ sub _html ($c, $src) {
   if ($c->param('module') eq 'perl') {
     for my $e ($dom->find('pre > code')->each) {
       my $str = $e->content;
-      $e->content($str) if $str =~ s/^\s*\K(perl\S+)/$c->link_to("$1" => "$url_prefix\/$1")/mge;
+      $e->content($str) if $str =~ s/^\s*\K(perl\S+)/$c->link_to("$1" => Mojo::URL->new("$url_prefix\/$1"))/mge;
     }
     for my $e ($dom->find(':not(pre) > code')->each) {
       my $text = $e->all_text;
-      $e->wrap($c->link_to('' => "$url_prefix/$1")) if $text =~ m/^perldoc (\w+)$/;
-      $e->content($text) if $text =~ s/^use \K([a-z]+)(;|$)/$c->link_to("$1" => "$url_prefix\/$1") . $2/e;
+      $e->wrap($c->link_to('' => Mojo::URL->new("$url_prefix/$1"))) if $text =~ m/^perldoc (\w+)$/;
+      $e->content($text) if $text =~ s/^use \K([a-z]+)(;|$)/$c->link_to("$1" => Mojo::URL->new("$url_prefix\/$1")) . $2/e;
     }
     for my $e ($dom->find('p > b')->each) {
       my $text = $e->all_text;
-      $e->content($text) if $text =~ s/^use \K([a-z]+)(;|$)/$c->link_to("$1" => "$url_prefix\/$1") . $2/e;
+      $e->content($text) if $text =~ s/^use \K([a-z]+)(;|$)/$c->link_to("$1" => Mojo::URL->new("$url_prefix\/$1")) . $2/e;
     }
   }
 
   if ($c->param('module') eq 'functions') {
     # Rewrite links on function pages
     for my $e ($dom->find('a[href]')->each) {
-      next unless $e->attr('href') =~ /^#([^-]+)/;
-      my $function = $1;
-      $e->attr(href => "$url_prefix/functions/$function");
+      next unless $e->attr('href') =~ /^#(.[^-]*)/;
+      my $function = url_unescape "$1";
+      $e->attr(href => Mojo::URL->new("$url_prefix/functions/$function"));
     }
     
     # Insert links on functions index
     if (!defined $c->param('function')) {
       for my $e ($dom->find(':not(a) > code')->each) {
         my $text = $e->all_text;
-        $e->wrap($c->link_to('' => "$url_prefix/functions/$1"))
+        $e->wrap($c->link_to('' => Mojo::URL->new("$url_prefix/functions/$1")))
           if $text =~ m/^([-\w]+)\/*$/ or $text =~ m/^([-\w\/]+)$/;
       }
     }
@@ -188,7 +189,7 @@ sub _get_function_pod ($c, $function) {
 
 # Edge cases: eval, do, chop, y///, -X
 sub _split_functions ($src, $function = undef) {
-  my ($list_level, $found, @function, @functions) = (0,0);
+  my ($list_level, $found_header, $found_content, $find_filetest, $found_filetest, @function, @functions) = (0);
 
   foreach my $para (split /\n\n+/, $src) {
     next if $para =~ m/^=for Pod::Functions/;
@@ -200,19 +201,30 @@ sub _split_functions ($src, $function = undef) {
     $list_level-- if $para =~ m/^=back/;
     next unless $list_level >= 1;
 
+    $found_filetest = 1 if $find_filetest and $para =~ m/^\s+\Q$function\E\s/m;
+
     if ($list_level == 1) {
-      if ($found == 2 and $para =~ m/^=item/) {
+      if ($found_content and $para =~ m/^=item/) {
         if (defined $function) {
-          last unless $para =~ m/^=item \Q$function\E(\W|$)/;
+          if ($find_filetest and !$found_filetest) {
+            @function = ();
+            $found_header = $found_content = $find_filetest = 0;
+          } else {
+            last unless $para =~ m/^=item \Q$function\E(\W|$)/;
+          }
         } else {
           push @functions, [@function];
           @function = ();
-          $found = 0;
+          $found_header = $found_content = $find_filetest = 0;
         }
       }
-      $found = 1 if !$found and defined $function ? $para =~ m/^=item \Q$function\E(\W|$)/ : $para =~ m/^=item/;
-      $found = 2 if $found and $para !~ m/^=item/;
-      if (defined $function and $para !~ m/^=item/ and not $found) { @function = (); next; }
+      $found_header = 1 if !$found_header and defined $function ? $para =~ m/^=item \Q$function\E(\W|$)/ : $para =~ m/^=item/;
+      $found_header = $find_filetest = 1 if !$found_header and defined $function and $function =~ m/^-[a-zA-Z]$/ and $para =~ m/^=item -X/;
+      $found_content = 1 if $found_header and $para !~ m/^=item/;
+      if (defined $function and $para !~ m/^=item/ and not $found_header) {
+        @function = ();
+        next;
+      }
     }
 
     push @function, $para;

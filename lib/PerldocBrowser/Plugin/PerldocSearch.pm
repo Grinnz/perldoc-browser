@@ -8,7 +8,7 @@ use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
 use Mojo::DOM;
 use Mojo::URL;
-use Mojo::Util 'trim';
+use Mojo::Util qw(url_unescape trim);
 use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
@@ -54,7 +54,7 @@ sub _search ($c) {
 
   my @paras = ('=head1 SEARCH RESULTS', 'B<>', '=head2 Functions', '=over');
   if (@$function_results) {
-    push @paras, map { "=item L<$_->{name}|perlfunc/$_->{name}>" } @$function_results;
+    push @paras, map { "=item L<perlfunc/$_->{name}>" } @$function_results;
   } else {
     push @paras, '=item I<No results>';
   }
@@ -72,8 +72,8 @@ sub _search ($c) {
   # Rewrite links to function pages
   for my $e ($dom->find('a[href]')->each) {
     next unless $e->attr('href') =~ /^[^#]+perlfunc#(.[^-]*)/;
-    my $function = $1;
-    $e->attr(href => "$url_prefix/functions/$function");
+    my $function = url_unescape "$1";
+    $e->attr(href => Mojo::URL->new("$url_prefix/functions/$function"))->content($function);
   }
 
   # Combine everything to a proper response
@@ -129,9 +129,9 @@ sub _index_pod ($c, $db, $perl_version, $name, $src) {
   $db->insert('pods', {
     perl_version => $perl_version,
     name => $name,
-    abstract => $abstract,
-    description => $description,
-    contents => $contents,
+    abstract => trim($abstract),
+    description => trim($description),
+    contents => trim($contents),
   }, {on_conflict => \['("perl_version","name") do update set
     "abstract"=EXCLUDED."abstract", "description"=EXCLUDED."description",
     "contents"=EXCLUDED."contents"']}
@@ -142,17 +142,17 @@ sub _index_functions ($c, $db, $perl_version, $src) {
   my $blocks = $c->split_functions($src);
   my %functions;
   foreach my $block (@$blocks) {
-    my %names;
-    my $list_level = 0;
-    my @block_text;
+    my ($list_level, $is_filetest, @block_text, %names) = (0);
     foreach my $para (@$block) {
       $list_level++ if $para =~ m/^=over/;
       $list_level-- if $para =~ m/^=back/;
+      # 0: navigatable, 1: navigatable and returned in search results
       unless ($list_level) {
-        # Make both names available for navigation but only index the full name
         $names{"$1"} = 1 if $para =~ m/^=item ([-\w\/]+)/;
         $names{"$1"} //= 0 if $para =~ m/^=item ([-\w]+)/;
+        $is_filetest = 1 if $para =~ m/^=item -X/;
       }
+      do { $names{"$_"} //= 0 for $para =~ m/^\s+(-[a-zA-Z])\s/mg } if $is_filetest;
       push @block_text, $para if $list_level or $para !~ m/^=item/;
     }
     push @{$functions{$_}}, $names{$_} ? @block_text : () for keys %names;
@@ -166,7 +166,7 @@ sub _index_functions ($c, $db, $perl_version, $src) {
     $db->insert('functions', {
       perl_version => $perl_version,
       name => $function,
-      description => $description,
+      description => trim($description),
     }, {on_conflict => \['("perl_version","name") do update set
       "description"=EXCLUDED."description"']}
     );

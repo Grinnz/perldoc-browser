@@ -36,9 +36,9 @@ $$ language plpgsql;
 
 create or replace function "functions_update_indexed"() returns trigger as $$
 begin
-  "new"."indexed" :=
+  "new"."indexed" := case when "new"."description"='' then to_tsvector('') else
     setweight(to_tsvector('english',"new"."name"),'A') ||
-    setweight(to_tsvector('english',"new"."description"),'B');
+    setweight(to_tsvector('english',"new"."description"),'B') end;
   return new;
 end
 $$ language plpgsql;
