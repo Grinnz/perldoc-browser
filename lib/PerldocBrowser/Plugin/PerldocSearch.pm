@@ -56,16 +56,18 @@ sub _search ($c) {
   if (@$function_results) {
     foreach my $function (@$function_results) {
       my $name = _escape_pod($function->{name});
-      push @paras, "=item L<perlfunc/$name>";
+      my $headline = $function->{headline} =~ s/\n+/ /gr;
+      push @paras, "=item L<perlfunc/$name>\n\n$headline";
     }
   } else {
     push @paras, '=item I<No results>';
   }
   push @paras, '=back', '=head2 Pod', '=over';
   if (@$pod_results) {
-    foreach my $pod (@$pod_results) {
-      my ($name, $abstract) = map { _escape_pod($_) } @$pod{'name','abstract'};
-      push @paras, "=item L<$name> - $abstract";
+    foreach my $page (@$pod_results) {
+      my ($name, $abstract) = map { _escape_pod($_) } @$page{'name','abstract'};
+      my $headline = $page->{headline} =~ s/\n+/ /gr;
+      push @paras, "=item L<$name> - $abstract\n\n$headline";
     }
   } else {
     push @paras, '=item I<No results>';
@@ -104,18 +106,21 @@ sub _function_name_match ($c, $query) {
   return defined $match ? $match->[0] : undef;
 }
 
+my $headline_opts = 'StartSel="B<< ", StopSel=" >>", MaxWords=25, MaxFragments=1';
 sub _pod_search ($c, $query) {
   return $c->pg->db->query(q{SELECT "name", "abstract",
-    ts_rank_cd("indexed", plainto_tsquery('english', $1), 1) AS "rank"
-    FROM "pods" WHERE "perl_version" = $2 AND "indexed" @@ plainto_tsquery('english', $1)
-    ORDER BY "rank" DESC, "name"}, $query, $c->stash('perl_version'))->hashes;
+    ts_rank_cd("indexed", plainto_tsquery('english', $1), 1) AS "rank",
+    ts_headline('english', "contents", plainto_tsquery('english', $1), $2) AS "headline"
+    FROM "pods" WHERE "perl_version" = $3 AND "indexed" @@ plainto_tsquery('english', $1)
+    ORDER BY "rank" DESC, "name" LIMIT 20}, $query, $headline_opts, $c->stash('perl_version'))->hashes;
 }
 
 sub _function_search ($c, $query) {
   return $c->pg->db->query(q{SELECT "name",
-    ts_rank_cd("indexed", plainto_tsquery('english', $1), 1) AS "rank"
-    FROM "functions" WHERE "perl_version" = $2 AND "indexed" @@ plainto_tsquery('english', $1)
-    ORDER BY "rank" DESC, "name"}, $query, $c->stash('perl_version'))->hashes;
+    ts_rank_cd("indexed", plainto_tsquery('english', $1), 1) AS "rank",
+    ts_headline('english', "name" || ' - ' || "description", plainto_tsquery('english', $1), $2) AS "headline"
+    FROM "functions" WHERE "perl_version" = $3 AND "indexed" @@ plainto_tsquery('english', $1)
+    ORDER BY "rank" DESC, "name" LIMIT 20}, $query, $headline_opts, $c->stash('perl_version'))->hashes;
 }
 
 sub _index_pod ($c, $db, $perl_version, $name, $src) {
