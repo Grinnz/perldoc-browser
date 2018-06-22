@@ -9,6 +9,7 @@ use Mojo::Base 'Mojolicious::Plugin';
 use Mojo::DOM;
 use Mojo::File 'path';
 use Mojo::URL;
+use Mojo::Util 'trim';
 use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
@@ -87,7 +88,7 @@ sub _index_pod ($c, $db, $perl_version, $name, $path) {
   my $dom = Mojo::DOM->new($c->pod_to_html(path($path)->slurp));
   my $headings = $dom->find('h1');
 
-  my $name_heading = $headings->first(sub { $_->all_text eq 'NAME' });
+  my $name_heading = $headings->first(sub { trim($_->all_text) eq 'NAME' });
   my $name_para = $name_heading ? $name_heading->following('p')->first : undef;
   my $abstract = '';
   if (defined $name_para) {
@@ -95,8 +96,8 @@ sub _index_pod ($c, $db, $perl_version, $name, $path) {
     $abstract =~ s/.*?\s+-\s+//;
   }
 
-  my $description_heading = $headings->first(sub { $_->all_text eq 'DESCRIPTION' })
-    // $headings->first(sub { my $t = $_->all_text; $t ne 'NAME' and $t ne 'SYNOPSIS' });
+  my $description_heading = $headings->first(sub { trim($_->all_text) eq 'DESCRIPTION' })
+    // $headings->first(sub { my $t = trim($_->all_text); $t ne 'NAME' and $t ne 'SYNOPSIS' });
   my $description_para = $description_heading ? $description_heading->following('p')->first : undef;
   my $description = $description_para ? $description_para->all_text : '';
 
