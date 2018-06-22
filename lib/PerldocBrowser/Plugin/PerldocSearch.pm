@@ -55,8 +55,7 @@ sub _search ($c) {
   my @paras = ('=encoding UTF-8', '=head1 SEARCH RESULTS', 'B<>', '=head2 Functions', '=over');
   if (@$function_results) {
     foreach my $function (@$function_results) {
-      my $name = $function->{name};
-      $name =~ s/([<>])/my $e = $1 eq '<' ? 'lt' : 'gt'; "E<$e>"/ge;
+      my $name = _escape_pod($function->{name});
       push @paras, "=item L<perlfunc/$name>";
     }
   } else {
@@ -65,8 +64,7 @@ sub _search ($c) {
   push @paras, '=back', '=head2 Pod', '=over';
   if (@$pod_results) {
     foreach my $pod (@$pod_results) {
-      my ($name, $abstract) = @$pod{'name','abstract'};
-      $_ =~ s/([<>])/my $e = $1 eq '<' ? 'lt' : 'gt'; "E<$e>"/ge for $name, $abstract;
+      my ($name, $abstract) = map { _escape_pod($_) } @$pod{'name','abstract'};
       push @paras, "=item L<$name> - $abstract";
     }
   } else {
@@ -87,6 +85,11 @@ sub _search ($c) {
   # Combine everything to a proper response
   $c->content_for(perldoc => "$dom");
   $c->respond_to(txt => {data => $src}, html => sub { $c->render('perldoc', title => 'search', parts => []) });
+}
+
+my %escapes = ('<' => 'lt', '>' => 'gt', '|' => 'verbar', '/' => 'sol');
+sub _escape_pod ($text) {
+  return $text =~ s/([<>|\/])/E<$escapes{$1}>/gr;
 }
 
 sub _pod_name_match ($c, $query) {
