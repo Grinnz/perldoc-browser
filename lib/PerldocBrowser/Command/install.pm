@@ -14,12 +14,12 @@ has description => 'Install Perls for Perldoc Browser';
 has usage => "Usage: $0 install <version> [<version> ...]\n";
 
 sub run ($self, @versions) {
-  $self->app->home->child('perls')->make_path;
+  $self->app->perls_dir->make_path;
   $self->app->home->child('log')->make_path;
   foreach my $version (@versions) {
     my $v = eval { version->parse($version) };
     my $is_devel = defined $v && ($v->{version}[1] % 2) ? 1 : 0;
-    my $target = $self->app->home->child('perls', $version);
+    my $target = $self->app->perls_dir->child($version);
     $target->remove_tree if -d $target;
     my $logfile = $self->app->home->child('log', "perl-build-$version.log");
     print "Installing Perl $version to $target ...\n";

@@ -16,17 +16,16 @@ use Pod::Simple::Search;
 use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
-  my $inc_dirs = $conf->{inc_dirs} // {};
-  $app->helper(inc_dirs => sub ($c, $perl_version) { $inc_dirs->{$perl_version} // [] });
+  $app->helper(pod_to_html => sub { my $c = shift; _pod_to_html(@_) });
 
-  my $perl_versions = $conf->{perl_versions} // [];
-  my $dev_versions = $conf->{dev_versions} // [];
+  my $perl_versions = $app->perl_versions;
+  my $dev_versions = $app->dev_versions;
 
   my %defaults = (
     perl_versions => $perl_versions,
     dev_perl_versions => $dev_versions,
     module => 'perl',
-    perl_version => $conf->{latest_version},
+    perl_version => $app->latest_perl_version,
     url_perl_version => '',
   );
 
@@ -236,7 +235,7 @@ sub _get_module_list ($src) {
   return join "\n\n", @result;
 }
 
-sub _pod_to_html ($pod, $url_perl_version) {
+sub _pod_to_html ($pod, $url_perl_version = '') {
   my $parser = MetaCPAN::Pod::XHTML->new;
   $parser->perldoc_url_prefix($url_perl_version ? "/$url_perl_version/" : '/');
   $parser->$_('') for qw(html_header html_footer);

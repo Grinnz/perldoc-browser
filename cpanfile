@@ -1,8 +1,9 @@
 requires 'perl' => '5.020';
-requires 'Mojolicious' => '7.84';
 requires 'Capture::Tiny';
 requires 'IPC::System::Simple';
 requires 'MetaCPAN::Pod::XHTML';
+requires 'Mojolicious' => '7.84';
+requires 'Mojo::Pg' => '4.08';
 requires 'Perl::Build';
 requires 'Pod::Simple::Search';
 requires 'Sort::Versions';

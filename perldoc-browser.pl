@@ -10,6 +10,7 @@ use IPC::System::Simple 'capturex';
 use Mojo::File 'path';
 use Sort::Versions;
 use version;
+use experimental 'signatures';
 use lib::relative 'lib';
 
 push @{app->commands->namespaces}, 'PerldocBrowser::Command';
@@ -17,11 +18,23 @@ push @{app->plugins->namespaces}, 'PerldocBrowser::Plugin';
 
 plugin Config => {file => 'perldoc-browser.conf', default => {}};
 
+if (!app->config->{no_search}) {
+  require Mojo::Pg;
+  my $url = app->config->{pg} // die "Postgresql connection must be configured in 'pg'\n";
+  my $pg = Mojo::Pg->new($url);
+  $pg->migrations->from_file(app->home->child('perldoc-browser.sql'))->migrate;
+  helper pg => sub { $pg };
+}
+
 my $perls_dir = path(app->config->{perls_dir} // app->home->child('perls'));
+helper perls_dir => sub ($c) { $perls_dir };
+
 my $all_versions = -d $perls_dir ? $perls_dir->list({dir => 1})
   ->grep(sub { -d && -x path($_)->child('bin', 'perl') })
   ->map(sub { $_->basename })->sort(sub { versioncmp($b, $a) }) : [];
 die "No perls found in $perls_dir\n" unless @$all_versions;
+
+helper perl_versions => sub ($c) { [@$all_versions] };
 
 my (@perl_versions, @dev_versions);
 my $latest_version = app->config->{latest_perl_version};
@@ -37,7 +50,12 @@ foreach my $perl_version (@$all_versions) {
   }
 }
 
+helper perl_versions => sub ($c) { [@perl_versions] };
+helper dev_versions => sub ($c) { [@dev_versions] };
+
 $latest_version //= $all_versions->first;
+
+helper latest_perl_version => sub ($c) { $latest_version };
 
 my %inc_dirs;
 foreach my $perl_version (@$all_versions) {
@@ -47,11 +65,9 @@ foreach my $perl_version (@$all_versions) {
   $inc_dirs{$perl_version} = [split /\n+/, capturex $perl_bin, '-MConfig', '-e', 'print "$_\n" for @INC; print "$Config{scriptdir}\n"'];
 }
 
-plugin PerldocRenderer => {
-  perl_versions => \@perl_versions,
-  dev_versions => \@dev_versions,
-  latest_version => $latest_version,
-  inc_dirs => \%inc_dirs,
-};
+helper inc_dirs => sub ($c, $perl_version) { $inc_dirs{$perl_version} // [] };
+
+plugin 'PerldocSearch' unless app->config->{no_search};
+plugin 'PerldocRenderer';
 
 app->start;
