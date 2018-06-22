@@ -52,15 +52,23 @@ sub _search ($c) {
 
   my $function_results = _function_search($c, $query);
 
-  my @paras = ('=head1 SEARCH RESULTS', 'B<>', '=head2 Functions', '=over');
+  my @paras = ('=encoding UTF-8', '=head1 SEARCH RESULTS', 'B<>', '=head2 Functions', '=over');
   if (@$function_results) {
-    push @paras, map { "=item L<perlfunc/$_->{name}>" } @$function_results;
+    foreach my $function (@$function_results) {
+      my $name = $function->{name};
+      $name =~ s/([<>])/my $e = $1 eq '<' ? 'lt' : 'gt'; "E<$e>"/ge;
+      push @paras, "=item L<perlfunc/$name>";
+    }
   } else {
     push @paras, '=item I<No results>';
   }
   push @paras, '=back', '=head2 Pod', '=over';
   if (@$pod_results) {
-    push @paras, map { "=item L<$_->{name}> - $_->{abstract}" } @$pod_results;
+    foreach my $pod (@$pod_results) {
+      my ($name, $abstract) = @$pod{'name','abstract'};
+      $_ =~ s/([<>])/my $e = $1 eq '<' ? 'lt' : 'gt'; "E<$e>"/ge for $name, $abstract;
+      push @paras, "=item L<$name> - $abstract";
+    }
   } else {
     push @paras, '=item I<No results>';
   }
