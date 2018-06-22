@@ -34,6 +34,9 @@
         <a class="nav-link" href="<%= $current_prefix %>/modules">modules</a>
       </li>
     </ul>
+    <form class="form-inline" method="get" action="<%= $current_prefix %>/search">
+      <input class="form-control-sm mr-2" type="search" name="q" placeholder="Search" aria-label="Search">
+    </form>
     <a class="navbar-text" href="https://github.com/Grinnz/perldoc-browser">Source on GitHub</a>
   </div>
 </nav>

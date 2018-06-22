@@ -9,10 +9,10 @@
     %= javascript '/mojo/prettify/run_prettify.js'
     %= stylesheet '/mojo/prettify/prettify-mojo-light.css'
     <style>
-      #perldoc a { color: inherit; text-decoration: underline }
-      #perldoc #toc { text-decoration: none }
-      #perldoc a:hover { color: #2a2a2a }
-      #perldoc a img { border: 0 }
+      #wrapperlicious a { color: inherit; text-decoration: underline }
+      #wrapperlicious #toc { text-decoration: none }
+      #wrapperlicious a:hover { color: #2a2a2a }
+      #wrapperlicious a img { border: 0 }
       body {
         background: url(<%= url_for '/mojo/pinstripe-light.png' %>);
         color: #445555;
@@ -21,40 +21,41 @@
         line-height: 1.5em;
         margin: 0;
       }
-      #perldoc :not(pre) > code {
+      #wrapperlicious :not(pre) > code {
         background-color: rgba(0, 0, 0, 0.04);
         border-radius: 3px;
         font: 0.9em Consolas, Menlo, Monaco, Courier, monospace;
         padding: 0.3em;
       }
-      #perldoc h1 { font-size: 1.5em }
-      #perldoc h2 { font-size: 1.3em }
-      #perldoc h3 { font-size: 1.1em }
-      #perldoc h4 { font-size: 0.9em }
-      #perldoc h1, #perldoc h2, #perldoc h3, #perldoc h4, #perldoc dt {
+      #wrapperlicious h1 { font-size: 1.5em }
+      #wrapperlicious h2 { font-size: 1.3em }
+      #wrapperlicious h3 { font-size: 1.1em }
+      #wrapperlicious h4 { font-size: 0.9em }
+      #wrapperlicious h1, #wrapperlicious h2, #wrapperlicious h3,
+      #wrapperlicious h4, #wrapperlicious dt {
         color: #2a2a2a;
         margin: 0;
         position: relative;
         font-weight: bold;
       }
-      #perldoc dd {
+      #wrapperlicious dd {
         margin: 0;
         margin-left: 2em;
       }
-      #perldoc dt {
+      #wrapperlicious dt {
         color: #2a2a2a;
         font-weight: bold;
         margin-left: 0.9em;
       }
-      #perldoc p {
+      #wrapperlicious p {
         margin-bottom: 1em;
         margin-top: 1em;
       }
-      #perldoc li > p {
+      #wrapperlicious li > p {
         margin-bottom: 0;
         margin-top: 0;
       }
-      #perldoc pre {
+      #wrapperlicious pre {
         background-color: #fafafa;
         border: 1px solid #c1c1c1;
         border-radius: 3px;
@@ -63,7 +64,7 @@
         margin-bottom: 1em;
         margin-top: 1em;
       }
-      #perldoc pre > code {
+      #wrapperlicious pre > code {
         color: #4d4d4c;
         font: 0.9em Consolas, Menlo, Monaco, Courier, monospace;
         line-height: 1.5em;
@@ -71,14 +72,14 @@
         text-shadow: #eee 0 1px 0;
         white-space: pre-wrap;
       }
-      #perldoc dl, #perldoc ol, #perldoc ul {
+      #wrapperlicious dl, #wrapperlicious ol, #wrapperlicious ul {
         margin-bottom: 1em;
         margin-top: 1em;
       }
-      #perldoc ul {
+      #wrapperlicious ul {
         list-style-type: square;
       }
-      #perldoc ul ul {
+      #wrapperlicious ul ul {
         margin-bottom: 0px;
         margin-top: 0px;
       }
@@ -90,7 +91,7 @@
         display: inline;
         font-size: 0.8em;
       }
-      #perldoc {
+      #perldocdiv {
         background-color: #fff;
         border: 1px solid #c1c1c1;
         border-bottom-left-radius: 5px;
@@ -99,22 +100,22 @@
         margin-right: 5em;
         padding: 3em;
       }
-      #perldoc > ul:first-of-type a { text-decoration: none }
+      #perldocdiv > ul:first-of-type a { text-decoration: none }
       #links { padding-bottom: 1em }
       #wrapperlicious {
         max-width: 1000px;
         margin: 0 auto;
       }
-      #perldoc .permalink {
+      #wrapperlicious .permalink {
         display: none;
         left: -0.75em;
         position: absolute;
         padding-right: 0.25em;
         text-decoration: none;
       }
-      #perldoc h1:hover .permalink, #perldoc h2:hover .permalink,
-      #perldoc h3:hover .permalink, #perldoc h4:hover .permalink,
-      #perldoc dt:hover .permalink {
+      #wrapperlicious h1:hover .permalink, #wrapperlicious h2:hover .permalink,
+      #wrapperlicious h3:hover .permalink, #wrapperlicious h4:hover .permalink,
+      #wrapperlicious dt:hover .permalink {
         display: block;
       }
     </style>
@@ -133,7 +134,7 @@
   <body>
     %= include 'menubar'
     <div id="wrapperlicious">
-      <div id="perldoc">
+      <div id="perldocdiv">
         <div id="links">
           % my $url_prefix = $url_perl_version ? "/$url_perl_version" : '';
           % my $source = "$module.txt";

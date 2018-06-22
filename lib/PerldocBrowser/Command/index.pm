@@ -21,10 +21,13 @@ sub run ($self, @versions) {
   foreach my $version (@versions) {
     my $inc_dirs = $self->app->inc_dirs($version) // [];
     my $pod_paths = Pod::Simple::Search->new->inc(0)->survey(@$inc_dirs);
+    my $tx = $db->begin;
+    $self->app->clear_pod_index($db, $version);
     foreach my $pod (keys %$pod_paths) {
       print "Indexing $pod for $version ($pod_paths->{$pod})\n";
       $self->app->index_pod($db, $version, $pod, $pod_paths->{$pod});
     }
+    $tx->commit;
   }
 }
 
