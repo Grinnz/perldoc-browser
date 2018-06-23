@@ -151,7 +151,7 @@
           <div id="more">
             % if ($module eq 'search') {
             (<%= link_to 'Search CPAN' => $cpan %>)
-            % } else {
+            % } elsif ($module ne 'contact') {
             (<%= link_to 'source' => url_for("$url_prefix/$source") %>,
             <%= link_to 'CPAN' => $cpan %>)
             % }
