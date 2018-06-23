@@ -17,18 +17,13 @@ sub register ($self, $app, $conf) {
   $app->helper(clear_pod_index => \&_clear_pod_index);
   $app->helper(clear_function_index => \&_clear_function_index);
 
-  my $perl_versions = $app->perl_versions;
-  my $dev_versions = $app->dev_versions;
-
   my %defaults = (
-    perl_versions => $perl_versions,
-    dev_perl_versions => $dev_versions,
     module => 'search',
     perl_version => $app->latest_perl_version,
     url_perl_version => '',
   );
 
-  foreach my $perl_version (@$perl_versions, @$dev_versions) {
+  foreach my $perl_version (@{$app->all_perl_versions}) {
     $app->routes->any("/$perl_version/search" => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version} => \&_search);
   }
 

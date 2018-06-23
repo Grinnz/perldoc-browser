@@ -20,18 +20,13 @@ sub register ($self, $app, $conf) {
   $app->helper(pod_to_html => sub { my $c = shift; _pod_to_html(@_) });
   $app->helper(split_functions => sub { my $c = shift; _split_functions(@_) });
 
-  my $perl_versions = $app->perl_versions;
-  my $dev_versions = $app->dev_versions;
-
   my %defaults = (
-    perl_versions => $perl_versions,
-    dev_perl_versions => $dev_versions,
     module => 'perl',
     perl_version => $app->latest_perl_version,
     url_perl_version => '',
   );
 
-  foreach my $perl_version (@$perl_versions, @$dev_versions) {
+  foreach my $perl_version (@{$app->all_perl_versions}) {
     $app->routes->any("/$perl_version/functions/:function"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'functions'}
       => [function => qr/[^.]+/] => \&_function);
