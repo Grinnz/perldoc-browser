@@ -36,21 +36,20 @@ sub register ($self, $app, $conf) {
 }
 
 sub _search ($c) {
-  my $query = $c->param('q') // '';
+  my $query = trim($c->param('q') // '');
   $c->stash(cpan => Mojo::URL->new('https://metacpan.org/search')->query(q => $query));
 
   my $url_perl_version = $c->stash('url_perl_version');
   my $url_prefix = $url_perl_version ? "/$url_perl_version" : '';
 
-  my $pod = _pod_name_match($c, $query);
-  return $c->redirect_to("$url_prefix/$pod") if defined $pod;
-
   my $function = _function_name_match($c, $query);
   return $c->redirect_to("$url_prefix/functions/$function") if defined $function;
 
-  my $pod_results = _pod_search($c, $query);
+  my $pod = _pod_name_match($c, $query);
+  return $c->redirect_to("$url_prefix/$pod") if defined $pod;
 
   my $function_results = _function_search($c, $query);
+  my $pod_results = _pod_search($c, $query);
 
   my @paras = ('=encoding UTF-8', '=head1 SEARCH RESULTS', 'B<>', '=head2 Functions', '=over');
   if (@$function_results) {

@@ -1,3 +1,4 @@
+% use Mojo::Util;
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -139,7 +140,7 @@
           % my $url_prefix = $url_perl_version ? "/$url_perl_version" : '';
           % my $source = "$module.txt";
           % if ($module eq 'search') {
-          "<%= param('q') %>"
+          "<%= Mojo::Util::trim param('q') %>"
           % } else {
           %= link_to $module => url_for("$url_prefix/$module")
           % }
