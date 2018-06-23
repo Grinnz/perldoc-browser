@@ -34,7 +34,7 @@ my $all_versions = -d $perls_dir ? $perls_dir->list({dir => 1})
   ->map(sub { $_->basename })->sort(sub { versioncmp($b, $a) }) : [];
 die "No perls found in $perls_dir\n" unless @$all_versions;
 
-helper perl_versions => sub ($c) { [@$all_versions] };
+helper all_perl_versions => sub ($c) { [@$all_versions] };
 
 my (@perl_versions, @dev_versions);
 my $latest_version = app->config->{latest_perl_version};

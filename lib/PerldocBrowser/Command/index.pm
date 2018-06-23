@@ -16,7 +16,7 @@ has usage => "Usage: $0 index [all | <version> ...]\n";
 sub run ($self, @versions) {
   die $self->usage unless @versions;
   if ($versions[0] eq 'all') {
-    @versions = @{$self->app->perl_versions};
+    @versions = @{$self->app->all_perl_versions};
   }
   my $db = $self->app->pg->db;
   foreach my $version (@versions) {
