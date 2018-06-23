@@ -136,6 +136,7 @@
     %= include 'menubar'
     <div id="wrapperlicious">
       <div id="perldocdiv">
+        % if ($module ne 'contact') {
         <div id="links">
           % my $url_prefix = $url_perl_version ? "/$url_perl_version" : '';
           % my $source = "$module.txt";
@@ -151,13 +152,14 @@
           <div id="more">
             % if ($module eq 'search') {
             (<%= link_to 'Search CPAN' => $cpan %>)
-            % } elsif ($module ne 'contact') {
+            % } else {
             (<%= link_to 'source' => url_for("$url_prefix/$source") %>,
             <%= link_to 'CPAN' => $cpan %>)
             % }
           </div>
         </div>
-% if (@$parts and @{$parts->[0]}) {
+        % }
+        % if (@$parts and @{$parts->[0]}) {
         <h1><a id="toc">CONTENTS</a></h1>
         <ul>
           % for my $part (@$parts) {
@@ -173,7 +175,7 @@
             </li>
           % }
         </ul>
-% }
+        % }
         %= content 'perldoc'
       </div>
     </div>
