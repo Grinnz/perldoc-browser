@@ -25,11 +25,11 @@ create index "functions_name" on "functions" (lower("name") text_pattern_ops);
 
 create or replace function "pods_update_indexed"() returns trigger as $$
 begin
-  "new"."indexed" :=
+  "new"."indexed" := case when "new"."contents"='' then to_tsvector('') else
     setweight(to_tsvector('english',"new"."name"),'A') ||
     setweight(to_tsvector('english',"new"."abstract"),'B') ||
     setweight(to_tsvector('english',"new"."description"),'C') ||
-    setweight(to_tsvector('english',"new"."contents"),'D');
+    setweight(to_tsvector('english',"new"."contents"),'D') end;
   return new;
 end
 $$ language plpgsql;

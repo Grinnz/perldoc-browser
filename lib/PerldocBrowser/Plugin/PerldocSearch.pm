@@ -124,32 +124,29 @@ sub _function_search ($c, $query) {
 }
 
 sub _index_pod ($c, $db, $perl_version, $name, $src) {
-  my $dom = Mojo::DOM->new($c->pod_to_html($src));
-  my $headings = $dom->find('h1');
+  my %properties = (perl_version => $perl_version, name => $name, abstract => '', description => '', contents => '');
 
-  my $name_heading = $headings->first(sub { trim($_->all_text) eq 'NAME' });
-  my $name_para = $name_heading ? $name_heading->following('p')->first : undef;
-  my $abstract = '';
-  if (defined $name_para) {
-    $abstract = $name_para->all_text;
-    $abstract =~ s/.*?\s+-\s+//;
+  unless ($name eq 'perltoc') {
+    my $dom = Mojo::DOM->new($c->pod_to_html($src));
+    my $headings = $dom->find('h1');
+
+    my $name_heading = $headings->first(sub { trim($_->all_text) eq 'NAME' });
+    my $name_para = $name_heading ? $name_heading->following('p')->first : undef;
+    if (defined $name_para) {
+      $properties{abstract} = trim($name_para->all_text);
+      $properties{abstract} =~ s/.*?\s+-\s+//;
+    }
+
+    my $description_heading = $headings->first(sub { trim($_->all_text) eq 'DESCRIPTION' })
+      // $headings->first(sub { my $t = trim($_->all_text); $t ne 'NAME' and $t ne 'SYNOPSIS' });
+    my $description_para = $description_heading ? $description_heading->following('p')->first : undef;
+    $properties{description} = trim($description_para->all_text) if $description_para;
+
+    $properties{contents} = trim($dom->all_text);
   }
 
-  my $description_heading = $headings->first(sub { trim($_->all_text) eq 'DESCRIPTION' })
-    // $headings->first(sub { my $t = trim($_->all_text); $t ne 'NAME' and $t ne 'SYNOPSIS' });
-  my $description_para = $description_heading ? $description_heading->following('p')->first : undef;
-  my $description = $description_para ? $description_para->all_text : '';
-
-  my $contents = $dom->all_text;
-
-  $db->insert('pods', {
-    perl_version => $perl_version,
-    name => $name,
-    abstract => trim($abstract),
-    description => trim($description),
-    contents => trim($contents),
-  }, {on_conflict => \['("perl_version","name") do update set
-    "abstract"=EXCLUDED."abstract", "description"=EXCLUDED."description",
+  $db->insert('pods', \%properties, {on_conflict => \['("perl_version","name")
+    do update set "abstract"=EXCLUDED."abstract", "description"=EXCLUDED."description",
     "contents"=EXCLUDED."contents"']}
   );
 }
@@ -177,12 +174,12 @@ sub _index_functions ($c, $db, $perl_version, $src) {
   foreach my $function (keys %functions) {
     my $pod = join "\n\n", '=over', @{$functions{$function}}, '=back';
     my $dom = Mojo::DOM->new($c->pod_to_html($pod));
-    my $description = $dom->all_text;
+    my $description = trim($dom->all_text);
 
     $db->insert('functions', {
       perl_version => $perl_version,
       name => $function,
-      description => trim($description),
+      description => $description,
     }, {on_conflict => \['("perl_version","name") do update set
       "description"=EXCLUDED."description"']}
     );
