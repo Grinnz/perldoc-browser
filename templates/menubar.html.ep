@@ -2,7 +2,7 @@
   <a class="navbar-brand" href="/">Perldoc Browser</a>
   <div class="collapse navbar-collapse" id="navbarNav">
     <ul class="navbar-nav mr-auto">
-      <li class="nav-item dropdown">
+      <li class="nav-item dropdown" style="white-space: nowrap">
         <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-stable" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><%= $perl_version %></a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-stable">
 % my $current_path = defined stash('function') ? 'functions/' . stash('function') : $module;
@@ -14,7 +14,7 @@
         </div>
       </li>
 % if (@{dev_versions()}) {
-      <li class="nav-item dropdown">
+      <li class="nav-item dropdown" style="white-space: nowrap">
         <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-dev" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Dev</a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-dev">
 %   foreach my $perl_option (@{dev_versions()}) {
