@@ -67,8 +67,9 @@ foreach my $perl_version (@$all_versions) {
 
 helper inc_dirs => sub ($c, $perl_version) { $inc_dirs{$perl_version} // [] };
 
-any '/contact' => {module => 'contact', perl_version => $latest_version, url_perl_version => ''}, sub ($c) {
+any '/#url_perl_version/contact' => {module => 'contact', perl_version => $latest_version, url_perl_version => ''}, sub ($c) {
   $c->stash(cpan => 'https://metacpan.org');
+  $c->stash(perl_version => $c->stash('url_perl_version')) if $c->stash('url_perl_version');
   my $src = join "\n\n", @{$c->app->config->{contact_pod} // []};
   $c->respond_to(txt => {data => $src}, html => sub {
     $c->content_for(perldoc => $c->pod_to_html($src));
