@@ -106,7 +106,7 @@ sub _function_name_match ($c, $query) {
   return defined $match ? $match->[0] : undef;
 }
 
-my $headline_opts = 'StartSel="B<< ", StopSel=" >>", MaxWords=25, MaxFragments=1';
+my $headline_opts = 'StartSel="B<< ", StopSel=" >>", MaxWords=30, MaxFragments=1';
 sub _pod_search ($c, $query) {
   return $c->pg->db->query(q{SELECT "name", "abstract",
     ts_rank_cd("indexed", plainto_tsquery('english', $1), 1) AS "rank",
