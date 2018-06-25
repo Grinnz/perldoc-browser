@@ -37,9 +37,6 @@
         <a class="nav-link" href="<%= url_for("$current_prefix/modules") %>">modules</a>
       </li>
     </ul>
-    <form class="form-inline" method="get" action="<%= url_for("$current_prefix/search") %>">
-      <input class="form-control-sm mr-3" type="search" name="q" placeholder="Search" aria-label="Search">
-    </form>
     <ul class="navbar-nav">
       <li class="nav-item">
         <a class="nav-link" href="<%= url_for("$current_prefix/contact") %>">Contact</a>
@@ -48,5 +45,8 @@
         <a class="nav-link" href="https://github.com/Grinnz/perldoc-browser">Source</a>
       </li>
     <ul>
+    <form class="form-inline" method="get" action="<%= url_for("$current_prefix/search") %>">
+      <input class="form-control-sm mr-3" type="search" name="q" placeholder="Search" aria-label="Search">
+    </form>
   </div>
 </nav>
