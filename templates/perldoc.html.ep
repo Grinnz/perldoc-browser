@@ -97,14 +97,14 @@
         border: 1px solid #c1c1c1;
         border-bottom-left-radius: 5px;
         border-bottom-right-radius: 5px;
-        margin-left: 5em;
-        margin-right: 5em;
+        margin-left: auto;
+        margin-right: auto;
         padding: 3em;
+        max-width: 850px;
       }
       #perldocdiv > ul:first-of-type a { text-decoration: none }
       #links { padding-bottom: 1em }
       #wrapperlicious {
-        max-width: 1000px;
         margin: 0 auto;
       }
       #wrapperlicious .permalink {
@@ -134,7 +134,7 @@
   </head>
   <body>
     %= include 'menubar'
-    <div id="wrapperlicious">
+    <div id="wrapperlicious" class="container">
       <div id="perldocdiv">
         % if ($module ne 'contact') {
         <div id="links">
