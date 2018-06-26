@@ -66,7 +66,6 @@
         margin-top: 1em;
       }
       #wrapperlicious pre > code {
-        color: #222;
         font: 0.9em Consolas, Menlo, Monaco, Courier, monospace;
         line-height: 1.5em;
         text-align: left;
