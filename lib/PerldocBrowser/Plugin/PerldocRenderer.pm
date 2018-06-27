@@ -182,49 +182,76 @@ sub _get_function_pod ($c, $function) {
   return join "\n\n", '=over', @$result, '=back';
 }
 
-# Edge cases: eval, do, chop, y///, -X
+# Edge cases: eval, do, chop, y///, -X, getgrent, __END__
 sub _split_functions ($src, $function = undef) {
-  my ($list_level, $started, $found_header, $found_content, $find_filetest, $found_filetest, @function, @functions) = (0);
+  my $list_level = 0;
+  my $found = '';
+  my ($started, $is_header, $is_function_header, $filetest_section, $found_filetest, @function, @functions);
 
   foreach my $para (split /\n\n+/, $src) {
     $started = 1 if !$started and $para =~ m/^=head\d Alphabetical Listing of Perl Functions/;
     next unless $started;
     next if $para =~ m/^=for Pod::Functions/;
 
+    # keep track of list depth
     if ($para =~ m/^=over/) {
       $list_level++;
       next if $list_level == 1;
     }
-    $list_level-- if $para =~ m/^=back/;
-    next unless $list_level >= 1;
+    if ($para =~ m/^=back/) {
+      $list_level--;
+      $found = 'end' if $found and $list_level == 0;
+    }
 
-    $found_filetest = 1 if $find_filetest and $para =~ m/^\s+\Q$function\E\s/m;
-
+    # functions are only declared at depth 1
+    my ($is_header, $is_function_header);
     if ($list_level == 1) {
-      if ($found_content and $para =~ m/^=item/) {
+      $is_header = 1 if $para =~ m/^=item/;
+      if ($is_header) {
+        # new function heading
         if (defined $function) {
-          if ($find_filetest and !$found_filetest) {
-            @function = ();
-            $found_header = $found_content = $find_filetest = 0;
-          } else {
-            last unless $para =~ m/^=item (?:I<)?\Q$function\E(\W|$)/;
-          }
+          # check -X section later for filetest operators
+          $filetest_section = 1 if !$found and $para =~ m/^=item (?:I<)?-X/ and $function =~ m/^-[a-zA-WYZ]$/;
+          # see if this is the start or end of the function we want
+          $is_function_header = 1 if $para =~ m/^=item (?:I<)?\Q$function\E(\W|$)/;
+          $found = 'header' if !$found and $is_function_header;
+          $found = 'end' if $found eq 'content' and !$is_function_header;
         } else {
-          push @functions, [@function];
-          @function = ();
-          $found_header = $found_content = $find_filetest = 0;
+          # this indicates a new function section if we found content
+          $found = 'header' if !$found;
+          $found = 'end' if $found eq 'content';
         }
-      }
-      $found_header = 1 if !$found_header and defined $function ? $para =~ m/^=item (?:I<)?\Q$function\E(\W|$)/ : $para =~ m/^=item/;
-      $found_header = $find_filetest = 1 if !$found_header and defined $function and $function =~ m/^-[a-zA-Z]$/ and $para =~ m/^=item (?:I<)?-X/;
-      $found_content = 1 if $found_header and $para !~ m/^=item/;
-      if (defined $function and $para !~ m/^=item/ and not $found_header) {
+      } elsif ($found eq 'header' or $filetest_section) {
+        # function content if we're in a function section
+        $found = 'content' unless $found eq 'end';
+      } elsif (!$found and defined $function) {
+        # skip content if this isn't the function section we're looking for
         @function = ();
         next;
       }
     }
 
-    push @function, $para;
+    if ($found eq 'end') {
+      if (defined $function) {
+        # we're done, unless we were checking the -X section for filetest operators and didn't find it
+        last unless $filetest_section and !$found_filetest;
+      } else {
+        # add this function section
+        push @functions, [@function];
+      }
+      # start next function section
+      @function = ();
+      $filetest_section = 0;
+      $found = $is_header && (!defined $function or $is_function_header) ? 'header' : '';
+    }
+
+    # function contents at depth 1+
+    if ($list_level >= 1) {
+      # check -X section content for filetest operators
+      $found_filetest = 1 if $filetest_section and $para =~ m/^\s+\Q$function\E\s/m;
+      # add content to function section
+      push @function, $para;
+    }
   }
 
   return defined $function ? \@function : \@functions;
