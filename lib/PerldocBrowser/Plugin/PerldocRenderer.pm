@@ -216,7 +216,7 @@ sub _split_functions ($src, $function = undef) {
         }
       }
       $found_header = 1 if !$found_header and defined $function ? $para =~ m/^=item (?:I<)?\Q$function\E(\W|$)/ : $para =~ m/^=item/;
-      $found_header = $find_filetest = 1 if !$found_header and defined $function and $function =~ m/^-[a-zA-Z]$/ and $para =~ m/^=item (?:I<)-X/;
+      $found_header = $find_filetest = 1 if !$found_header and defined $function and $function =~ m/^-[a-zA-Z]$/ and $para =~ m/^=item (?:I<)?-X/;
       $found_content = 1 if $found_header and $para !~ m/^=item/;
       if (defined $function and $para !~ m/^=item/ and not $found_header) {
         @function = ();
