@@ -155,9 +155,9 @@ sub _index_functions ($c, $db, $perl_version, $src) {
       $list_level-- if $para =~ m/^=back/;
       # 0: navigatable, 1: navigatable and returned in search results
       unless ($list_level) {
-        $names{"$1"} = 1 if $para =~ m/^=item ([-\w\/]+)/;
-        $names{"$1"} //= 0 if $para =~ m/^=item ([-\w]+)/;
-        $is_filetest = 1 if $para =~ m/^=item -X/;
+        $names{"$1"} = 1 if $para =~ m/^=item (?:I<)?([-\w\/]+)/;
+        $names{"$1"} //= 0 if $para =~ m/^=item (?:I<)?([-\w]+)/;
+        $is_filetest = 1 if $para =~ m/^=item (?:I<)?-X/;
       }
       do { $names{"$_"} //= 0 for $para =~ m/^\s+(-[a-zA-Z])\s/mg } if $is_filetest;
       push @block_text, $para if $list_level or $para !~ m/^=item/;
