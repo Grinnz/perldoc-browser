@@ -43,6 +43,9 @@ sub _search ($c) {
   my $variable = _variable_name_match($c, $query);
   return $c->redirect_to("$url_prefix/variables/$variable") if defined $variable;
 
+  my $digits_variable = _digits_variable_match($c, $query);
+  return $c->redirect_to("$url_prefix/variables/$digits_variable") if defined $digits_variable;
+
   my $pod = _pod_name_match($c, $query);
   return $c->redirect_to("$url_prefix/$pod") if defined $pod;
 
@@ -109,9 +112,10 @@ sub _variable_name_match ($c, $query) {
   return defined $match ? $match->[0] : undef;
 }
 
-sub _digits_variable ($c) {
+sub _digits_variable_match ($c, $query) {
+  return undef unless $query =~ m/^\$[1-9][0-9]*$/;
   my $match = $c->pg->db->query('SELECT "name" FROM "variables" WHERE "perl_version" = $1
-    AND lower("name") LIKE $2 ORDER BY "name" LIMIT 1', $c->stash('perl_version'), '$<digits>%')->arrays->first;
+    AND lower("name") LIKE lower($2) ORDER BY "name" LIMIT 1', $c->stash('perl_version'), '$<I<digits>>%')->arrays->first;
   return defined $match ? $match->[0] : undef;
 }
 
@@ -206,12 +210,7 @@ sub _index_variables ($c, $db, $perl_version, $src) {
       $list_level-- if $para =~ m/^=back/;
       # 0: navigatable, 1: navigatable and returned in search results
       unless ($list_level) {
-        if ($para =~ m/^=item \$<I<digits>>([^\n]*)/) {
-          $names{"\$<digits>$1"} = 1;
-          $names{"\$$_"} = 0 for 1..9;
-        } else {
-          $names{"$1"} = 1 if $para =~ m/^=item ([\$\@%]\S+)/;
-        }
+        $names{"$1"} = 1 if $para =~ m/^=item ([\$\@%]\S+)/;
       }
       push @block_text, $para if $list_level or $para !~ m/^=item/;
     }
