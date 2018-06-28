@@ -31,9 +31,8 @@ sub register ($self, $app, $conf) {
     $app->routes->any("/$perl_version/functions/:function"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'functions'}
       => [function => qr/[^.]+/] => \&_function);
-    $app->routes->any("/$perl_version/variables/:variable"
-      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'perlvar'}
-      => [variable => qr/(\$\.|[^.]+)/] => \&_variable);
+    $app->routes->any("/$perl_version/variables/*variable"
+      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'perlvar'} => \&_variable);
     $app->routes->any("/$perl_version/functions"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'functions'}
       => \&_functions_index);
@@ -46,7 +45,7 @@ sub register ($self, $app, $conf) {
   }
 
   $app->routes->any("/functions/:function" => {%defaults, module => 'functions'} => [function => qr/[^.]+/] => \&_function);
-  $app->routes->any("/variables/:variable" => {%defaults, module => 'perlvar'} => [variable => qr/(\$\.|[^.]+)/] => \&_variable);
+  $app->routes->any("/variables/*variable" => {%defaults, module => 'perlvar'} => \&_variable);
   $app->routes->any("/functions" => {%defaults, module => 'functions'} => \&_functions_index);
   $app->routes->any("/modules" => {%defaults, module => 'modules'} => \&_modules_index);
   $app->routes->any("/:module" => {%defaults} => [module => qr/[^.]+/] => \&_perldoc);
@@ -177,7 +176,9 @@ sub _function ($c) {
 
 sub _variable ($c) {
   my $variable = $c->param('variable');
-  $c->stash(cpan => "https://metacpan.org/pod/perlvar#$variable");
+  my $link = Mojo::DOM->new($c->pod_to_html("=pod\n\nL<< /$variable >>"))->at('a');
+  my $fragment = defined $link ? Mojo::URL->new($link->attr('href'))->fragment : $variable;
+  $c->stash(cpan => Mojo::URL->new("https://metacpan.org/pod/perlvar")->fragment($fragment));
 
   my $src = _get_variable_pod($c, $variable);
   return $c->redirect_to($c->stash('cpan')) unless defined $src;
@@ -373,7 +374,7 @@ sub _split_variables ($src, $variable = undef) {
       if ($is_header) {
         if (defined $variable) {
           # see if this is the start or end of the variable we want
-          $is_variable_header = 1 if $para =~ m/^=item \Q$variable\E(\s|$)/;
+          $is_variable_header = 1 if $para =~ m/^=item \Q$variable\E(\n|$)/;
           $found = 'header' if !$found and $is_variable_header;
           $found = 'end' if $found eq 'content' and !$is_variable_header;
         } else {
