@@ -74,7 +74,7 @@
         line-height: 1.5em;
         text-align: left;
         text-shadow: #eee 0 1px 0;
-        white-space: pre-wrap;
+        white-space: pre;
       }
       #wrapperlicious dl, #wrapperlicious ol, #wrapperlicious ul {
         margin-bottom: 1em;
