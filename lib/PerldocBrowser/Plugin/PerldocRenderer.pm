@@ -31,6 +31,9 @@ sub register ($self, $app, $conf) {
     $app->routes->any("/$perl_version/functions/:function"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'functions'}
       => [function => qr/[^.]+/] => \&_function);
+    $app->routes->any("/$perl_version/variables/:variable"
+      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'perlvar'}
+      => [variable => qr/(\$\.|[^.]+)/] => \&_variable);
     $app->routes->any("/$perl_version/functions"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'functions'}
       => \&_functions_index);
@@ -43,6 +46,7 @@ sub register ($self, $app, $conf) {
   }
 
   $app->routes->any("/functions/:function" => {%defaults, module => 'functions'} => [function => qr/[^.]+/] => \&_function);
+  $app->routes->any("/variables/:variable" => {%defaults, module => 'perlvar'} => [variable => qr/(\$\.|[^.]+)/] => \&_variable);
   $app->routes->any("/functions" => {%defaults, module => 'functions'} => \&_functions_index);
   $app->routes->any("/modules" => {%defaults, module => 'modules'} => \&_modules_index);
   $app->routes->any("/:module" => {%defaults} => [module => qr/[^.]+/] => \&_perldoc);
@@ -67,6 +71,40 @@ sub _html ($c, $src) {
 
   my $url_perl_version = $c->stash('url_perl_version');
   my $url_prefix = $url_perl_version ? "/$url_perl_version" : '';
+
+  if ($c->param('module') eq 'functions') {
+    # Rewrite links on function pages
+    for my $e ($dom->find('a[href]')->each) {
+      my $link = Mojo::URL->new($e->attr('href'));
+      next if length $link->path;
+      next unless length(my $fragment = $link->fragment);
+      my ($function) = $fragment =~ m/^(.[^-]*)/;
+      $e->attr(href => Mojo::URL->new("$url_prefix/functions/")->path($function));
+    }
+
+    # Insert links on functions index
+    if (!defined $c->param('function')) {
+      for my $e ($dom->find(':not(a) > code')->each) {
+        my $text = $e->all_text;
+        $e->wrap($c->link_to('' => Mojo::URL->new("$url_prefix/functions/$1")))
+          if $text =~ m/^([-\w]+)\/*$/ or $text =~ m/^([-\w\/]+)$/;
+      }
+    }
+  }
+
+  # Rewrite links on variable pages
+  if (defined $c->param('variable')) {
+    for my $e ($dom->find('a[href]')->each) {
+      my $link = Mojo::URL->new($e->attr('href'));
+      next if length $link->path;
+      next unless length (my $fragment = $link->fragment);
+      if ($fragment =~ m/^[\$\@%]/) {
+        $e->attr(href => Mojo::URL->new("$url_prefix/variables/")->path($fragment));
+      } else {
+        $e->attr(href => Mojo::URL->new("$url_prefix/perlvar")->fragment($fragment));
+      }
+    }
+  }
 
   # Insert links on modules list
   if ($c->param('module') eq 'modules') {
@@ -106,24 +144,6 @@ sub _html ($c, $src) {
     }
   }
 
-  if ($c->param('module') eq 'functions') {
-    # Rewrite links on function pages
-    for my $e ($dom->find('a[href]')->each) {
-      next unless $e->attr('href') =~ /^#(.[^-]*)/;
-      my $function = url_unescape "$1";
-      $e->attr(href => Mojo::URL->new("$url_prefix/functions/$function"));
-    }
-    
-    # Insert links on functions index
-    if (!defined $c->param('function')) {
-      for my $e ($dom->find(':not(a) > code')->each) {
-        my $text = $e->all_text;
-        $e->wrap($c->link_to('' => Mojo::URL->new("$url_prefix/functions/$1")))
-          if $text =~ m/^([-\w]+)\/*$/ or $text =~ m/^([-\w\/]+)$/;
-      }
-    }
-  }
-
   # Try to find a title
   my $title = $c->param('function') // $c->param('module');
   $dom->find('h1 + p')->first(sub { $title = shift->text });
@@ -155,6 +175,16 @@ sub _function ($c) {
   $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
 }
 
+sub _variable ($c) {
+  my $variable = $c->param('variable');
+  $c->stash(cpan => "https://metacpan.org/pod/perlvar#$variable");
+
+  my $src = _get_variable_pod($c, $variable);
+  return $c->redirect_to($c->stash('cpan')) unless defined $src;
+
+  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
+}
+
 sub _functions_index ($c) {
   $c->stash(cpan => 'https://metacpan.org/pod/perlfunc#Perl-Functions-by-Category');
 
@@ -179,6 +209,16 @@ sub _get_function_pod ($c, $function) {
   my $src = path($path)->slurp;
 
   my $result = _split_functions($src, $function);
+  return undef unless @$result;
+  return join "\n\n", '=over', @$result, '=back';
+}
+
+sub _get_variable_pod ($c, $variable) {
+  my $path = _find_pod($c, 'perlvar');
+  return undef unless $path && -r $path;
+  my $src = path($path)->slurp;
+
+  my $result = _split_variables($src, $variable);
   return undef unless @$result;
   return join "\n\n", '=over', @$result, '=back';
 }
@@ -310,7 +350,7 @@ sub _split_functions ($src, $function = undef) {
   return defined $function ? \@function : \@functions;
 }
 
-sub _split_variables ($src) {
+sub _split_variables ($src, $variable = undef) {
   my $list_level = 0;
   my $found = '';
   my ($started, @variable, @variables);
@@ -327,32 +367,48 @@ sub _split_variables ($src) {
     }
 
     # variables are only declared at depth 1
-    my $is_header;
+    my ($is_header, $is_variable_header);
     if ($list_level == 1) {
       $is_header = 1 if $para =~ m/^=item/;
       if ($is_header) {
-        # this indicates a new variable section if we found content
-        $found = 'header' if !$found;
-        $found = 'end' if $found eq 'content';
+        if (defined $variable) {
+          # see if this is the start or end of the variable we want
+          $is_variable_header = 1 if $para =~ m/^=item \Q$variable\E(\s|$)/;
+          $found = 'header' if !$found and $is_variable_header;
+          $found = 'end' if $found eq 'content' and !$is_variable_header;
+        } else {
+          # this indicates a new variable section if we found content
+          $found = 'header' if !$found;
+          $found = 'end' if $found eq 'content';
+        }
       } elsif ($found eq 'header') {
         # variable content if we're in a variable section
         $found = 'content' unless $found eq 'end';
+      } elsif (!$found and defined $variable) {
+        # skip content if this isn't the variable section we're looking for
+        @variable = ();
+        next;
       }
     }
 
     if ($found eq 'end') {
-      # add this variable section
-      push @variables, [@variable];
+      if (defined $variable) {
+        # we're done
+        last;
+      } else {
+        # add this variable section
+        push @variables, [@variable];
+      }
       # start next variable section
       @variable = ();
-      $found = $is_header ? 'header' : '';
+      $found = $is_header && (!defined $variable or $is_variable_header) ? 'header' : '';
     }
 
     # variable contents at depth 1+
     push @variable, $para if $list_level >= 1;
   }
 
-  return \@variables;
+  return defined $variable ? \@variable : \@variables;
 }
 
 1;

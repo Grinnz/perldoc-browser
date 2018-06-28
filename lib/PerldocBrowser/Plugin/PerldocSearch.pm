@@ -41,12 +41,7 @@ sub _search ($c) {
   return $c->redirect_to("$url_prefix/functions/$function") if defined $function;
 
   my $variable = _variable_name_match($c, $query);
-  if (defined $variable) {
-    $variable = _digits_variable($c) if $variable =~ m/^\$[1-9]$/;
-    $variable = _escape_pod($variable);
-    my $link = Mojo::DOM->new($c->pod_to_html(qq{=pod\n\nL<< perlvar/"$variable" >>}, $url_perl_version))->at('a');
-    return $c->redirect_to($link->attr('href')) if defined $link;
-  }
+  return $c->redirect_to("$url_prefix/variables/$variable") if defined $variable;
 
   my $pod = _pod_name_match($c, $query);
   return $c->redirect_to("$url_prefix/$pod") if defined $pod;
