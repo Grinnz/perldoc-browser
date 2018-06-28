@@ -19,6 +19,7 @@ use experimental 'signatures';
 sub register ($self, $app, $conf) {
   $app->helper(pod_to_html => sub { my $c = shift; _pod_to_html(@_) });
   $app->helper(split_functions => sub { my $c = shift; _split_functions(@_) });
+  $app->helper(split_variables => sub { my $c = shift; _split_variables(@_) });
 
   my %defaults = (
     module => 'perl',
@@ -182,11 +183,63 @@ sub _get_function_pod ($c, $function) {
   return join "\n\n", '=over', @$result, '=back';
 }
 
+sub _get_function_categories ($c) {
+  my $path = _find_pod($c, 'perlfunc');
+  return undef unless $path && -r $path;
+  my $src = path($path)->slurp;
+
+  my ($started, @result);
+  foreach my $para (split /\n\n+/, $src) {
+    if (!$started and $para =~ m/^=head\d Perl Functions by Category/) {
+      $started = 1;
+      push @result, '=pod';
+    } elsif ($started) {
+      last if $para =~ m/^=head/;
+      push @result, $para;
+    }
+  }
+
+  return undef unless @result;
+  return join "\n\n", @result;
+}
+
+sub _get_module_list ($c) {
+  my $path = _find_pod($c, 'perlmodlib');
+  return undef unless $path && -r $path;
+  my $src = path($path)->slurp;
+
+  my ($started, $standard, @result);
+  foreach my $para (split /\n\n+/, $src) {
+    if (!$started and $para =~ m/^=head\d Pragmatic Modules/) {
+      $started = 1;
+      push @result, $para;
+    } elsif ($started) {
+      $standard = 1 if $para =~ m/^=head\d Standard Modules/;
+      push @result, $para;
+      last if $standard and $para =~ m/^=back/;
+    }
+  }
+
+  return undef unless @result;
+  return join "\n\n", @result;
+}
+
+sub _pod_to_html ($pod, $url_perl_version = '') {
+  my $parser = MetaCPAN::Pod::XHTML->new;
+  $parser->perldoc_url_prefix($url_perl_version ? "/$url_perl_version/" : '/');
+  $parser->$_('') for qw(html_header html_footer);
+  $parser->anchor_items(1);
+  $parser->output_string(\(my $output));
+  return $@ unless eval { $parser->parse_string_document("$pod"); 1 };
+
+  return $output;
+}
+
 # Edge cases: eval, do, chop, y///, -X, getgrent, __END__
 sub _split_functions ($src, $function = undef) {
   my $list_level = 0;
   my $found = '';
-  my ($started, $is_header, $is_function_header, $filetest_section, $found_filetest, @function, @functions);
+  my ($started, $filetest_section, $found_filetest, @function, @functions);
 
   foreach my $para (split /\n\n+/, $src) {
     $started = 1 if !$started and $para =~ m/^=head\d Alphabetical Listing of Perl Functions/;
@@ -257,56 +310,49 @@ sub _split_functions ($src, $function = undef) {
   return defined $function ? \@function : \@functions;
 }
 
-sub _get_function_categories ($c) {
-  my $path = _find_pod($c, 'perlfunc');
-  return undef unless $path && -r $path;
-  my $src = path($path)->slurp;
+sub _split_variables ($src) {
+  my $list_level = 0;
+  my $found = '';
+  my ($started, @variable, @variables);
 
-  my ($started, @result);
   foreach my $para (split /\n\n+/, $src) {
-    if (!$started and $para =~ m/^=head\d Perl Functions by Category/) {
-      $started = 1;
-      push @result, '=pod';
-    } elsif ($started) {
-      last if $para =~ m/^=head/;
-      push @result, $para;
+    # keep track of list depth
+    if ($para =~ m/^=over/) {
+      $list_level++;
+      next if $list_level == 1;
     }
+    if ($para =~ m/^=back/) {
+      $list_level--;
+      $found = 'end' if $found and $list_level == 0;
+    }
+
+    # variables are only declared at depth 1
+    my $is_header;
+    if ($list_level == 1) {
+      $is_header = 1 if $para =~ m/^=item/;
+      if ($is_header) {
+        # this indicates a new variable section if we found content
+        $found = 'header' if !$found;
+        $found = 'end' if $found eq 'content';
+      } elsif ($found eq 'header') {
+        # variable content if we're in a variable section
+        $found = 'content' unless $found eq 'end';
+      }
+    }
+
+    if ($found eq 'end') {
+      # add this variable section
+      push @variables, [@variable];
+      # start next variable section
+      @variable = ();
+      $found = $is_header ? 'header' : '';
+    }
+
+    # variable contents at depth 1+
+    push @variable, $para if $list_level >= 1;
   }
 
-  return undef unless @result;
-  return join "\n\n", @result;
-}
-
-sub _get_module_list ($c) {
-  my $path = _find_pod($c, 'perlmodlib');
-  return undef unless $path && -r $path;
-  my $src = path($path)->slurp;
-
-  my ($started, $standard, @result);
-  foreach my $para (split /\n\n+/, $src) {
-    if (!$started and $para =~ m/^=head\d Pragmatic Modules/) {
-      $started = 1;
-      push @result, $para;
-    } elsif ($started) {
-      $standard = 1 if $para =~ m/^=head\d Standard Modules/;
-      push @result, $para;
-      last if $standard and $para =~ m/^=back/;
-    }
-  }
-
-  return undef unless @result;
-  return join "\n\n", @result;
-}
-
-sub _pod_to_html ($pod, $url_perl_version = '') {
-  my $parser = MetaCPAN::Pod::XHTML->new;
-  $parser->perldoc_url_prefix($url_perl_version ? "/$url_perl_version/" : '/');
-  $parser->$_('') for qw(html_header html_footer);
-  $parser->anchor_items(1);
-  $parser->output_string(\(my $output));
-  return $@ unless eval { $parser->parse_string_document("$pod"); 1 };
-
-  return $output;
+  return \@variables;
 }
 
 1;

@@ -14,8 +14,7 @@ use experimental 'signatures';
 sub register ($self, $app, $conf) {
   $app->helper(index_pod => \&_index_pod);
   $app->helper(index_functions => \&_index_functions);
-  $app->helper(clear_pod_index => \&_clear_pod_index);
-  $app->helper(clear_function_index => \&_clear_function_index);
+  $app->helper(clear_index => \&_clear_index);
 
   my %defaults = (
     module => 'search',
@@ -180,12 +179,45 @@ sub _index_functions ($c, $db, $perl_version, $src) {
   }
 }
 
-sub _clear_pod_index ($c, $db, $perl_version) {
-  $db->delete('pods', {perl_version => $perl_version});
+sub _index_variables ($c, $db, $perl_version, $src) {
+  my $blocks = $c->split_variables($src);
+  my %variables;
+  foreach my $block (@$blocks) {
+    my ($list_level, @block_text, %names) = (0);
+    foreach my $para (@$block) {
+      $list_level++ if $para =~ m/^=over/;
+      $list_level-- if $para =~ m/^=back/;
+      # 0: navigatable, 1: navigatable and returned in search results
+      unless ($list_level) {
+        if ($para =~ m/^=item \$<I<digits>>([^\n]+)/) {
+          $names{"\$<digits>$1"} = 1;
+          $names{"\$$_"} = 0 for 1..9;
+        } else {
+          $names{"$1"} = 1 if $para =~ m/^=item ([\$\@%]\S+)/;
+        }
+      }
+      push @block_text, $para if $list_level or $para !~ m/^=item/;
+    }
+    push @{$variables{$_}}, $names{$_} ? @block_text : () for keys %names;
+  }
+
+  foreach my $variable (keys %variables) {
+    my $pod = join "\n\n", '=over', @{$variables{$variable}}, '=back';
+    my $dom = Mojo::DOM->new($c->pod_to_html($pod));
+    my $description = trim($dom->all_text);
+
+    $db->insert('variables', {
+      perl_version => $perl_version,
+      name => $variable,
+      description => $description,
+    }, {on_conflict => \['("perl_version","name") do update set
+      "description"=EXCLUDED."description"']}
+    );
+  }
 }
 
-sub _clear_function_index ($c, $db, $perl_version) {
-  $db->delete('functions', {perl_version => $perl_version});
+sub _clear_index ($c, $db, $perl_version, $type) {
+  $db->delete($type, {perl_version => $perl_version});
 }
 
 1;

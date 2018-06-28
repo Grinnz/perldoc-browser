@@ -54,3 +54,31 @@ drop table if exists "pods";
 drop table if exists "functions";
 drop function if exists "pods_update_indexed";
 drop function if exists "functions_update_indexed";
+
+--2 up
+create table "variables" (
+  id serial primary key,
+  perl_version text not null,
+  name text not null,
+  description text not null,
+  indexed tsvector not null,
+  constraint "variables_perl_version_name_key" unique ("perl_version","name")
+);
+create index "variables_indexed" on "variables" using gin ("indexed");
+create index "variables_name" on "variables" (lower("name") text_pattern_ops);
+
+create or replace function "variables_update_indexed"() returns trigger as $$
+begin
+  "new"."indexed" := case when "new"."description"='' then to_tsvector('') else
+    setweight(to_tsvector('english',"new"."name"),'A') ||
+    setweight(to_tsvector('english',"new"."description"),'B') end;
+  return new;
+end
+$$ language plpgsql;
+
+create trigger "variables_indexed_trigger" before insert or update on "variables"
+  for each row execute procedure variables_update_indexed();
+
+--2 down
+drop table if exists "variables";
+drop function if exists "variables_update_indexed";
