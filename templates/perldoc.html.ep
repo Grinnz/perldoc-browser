@@ -10,10 +10,6 @@
     %= javascript '/mojo/prettify/run_prettify.js'
     %= stylesheet '/mojo/prettify/prettify-mojo-light.css'
     <style>
-      #wrapperlicious a { color: inherit; text-decoration: underline }
-      #wrapperlicious #toc { text-decoration: none }
-      #wrapperlicious a:hover { color: #2a2a2a }
-      #wrapperlicious a img { border: 0 }
       body {
         background: url(<%= url_for '/mojo/pinstripe-light.png' %>);
         color: #445555;
@@ -22,11 +18,9 @@
         line-height: 1.5em;
         margin: 0;
       }
-      #wrapperlicious :not(pre) > code {
-        background-color: rgba(0, 0, 0, 0.04);
-        border-radius: 3px;
-        font: 0.9em Consolas, Menlo, Monaco, Courier, monospace;
-        padding: 0.3em;
+      #wrapperlicious {
+        margin: 0 auto;
+        padding: 0;
       }
       #wrapperlicious h1 { font-size: 1.5em }
       #wrapperlicious h2 { font-size: 1.3em }
@@ -38,6 +32,16 @@
         margin: 0;
         position: relative;
         font-weight: bold;
+      }
+      #wrapperlicious a { color: inherit; text-decoration: underline }
+      #wrapperlicious #toc { text-decoration: none }
+      #wrapperlicious a:hover { color: #2a2a2a }
+      #wrapperlicious a img { border: 0 }
+      #wrapperlicious :not(pre) > code {
+        background-color: rgba(0, 0, 0, 0.04);
+        border-radius: 3px;
+        font: 0.9em Consolas, Menlo, Monaco, Courier, monospace;
+        padding: 0.3em;
       }
       #wrapperlicious dd {
         margin: 0;
@@ -104,9 +108,6 @@
       }
       #perldocdiv > ul:first-of-type a { text-decoration: none }
       #links { padding-bottom: 1em }
-      #wrapperlicious {
-        margin: 0 auto;
-      }
       #wrapperlicious .permalink {
         display: none;
         left: -0.75em;
