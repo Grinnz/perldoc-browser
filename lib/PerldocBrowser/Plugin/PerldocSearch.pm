@@ -108,14 +108,14 @@ sub _function_name_match ($c, $query) {
 
 sub _variable_name_match ($c, $query) {
   my $match = $c->pg->db->query('SELECT "name" FROM "variables" WHERE "perl_version" = $1
-    AND "name" = $2 ORDER BY "name" LIMIT 1', $c->stash('perl_version'), $query)->arrays->first;
+    AND lower("name") = lower($2) ORDER BY "name" = $2 DESC, "name" LIMIT 1', $c->stash('perl_version'), $query)->arrays->first;
   return defined $match ? $match->[0] : undef;
 }
 
 sub _digits_variable_match ($c, $query) {
   return undef unless $query =~ m/^\$[1-9][0-9]*$/;
   my $match = $c->pg->db->query('SELECT "name" FROM "variables" WHERE "perl_version" = $1
-    AND "name" LIKE $2 ORDER BY "name" LIMIT 1', $c->stash('perl_version'), '$<I<digits>>%')->arrays->first;
+    AND lower("name") LIKE lower($2) ORDER BY "name" LIMIT 1', $c->stash('perl_version'), '$<I<digits>>%')->arrays->first;
   return defined $match ? $match->[0] : undef;
 }
 
