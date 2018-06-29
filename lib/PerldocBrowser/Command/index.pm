@@ -34,7 +34,7 @@ sub run ($self, @versions) {
       $self->app->clear_index($db, $version, 'variables');
     }
     unless ($functions or $variables) {
-      %pod_paths = %{Pod::Simple::Search->new->inc(0)->survey(@$inc_dirs)};
+      %pod_paths = %{Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@$inc_dirs)};
       $self->app->clear_index($db, $version, 'pods');
       $self->app->clear_index($db, $version, 'functions');
       $self->app->clear_index($db, $version, 'variables');
