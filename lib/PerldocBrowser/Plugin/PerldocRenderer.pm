@@ -97,7 +97,7 @@ sub _html ($c, $src) {
       my $link = Mojo::URL->new($e->attr('href'));
       next if length $link->path;
       next unless length (my $fragment = $link->fragment);
-      if ($fragment =~ m/^[\$\@%]/) {
+      if ($fragment =~ m/^[\$\@%]/ or $fragment =~ m/^[a-zA-Z]+$/) {
         $e->attr(href => Mojo::URL->new("$url_prefix/variables/")->path($fragment));
       } else {
         $e->attr(href => Mojo::URL->new("$url_prefix/perlvar")->fragment($fragment));

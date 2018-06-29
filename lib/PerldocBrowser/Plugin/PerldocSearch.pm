@@ -210,7 +210,7 @@ sub _index_variables ($c, $db, $perl_version, $src) {
       $list_level-- if $para =~ m/^=back/;
       # 0: navigatable, 1: navigatable and returned in search results
       unless ($list_level) {
-        $names{"$1"} = 1 if $para =~ m/^=item ([\$\@%][^\n]+)/;
+        $names{"$1"} = 1 if $para =~ m/\A=item ([\$\@%].+)$/m or $para =~ m/\A=item ([a-zA-Z]+)$/m;
       }
       push @block_text, $para if $list_level or $para !~ m/^=item/;
     }
