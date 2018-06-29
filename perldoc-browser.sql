@@ -65,7 +65,7 @@ create table "variables" (
   constraint "variables_perl_version_name_key" unique ("perl_version","name")
 );
 create index "variables_indexed" on "variables" using gin ("indexed");
-create index "variables_name" on "variables" (lower("name") text_pattern_ops);
+create index "variables_name" on "variables" ("name" text_pattern_ops);
 
 create or replace function "variables_update_indexed"() returns trigger as $$
 begin
