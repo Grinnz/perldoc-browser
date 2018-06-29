@@ -38,16 +38,16 @@ sub _search ($c) {
   my $url_prefix = $url_perl_version ? "/$url_perl_version" : '';
 
   my $function = _function_name_match($c, $query);
-  return $c->redirect_to("$url_prefix/functions/$function") if defined $function;
+  return $c->redirect_to(Mojo::URL->new("$url_prefix/functions/")->path($function)) if defined $function;
 
   my $variable = _variable_name_match($c, $query);
-  return $c->redirect_to("$url_prefix/variables/$variable") if defined $variable;
+  return $c->redirect_to(Mojo::URL->new("$url_prefix/variables/")->path($variable)) if defined $variable;
 
-  my $digits_variable = _digits_variable_match($c, $query);
-  return $c->redirect_to("$url_prefix/variables/$digits_variable") if defined $digits_variable;
+  my $digits = _digits_variable_match($c, $query);
+  return $c->redirect_to(Mojo::URL->new("$url_prefix/variables/")->path($digits)) if defined $digits;
 
   my $pod = _pod_name_match($c, $query);
-  return $c->redirect_to("$url_prefix/$pod") if defined $pod;
+  return $c->redirect_to(Mojo::URL->new("$url_prefix/")->path($pod)) if defined $pod;
 
   my $function_results = _function_search($c, $query);
   my $pod_results = _pod_search($c, $query);
