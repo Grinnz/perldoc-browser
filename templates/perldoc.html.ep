@@ -18,6 +18,8 @@
         line-height: 1.5em;
         margin: 0;
       }
+      .navbar-dark .navbar-nav .nav-link { color: #ccc }
+      .navbar-dark .navbar-nav .nav-link:hover { color: #fff }
       #wrapperlicious {
         margin: 0 auto;
         padding: 0;
