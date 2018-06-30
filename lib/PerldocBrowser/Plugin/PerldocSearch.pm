@@ -55,8 +55,10 @@ sub _search ($c) {
   my @paras = ('=encoding UTF-8', '=head1 SEARCH RESULTS', 'B<>', '=head2 Functions', '=over');
   if (@$function_results) {
     foreach my $function (@$function_results) {
-      my $name = $c->escape_pod($function->{name});
-      my $headline = $function->{headline} =~ s/\n+/ /gr;
+      my ($name, $headline) = map { $c->escape_pod($_) } @$function{'name','headline'};
+      $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
+      $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
+      $headline =~ s/\n+/ /g;
       push @paras, qq{=item L<perlfunc/"$name">\n\n$headline};
     }
   } else {
@@ -65,8 +67,10 @@ sub _search ($c) {
   push @paras, '=back', '=head2 Pod', '=over';
   if (@$pod_results) {
     foreach my $page (@$pod_results) {
-      my ($name, $abstract) = map { $c->escape_pod($_) } @$page{'name','abstract'};
-      my $headline = $page->{headline} =~ s/\n+/ /gr;
+      my ($name, $abstract, $headline) = map { $c->escape_pod($_) } @$page{'name','abstract','headline'};
+      $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
+      $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
+      $headline =~ s/\n+/ /g;
       push @paras, "=item L<$name> - $abstract\n\n$headline";
     }
   } else {
@@ -114,7 +118,7 @@ sub _digits_variable_match ($c, $query) {
   return defined $match ? $match->[0] : undef;
 }
 
-my $headline_opts = 'StartSel="I<<< B<< ", StopSel=" >> >>>", MaxWords=15, MinWords=10, MaxFragments=2';
+my $headline_opts = 'StartSel="__HEADLINE_START__", StopSel="__HEADLINE_STOP__", MaxWords=15, MinWords=10, MaxFragments=2';
 
 sub _pod_search ($c, $query) {
   return $c->pg->db->query(q{SELECT "name", "abstract",
