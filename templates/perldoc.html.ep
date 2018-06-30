@@ -152,6 +152,7 @@
             % $source = 'functions/' . stash('function') . '.txt';
             / <%= link_to stash('function') => url_for("$url_prefix/functions/" . stash('function')) %>
           % } elsif (defined stash('variable')) {
+            % $source = 'variables/' . stash('variable') . '.txt';
             / <%= link_to stash('variable') => url_for("$url_prefix/variables/" . stash('variable')) %>
           % }
           <div id="more">

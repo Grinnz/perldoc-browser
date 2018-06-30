@@ -17,9 +17,10 @@ use Pod::Simple::Search;
 use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
-  $app->helper(pod_to_html => sub { my $c = shift; _pod_to_html(@_) });
   $app->helper(split_functions => sub { my $c = shift; _split_functions(@_) });
   $app->helper(split_variables => sub { my $c = shift; _split_variables(@_) });
+  $app->helper(pod_to_html => sub { my $c = shift; _pod_to_html(@_) });
+  $app->helper(escape_pod => sub { my $c = shift; _escape_pod(@_) });
 
   my %defaults = (
     module => 'perl',
@@ -31,8 +32,9 @@ sub register ($self, $app, $conf) {
     $app->routes->any("/$perl_version/functions/:function"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'functions'}
       => [function => qr/[^.]+/] => \&_function);
-    $app->routes->any("/$perl_version/variables/*variable"
-      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'perlvar'} => \&_variable);
+    $app->routes->any("/$perl_version/variables/:variable"
+      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'perlvar'}
+      => [variable => qr/[^.]+(?:\.{3}[^.]+|\.)?/] => \&_variable);
     $app->routes->any("/$perl_version/functions"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'functions'}
       => \&_functions_index);
@@ -41,14 +43,14 @@ sub register ($self, $app, $conf) {
       => \&_modules_index);
     $app->routes->any("/$perl_version/:module"
       => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version}
-      => [module => qr/[^.]+/] => \&_perldoc);
+      => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
   }
 
   $app->routes->any("/functions/:function" => {%defaults, module => 'functions'} => [function => qr/[^.]+/] => \&_function);
-  $app->routes->any("/variables/*variable" => {%defaults, module => 'perlvar'} => \&_variable);
+  $app->routes->any("/variables/:variable" => {%defaults, module => 'perlvar'} => [variable => qr/[^.]+(?:\.{3}[^.]+|\.)?/] => \&_variable);
   $app->routes->any("/functions" => {%defaults, module => 'functions'} => \&_functions_index);
   $app->routes->any("/modules" => {%defaults, module => 'modules'} => \&_modules_index);
-  $app->routes->any("/:module" => {%defaults} => [module => qr/[^.]+/] => \&_perldoc);
+  $app->routes->any("/:module" => {%defaults} => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
 }
 
 sub _find_pod($c, $module) {
@@ -57,7 +59,7 @@ sub _find_pod($c, $module) {
 }
 
 sub _html ($c, $src) {
-  my $dom = Mojo::DOM->new(_pod_to_html($src, $c->stash('url_perl_version')));
+  my $dom = Mojo::DOM->new($c->pod_to_html($src, $c->stash('url_perl_version')));
 
   # Rewrite code blocks for syntax highlighting and correct indentation
   for my $e ($dom->find('pre > code')->each) {
@@ -176,7 +178,8 @@ sub _function ($c) {
 
 sub _variable ($c) {
   my $variable = $c->param('variable');
-  my $link = Mojo::DOM->new($c->pod_to_html("=pod\n\nL<< /$variable >>"))->at('a');
+  my $escaped = $c->escape_pod($variable);
+  my $link = Mojo::DOM->new($c->pod_to_html(qq{=pod\n\nL<< /"$escaped" >>}))->at('a');
   my $fragment = defined $link ? Mojo::URL->new($link->attr('href'))->fragment : $variable;
   $c->stash(cpan => Mojo::URL->new("https://metacpan.org/pod/perlvar")->fragment($fragment));
 
@@ -209,7 +212,7 @@ sub _get_function_pod ($c, $function) {
   return undef unless $path && -r $path;
   my $src = path($path)->slurp;
 
-  my $result = _split_functions($src, $function);
+  my $result = $c->split_functions($src, $function);
   return undef unless @$result;
   return join "\n\n", '=over', @$result, '=back';
 }
@@ -219,7 +222,7 @@ sub _get_variable_pod ($c, $variable) {
   return undef unless $path && -r $path;
   my $src = path($path)->slurp;
 
-  my $result = _split_variables($src, $variable);
+  my $result = $c->split_variables($src, $variable);
   return undef unless @$result;
   return join "\n\n", '=over', @$result, '=back';
 }
@@ -263,17 +266,6 @@ sub _get_module_list ($c) {
 
   return undef unless @result;
   return join "\n\n", @result;
-}
-
-sub _pod_to_html ($pod, $url_perl_version = '') {
-  my $parser = MetaCPAN::Pod::XHTML->new;
-  $parser->perldoc_url_prefix($url_perl_version ? "/$url_perl_version/" : '/');
-  $parser->$_('') for qw(html_header html_footer);
-  $parser->anchor_items(1);
-  $parser->output_string(\(my $output));
-  return $@ unless eval { $parser->parse_string_document("$pod"); 1 };
-
-  return $output;
 }
 
 # Edge cases: eval, do, chop, y///, -X, getgrent, __END__
@@ -410,6 +402,22 @@ sub _split_variables ($src, $variable = undef) {
   }
 
   return defined $variable ? \@variable : \@variables;
+}
+
+sub _pod_to_html ($pod, $url_perl_version = '') {
+  my $parser = MetaCPAN::Pod::XHTML->new;
+  $parser->perldoc_url_prefix($url_perl_version ? "/$url_perl_version/" : '/');
+  $parser->$_('') for qw(html_header html_footer);
+  $parser->anchor_items(1);
+  $parser->output_string(\(my $output));
+  return $@ unless eval { $parser->parse_string_document("$pod"); 1 };
+
+  return $output;
+}
+
+my %escapes = ('<' => 'lt', '>' => 'gt', '|' => 'verbar', '/' => 'sol', '"' => 'quot');
+sub _escape_pod ($text) {
+  return $text =~ s/([<>|\/])/E<$escapes{$1}>/gr;
 }
 
 1;
