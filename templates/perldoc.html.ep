@@ -40,6 +40,7 @@
       #wrapperlicious a:hover { color: #2a2a2a }
       #wrapperlicious a img { border: 0 }
       #wrapperlicious :not(pre) > code {
+        color: inherit;
         background-color: rgba(0, 0, 0, 0.04);
         border-radius: 3px;
         font: 0.9em Consolas, Menlo, Monaco, Courier, monospace;
@@ -149,11 +150,13 @@
           %= link_to $module => url_for("$url_prefix/$module")
           % }
           % if (defined stash('function')) {
-            % $source = 'functions/' . stash('function') . '.txt';
-            / <%= link_to stash('function') => url_for("$url_prefix/functions/" . stash('function')) %>
+            % my $function = Mojo::Util::url_escape(stash('function'));
+            % $source = "functions/$function.txt";
+            / <%= link_to stash('function') => url_for("$url_prefix/functions/$function") %>
           % } elsif (defined stash('variable')) {
-            % $source = 'variables/' . stash('variable') . '.txt';
-            / <%= link_to stash('variable') => url_for("$url_prefix/variables/" . stash('variable')) %>
+            % my $variable = Mojo::Util::url_escape(stash('variable'));
+            % $source = "variables/$variable.txt";
+            / <%= link_to stash('variable') => url_for("$url_prefix/variables/$variable") %>
           % }
           <div id="more">
             % if ($module eq 'search') {

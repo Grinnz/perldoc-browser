@@ -115,19 +115,6 @@ sub _html ($c, $src) {
     }
   }
 
-  # Rewrite headers
-  my $highest = first { $dom->find($_)->size } qw(h1 h2 h3 h4);
-  my @parts;
-  for my $e ($dom->find('h1, h2, h3, h4, dt')->each) {
- 
-    push @parts, [] if $e->tag eq ($highest // 'h1') || !@parts;
-    my $link = Mojo::URL->new->fragment($e->{id});
-    my $text = $e->all_text;
-    push @{$parts[-1]}, $text, $link unless $e->tag eq 'dt';
-    my $permalink = $c->link_to('#' => $link, class => 'permalink');
-    $e->content($permalink . $e->content);
-  }
-
   # Insert links on perldoc perl
   if ($c->param('module') eq 'perl') {
     for my $e ($dom->find('pre > code')->each) {
@@ -143,6 +130,18 @@ sub _html ($c, $src) {
       my $text = $e->all_text;
       $e->content($text) if $text =~ s/^use \K([a-z]+)(;|$)/$c->link_to("$1" => Mojo::URL->new("$url_prefix\/$1")) . $2/e;
     }
+  }
+
+  # Rewrite headers
+  my $highest = first { $dom->find($_)->size } qw(h1 h2 h3 h4);
+  my @parts;
+  for my $e ($dom->find('h1, h2, h3, h4, dt')->each) {
+    push @parts, [] if $e->tag eq ($highest // 'h1') || !@parts;
+    my $link = Mojo::URL->new->fragment($e->{id});
+    my $text = $e->all_text;
+    push @{$parts[-1]}, $text, $link unless $e->tag eq 'dt';
+    my $permalink = $c->link_to('#' => $link, class => 'permalink');
+    $e->content($permalink . $e->content);
   }
 
   # Try to find a title
