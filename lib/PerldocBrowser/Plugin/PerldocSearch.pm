@@ -15,6 +15,7 @@ sub register ($self, $app, $conf) {
   $app->helper(index_pod => \&_index_pod);
   $app->helper(index_functions => \&_index_functions);
   $app->helper(index_variables => \&_index_variables);
+  $app->helper(index_faqs => \&_index_faqs);
   $app->helper(clear_index => \&_clear_index);
 
   my %defaults = (
@@ -50,9 +51,23 @@ sub _search ($c) {
   return $c->redirect_to(Mojo::URL->new("$url_prefix/")->path($pod)) if defined $pod;
 
   my $function_results = _function_search($c, $query);
+  my $faq_results = _faq_search($c, $query);
   my $pod_results = _pod_search($c, $query);
 
-  my @paras = ('=encoding UTF-8', '=head1 SEARCH RESULTS', 'B<>', '=head2 Functions', '=over');
+  my @paras = ('=encoding UTF-8');
+  push @paras, '=head2 FAQ', '=over';
+  if (@$faq_results) {
+    foreach my $faq (@$faq_results) {
+      my ($perlfaq, $question, $headline) = ($faq->{perlfaq}, map { $c->escape_pod($_) } @$faq{'question','headline'});
+      $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
+      $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
+      $headline =~ s/\n+/ /g;
+      push @paras, qq{=item L<$perlfaq/"$question">\n\n$headline};
+    }
+  } else {
+    push @paras, '=item I<No results>';
+  }
+  push @paras, '=back', '=head2 Functions', '=over';
   if (@$function_results) {
     foreach my $function (@$function_results) {
       my ($name, $headline) = map { $c->escape_pod($_) } @$function{'name','headline'};
@@ -64,7 +79,7 @@ sub _search ($c) {
   } else {
     push @paras, '=item I<No results>';
   }
-  push @paras, '=back', '=head2 Pod', '=over';
+  push @paras, '=back', '=head2 Documentation', '=over';
   if (@$pod_results) {
     foreach my $page (@$pod_results) {
       my ($name, $abstract, $headline) = map { $c->escape_pod($_) } @$page{'name','abstract','headline'};
@@ -79,18 +94,7 @@ sub _search ($c) {
   push @paras, '=back';
   my $src = join "\n\n", @paras;
 
-  my $dom = Mojo::DOM->new($c->pod_to_html($src, $url_perl_version));
-
-  # Rewrite links to function pages
-  for my $e ($dom->find('a[href]')->each) {
-    next unless $e->attr('href') =~ /^[^#]+perlfunc#(.[^-]*)/;
-    my $function = url_unescape "$1";
-    $e->attr(href => Mojo::URL->new("$url_prefix/functions/$function"))->content($function);
-  }
-
-  # Combine everything to a proper response
-  $c->content_for(perldoc => "$dom");
-  $c->respond_to(txt => {data => $src}, html => sub { $c->render('perldoc', title => 'search', parts => []) });
+  $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
 }
 
 sub _pod_name_match ($c, $query) {
@@ -136,11 +140,19 @@ sub _function_search ($c, $query) {
     ORDER BY "rank" DESC, "name" LIMIT 20}, $query, $headline_opts, $c->stash('perl_version'))->hashes;
 }
 
+sub _faq_search ($c, $query) {
+  return $c->pg->db->query(q{SELECT "perlfaq", "question",
+    ts_rank_cd("indexed", plainto_tsquery('english', $1), 1) AS "rank",
+    ts_headline('english', "question" || ' - ' || "answer", plainto_tsquery('english', $1), $2) AS "headline"
+    FROM "faqs" WHERE "perl_version" = $3 AND "indexed" @@ plainto_tsquery('english', $1)
+    ORDER BY "rank" DESC, "question" LIMIT 20}, $query, $headline_opts, $c->stash('perl_version'))->hashes;
+}
+
 sub _index_pod ($c, $db, $perl_version, $name, $src) {
   my %properties = (perl_version => $perl_version, name => $name, abstract => '', description => '', contents => '');
 
-  unless ($name eq 'perltoc') {
-    my $dom = Mojo::DOM->new($c->pod_to_html($src));
+  unless ($name eq 'perltoc' or $name =~ m/^perlfaq/) {
+    my $dom = Mojo::DOM->new($c->pod_to_html($src, undef, 0));
     my $headings = $dom->find('h1');
 
     my $name_heading = $headings->first(sub { trim($_->all_text) eq 'NAME' });
@@ -185,8 +197,8 @@ sub _index_functions ($c, $db, $perl_version, $src) {
   }
 
   foreach my $function (keys %functions) {
-    my $pod = join "\n\n", '=over', @{$functions{$function}}, '=back';
-    my $dom = Mojo::DOM->new($c->pod_to_html($pod));
+    my $pod = join "\n\n", '=pod', @{$functions{$function}};
+    my $dom = Mojo::DOM->new($c->pod_to_html($pod, undef, 0));
     my $description = trim($dom->all_text);
 
     $db->insert('functions', {
@@ -209,7 +221,7 @@ sub _index_variables ($c, $db, $perl_version, $src) {
       $list_level-- if $para =~ m/^=back/;
       # 0: navigatable, 1: navigatable and returned in search results
       unless ($list_level) {
-        $names{"$1"} = 1 if $para =~ m/\A=item ([\$\@%].+)$/m or $para =~ m/\A=item ([a-zA-Z]+)$/m;
+        $names{"$1"} = 0 if $para =~ m/\A=item ([\$\@%].+)$/m or $para =~ m/\A=item ([a-zA-Z]+)$/m;
       }
       push @block_text, $para if $list_level or $para !~ m/^=item/;
     }
@@ -217,8 +229,8 @@ sub _index_variables ($c, $db, $perl_version, $src) {
   }
 
   foreach my $variable (keys %variables) {
-    my $pod = join "\n\n", '=over', @{$variables{$variable}}, '=back';
-    my $dom = Mojo::DOM->new($c->pod_to_html($pod));
+    my $pod = join "\n\n", '=pod', @{$variables{$variable}};
+    my $dom = Mojo::DOM->new($c->pod_to_html($pod, undef, 0));
     my $description = trim($dom->all_text);
 
     $db->insert('variables', {
@@ -227,6 +239,37 @@ sub _index_variables ($c, $db, $perl_version, $src) {
       description => $description,
     }, {on_conflict => \['("perl_version","name") do update set
       "description"=EXCLUDED."description"']}
+    );
+  }
+}
+
+sub _index_faqs ($c, $db, $perl_version, $perlfaq, $src) {
+  my $blocks = $c->split_faqs($src);
+  my %faqs;
+  foreach my $block (@$blocks) {
+    my (@block_text, %questions);
+    foreach my $para (@$block) {
+      # 0: navigatable, 1: navigatable and returned in search results
+      if ($para =~ m/^=head2 (.+)/) {
+        $questions{"$1"} = 1;
+      } else {
+        push @block_text, $para;
+      }
+    }
+    push @{$faqs{$_}}, $questions{$_} ? @block_text : () for keys %questions;
+  }
+
+  foreach my $question (keys %faqs) {
+    my $dom = Mojo::DOM->new($c->pod_to_html(join("\n\n", '=pod', @{$faqs{$question}}), undef, 0));
+    my $answer = trim($dom->all_text);
+
+    $db->insert('faqs', {
+      perl_version => $perl_version,
+      perlfaq => $perlfaq,
+      question => $question,
+      answer => $answer,
+    }, {on_conflict => \['("perl_version","perlfaq","question") do update set
+      "answer"=EXCLUDED."answer"']}
     );
   }
 }

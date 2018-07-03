@@ -82,3 +82,32 @@ create trigger "variables_indexed_trigger" before insert or update on "variables
 --2 down
 drop table if exists "variables";
 drop function if exists "variables_update_indexed";
+
+--3 up
+create table "faqs" (
+  id serial primary key,
+  perl_version text not null,
+  perlfaq text not null,
+  question text not null,
+  answer text not null,
+  indexed tsvector not null,
+  constraint "faqs_perl_version_perlfaq_question_key" unique ("perl_version","perlfaq","question")
+);
+create index "faqs_indexed" on "faqs" using gin ("indexed");
+create index "faqs_question" on "faqs" (lower("question") text_pattern_ops);
+
+create or replace function "faqs_update_indexed"() returns trigger as $$
+begin
+  "new"."indexed" := case when "new"."answer"='' then to_tsvector('') else
+    setweight(to_tsvector('english',"new"."question"),'A') ||
+    setweight(to_tsvector('english',"new"."answer"),'B') end;
+  return new;
+end
+$$ language plpgsql;
+
+create trigger "faqs_indexed_trigger" before insert or update on "faqs"
+  for each row execute procedure faqs_update_indexed();
+
+--3 down
+drop table if exists "faqs";
+drop function if exists "faqs_update_indexed";

@@ -17,10 +17,12 @@ use Pod::Simple::Search;
 use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
-  $app->helper(split_functions => sub { my $c = shift; _split_functions(@_) });
-  $app->helper(split_variables => sub { my $c = shift; _split_variables(@_) });
-  $app->helper(pod_to_html => sub { my $c = shift; _pod_to_html(@_) });
-  $app->helper(escape_pod => sub { my $c = shift; _escape_pod(@_) });
+  $app->helper(split_functions => sub ($c, @args) { _split_functions(@args) });
+  $app->helper(split_variables => sub ($c, @args) { _split_variables(@args) });
+  $app->helper(split_faqs => sub ($c, @args) { _split_faqs(@args) });
+  $app->helper(pod_to_html => sub ($c, @args) { _pod_to_html(@args) });
+  $app->helper(escape_pod => sub ($c, @args) { _escape_pod(@args) });
+  $app->helper(render_perldoc_html => \&_html);
 
   my %defaults = (
     module => 'perl',
@@ -132,10 +134,21 @@ sub _html ($c, $src) {
     }
   }
 
+  if ($c->param('module') eq 'search') {
+    # Rewrite links to function pages
+    for my $e ($dom->find('a[href]')->each) {
+      next unless $e->attr('href') =~ /^[^#]+perlfunc#(.[^-]*)/;
+      my $function = url_unescape "$1";
+      $e->attr(href => Mojo::URL->new("$url_prefix/functions/$function"))->content($function);
+    }
+  }
+
   # Rewrite headers
   my $highest = first { $dom->find($_)->size } qw(h1 h2 h3 h4);
   my @parts;
-  for my $e ($dom->find('h1, h2, h3, h4, dt')->each) {
+  my $linkable = 'h1, h2, h3, h4';
+  $linkable .= ', dt' unless $c->param('module') eq 'search';
+  for my $e ($dom->find($linkable)->each) {
     push @parts, [] if $e->tag eq ($highest // 'h1') || !@parts;
     my $link = Mojo::URL->new->fragment($e->{id});
     my $text = $e->all_text;
@@ -145,7 +158,7 @@ sub _html ($c, $src) {
   }
 
   # Try to find a title
-  my $title = $c->param('function') // $c->param('module');
+  my $title = $c->param('variable') // $c->param('function') // $c->param('module');
   $dom->find('h1 + p')->first(sub { $title = shift->text });
 
   # Combine everything to a proper response
@@ -162,7 +175,7 @@ sub _perldoc ($c) {
   return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
 
   my $src = path($path)->slurp;
-  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
+  $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
 }
 
 sub _function ($c) {
@@ -172,7 +185,7 @@ sub _function ($c) {
   my $src = _get_function_pod($c, $function);
   return $c->redirect_to($c->stash('cpan')) unless defined $src;
 
-  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
+  $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
 }
 
 sub _variable ($c) {
@@ -185,7 +198,7 @@ sub _variable ($c) {
   my $src = _get_variable_pod($c, $variable);
   return $c->redirect_to($c->stash('cpan')) unless defined $src;
 
-  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
+  $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
 }
 
 sub _functions_index ($c) {
@@ -194,7 +207,7 @@ sub _functions_index ($c) {
   my $src = _get_function_categories($c);
   return $c->redirect_to($c->stash('cpan')) unless defined $src;
 
-  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
+  $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
 }
 
 sub _modules_index ($c) {
@@ -203,7 +216,7 @@ sub _modules_index ($c) {
   my $src = _get_module_list($c);
   return $c->redirect_to($c->stash('cpan')) unless defined $src;
 
-  $c->respond_to(txt => {data => $src}, html => sub { _html($c, $src) });
+  $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
 }
 
 sub _get_function_pod ($c, $function) {
@@ -403,11 +416,61 @@ sub _split_variables ($src, $variable = undef) {
   return defined $variable ? \@variable : \@variables;
 }
 
-sub _pod_to_html ($pod, $url_perl_version = '') {
+sub _split_faqs ($src, $question = undef) {
+  my $found = '';
+  my ($started, @faq, @faqs);
+
+  foreach my $para (split /\n\n+/, $src) {
+    $found = 'end' if $found and $para =~ m/^=head1/;
+
+    my ($is_header, $is_question_header);
+    $is_header = 1 if $para =~ m/^=head2/;
+    if ($is_header) {
+      if (defined $question) {
+        # see if this is the start or end of the question we want
+        $is_question_header = 1 if $para =~ m/^=head2 \Q$question\E(\n|$)/;
+        $found = 'header' if !$found and $is_question_header;
+        $found = 'end' if $found eq 'content' and !$is_question_header;
+      } else {
+        # this indicates a new faq section if we found content
+        $found = 'header' if !$found;
+        $found = 'end' if $found eq 'content';
+      }
+    } elsif ($found eq 'header') {
+      # faq answer if we're in a faq section
+      $found = 'content' unless $found eq 'end';
+    } elsif (!$found and defined $question) {
+      # skip content if this isn't the faq section we're looking for
+      @faq = ();
+      next;
+    }
+
+    if ($found eq 'end') {
+      if (defined $question) {
+        # we're done
+        last;
+      } else {
+        # add this faq section
+        push @faqs, [@faq];
+      }
+      # start next faq section
+      @faq = ();
+      $found = $is_header && (!defined $question or $is_question_header) ? 'header' : '';
+    }
+
+    # faq section
+    push @faq, $para;
+  }
+
+  return defined $question ? \@faq : \@faqs;
+}
+
+sub _pod_to_html ($pod, $url_perl_version = '', $with_errata = 1) {
   my $parser = MetaCPAN::Pod::XHTML->new;
   $parser->perldoc_url_prefix($url_perl_version ? "/$url_perl_version/" : '/');
   $parser->$_('') for qw(html_header html_footer);
   $parser->anchor_items(1);
+  $parser->no_errata_section(1) unless $with_errata;
   $parser->output_string(\(my $output));
   return $@ unless eval { $parser->parse_string_document("$pod"); 1 };
 
