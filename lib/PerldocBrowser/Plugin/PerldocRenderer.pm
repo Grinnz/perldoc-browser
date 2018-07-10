@@ -8,6 +8,7 @@ use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
 use List::Util 'first';
 use MetaCPAN::Pod::XHTML;
+use Module::Metadata;
 use Mojo::ByteStream;
 use Mojo::DOM;
 use Mojo::File 'path';
@@ -58,6 +59,11 @@ sub register ($self, $app, $conf) {
 sub _find_pod($c, $module) {
   my $inc_dirs = $c->inc_dirs($c->stash('perl_version'));
   return Pod::Simple::Search->new->inc(0)->find($module, @$inc_dirs);
+}
+
+sub _find_module($c, $module) {
+  my $inc_dirs = $c->inc_dirs($c->stash('perl_version'));
+  return Module::Metadata->new_from_module($module, inc => $inc_dirs);
 }
 
 sub _html ($c, $src) {
@@ -173,6 +179,10 @@ sub _perldoc ($c) {
 
   my $path = _find_pod($c, $module);
   return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
+
+  if (defined(my $module_meta = _find_module($c, $module))) {
+    $c->stash(module_version => $module_meta->version($module));
+  }
 
   my $src = path($path)->slurp;
   $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });

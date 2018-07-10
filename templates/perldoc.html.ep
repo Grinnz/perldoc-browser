@@ -157,6 +157,8 @@
             % my $variable = Mojo::Util::url_escape(stash('variable'));
             % $source = "variables/$variable.txt";
             / <%= link_to stash('variable') => url_for("$url_prefix/variables/$variable") %>
+          % } elsif (defined stash('module_version')) {
+            (version <%= stash('module_version') %>)
           % }
           <div id="more">
             % if ($module eq 'search') {
