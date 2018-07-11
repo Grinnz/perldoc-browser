@@ -135,7 +135,7 @@ sub _pod_search ($c, $query) {
 sub _function_search ($c, $query) {
   return $c->pg->db->query(q{SELECT "name",
     ts_rank_cd("indexed", plainto_tsquery('english', $1), 1) AS "rank",
-    ts_headline('english', "name" || ' - ' || "description", plainto_tsquery('english', $1), $2) AS "headline"
+    ts_headline('english', "description", plainto_tsquery('english', $1), $2) AS "headline"
     FROM "functions" WHERE "perl_version" = $3 AND "indexed" @@ plainto_tsquery('english', $1)
     ORDER BY "rank" DESC, "name" LIMIT 20}, $query, $headline_opts, $c->stash('perl_version'))->hashes;
 }
@@ -143,7 +143,7 @@ sub _function_search ($c, $query) {
 sub _faq_search ($c, $query) {
   return $c->pg->db->query(q{SELECT "perlfaq", "question",
     ts_rank_cd("indexed", plainto_tsquery('english', $1), 1) AS "rank",
-    ts_headline('english', "question" || ' - ' || "answer", plainto_tsquery('english', $1), $2) AS "headline"
+    ts_headline('english', "answer", plainto_tsquery('english', $1), $2) AS "headline"
     FROM "faqs" WHERE "perl_version" = $3 AND "indexed" @@ plainto_tsquery('english', $1)
     ORDER BY "rank" DESC, "question" LIMIT 20}, $query, $headline_opts, $c->stash('perl_version'))->hashes;
 }
@@ -180,24 +180,26 @@ sub _index_functions ($c, $db, $perl_version, $src) {
   my $blocks = $c->split_functions($src);
   my %functions;
   foreach my $block (@$blocks) {
-    my ($list_level, $is_filetest, @block_text, %names) = (0);
+    my ($list_level, $is_filetest, $indexed_name, %names) = (0);
     foreach my $para (@$block) {
       $list_level++ if $para =~ m/^=over/;
       $list_level-- if $para =~ m/^=back/;
       # 0: navigatable, 1: navigatable and returned in search results
       unless ($list_level) {
-        $names{"$1"} = 1 if $para =~ m/^=item (?:I<)?([-\w\/]+)/;
+        if ($para =~ m/^=item (?:I<)?([-\w\/]+)/) {
+          $names{"$1"} //= $indexed_name ? 0 : 1;
+          $indexed_name = 1;
+        }
         $names{"$1"} //= 0 if $para =~ m/^=item (?:I<)?([-\w]+)/;
         $is_filetest = 1 if $para =~ m/^=item (?:I<)?-X/;
       }
       do { $names{"$_"} //= 0 for $para =~ m/^\s+(-[a-zA-Z])\s/mg } if $is_filetest;
-      push @block_text, $para if $list_level or $para !~ m/^=item/;
     }
-    push @{$functions{$_}}, $names{$_} ? @block_text : () for keys %names;
+    push @{$functions{$_}}, $names{$_} ? @$block : () for keys %names;
   }
 
   foreach my $function (keys %functions) {
-    my $pod = join "\n\n", '=pod', @{$functions{$function}};
+    my $pod = join "\n\n", '=over', @{$functions{$function}}, '=back';
     my $dom = Mojo::DOM->new($c->pod_to_html($pod, undef, 0));
     my $description = trim($dom->all_text);
 
@@ -215,7 +217,7 @@ sub _index_variables ($c, $db, $perl_version, $src) {
   my $blocks = $c->split_variables($src);
   my %variables;
   foreach my $block (@$blocks) {
-    my ($list_level, @block_text, %names) = (0);
+    my ($list_level, %names) = (0);
     foreach my $para (@$block) {
       $list_level++ if $para =~ m/^=over/;
       $list_level-- if $para =~ m/^=back/;
@@ -223,13 +225,12 @@ sub _index_variables ($c, $db, $perl_version, $src) {
       unless ($list_level) {
         $names{"$1"} = 0 if $para =~ m/\A=item ([\$\@%].+)$/m or $para =~ m/\A=item ([a-zA-Z]+)$/m;
       }
-      push @block_text, $para if $list_level or $para !~ m/^=item/;
     }
-    push @{$variables{$_}}, $names{$_} ? @block_text : () for keys %names;
+    push @{$variables{$_}}, $names{$_} ? @$block : () for keys %names;
   }
 
   foreach my $variable (keys %variables) {
-    my $pod = join "\n\n", '=pod', @{$variables{$variable}};
+    my $pod = join "\n\n", '=over', @{$variables{$variable}}, '=back';
     my $dom = Mojo::DOM->new($c->pod_to_html($pod, undef, 0));
     my $description = trim($dom->all_text);
 
@@ -247,16 +248,12 @@ sub _index_faqs ($c, $db, $perl_version, $perlfaq, $src) {
   my $blocks = $c->split_faqs($src);
   my %faqs;
   foreach my $block (@$blocks) {
-    my (@block_text, %questions);
+    my %questions;
     foreach my $para (@$block) {
       # 0: navigatable, 1: navigatable and returned in search results
-      if ($para =~ m/^=head2 (.+)/) {
-        $questions{"$1"} = 1;
-      } else {
-        push @block_text, $para;
-      }
+      $questions{"$1"} = 1 if $para =~ m/^=head2 (.+)/;
     }
-    push @{$faqs{$_}}, $questions{$_} ? @block_text : () for keys %questions;
+    push @{$faqs{$_}}, $questions{$_} ? @$block : () for keys %questions;
   }
 
   foreach my $question (keys %faqs) {
