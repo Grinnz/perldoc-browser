@@ -111,3 +111,40 @@ create trigger "faqs_indexed_trigger" before insert or update on "faqs"
 --3 down
 drop table if exists "faqs";
 drop function if exists "faqs_update_indexed";
+
+--4 up
+drop trigger if exists "variables_indexed_trigger" on "variables";
+drop function if exists "variables_update_indexed"();
+alter table "variables" drop column "description", drop column "indexed";
+
+create or replace function "pods_update_indexed"() returns trigger as $$
+begin
+  "new"."indexed" := case when "new"."contents"='' then to_tsvector('') else
+    setweight(to_tsvector('english',translate("new"."name",'/.','  ')),'A') ||
+    setweight(to_tsvector('english',translate("new"."abstract",'/.','  ')),'B') ||
+    setweight(to_tsvector('english',translate("new"."description",'/.','  ')),'C') ||
+    setweight(to_tsvector('english',translate("new"."contents",'/.','  ')),'D') end;
+  return new;
+end
+$$ language plpgsql;
+
+create or replace function "functions_update_indexed"() returns trigger as $$
+begin
+  "new"."indexed" := case when "new"."description"='' then to_tsvector('') else
+    setweight(to_tsvector('english',translate("new"."name",'/.','  ')),'A') ||
+    setweight(to_tsvector('english',translate("new"."description",'/.','  ')),'B') end;
+  return new;
+end
+$$ language plpgsql;
+
+create or replace function "faqs_update_indexed"() returns trigger as $$
+begin
+  "new"."indexed" := case when "new"."answer"='' then to_tsvector('') else
+    setweight(to_tsvector('english',translate("new"."question",'/.','  ')),'A') ||
+    setweight(to_tsvector('english',translate("new"."answer",'/.','  ')),'B') end;
+  return new;
+end
+$$ language plpgsql;
+
+--4 down
+alter table "variables" add column "description" text not null, add column "indexed" tsvector not null;

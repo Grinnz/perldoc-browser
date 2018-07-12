@@ -125,6 +125,7 @@ sub _digits_variable_match ($c, $query) {
 my $headline_opts = 'StartSel="__HEADLINE_START__", StopSel="__HEADLINE_STOP__", MaxWords=15, MinWords=10, MaxFragments=2';
 
 sub _pod_search ($c, $query) {
+  $query =~ tr!/.!  !;
   return $c->pg->db->query(q{SELECT "name", "abstract",
     ts_rank_cd("indexed", plainto_tsquery('english', $1), 1) AS "rank",
     ts_headline('english', "contents", plainto_tsquery('english', $1), $2) AS "headline"
@@ -133,6 +134,7 @@ sub _pod_search ($c, $query) {
 }
 
 sub _function_search ($c, $query) {
+  $query =~ tr!/.!  !;
   return $c->pg->db->query(q{SELECT "name",
     ts_rank_cd("indexed", plainto_tsquery('english', $1), 1) AS "rank",
     ts_headline('english', "description", plainto_tsquery('english', $1), $2) AS "headline"
@@ -141,6 +143,7 @@ sub _function_search ($c, $query) {
 }
 
 sub _faq_search ($c, $query) {
+  $query =~ tr!/.!  !;
   return $c->pg->db->query(q{SELECT "perlfaq", "question",
     ts_rank_cd("indexed", plainto_tsquery('english', $1), 1) AS "rank",
     ts_headline('english', "answer", plainto_tsquery('english', $1), $2) AS "headline"
@@ -237,9 +240,7 @@ sub _index_variables ($c, $db, $perl_version, $src) {
     $db->insert('variables', {
       perl_version => $perl_version,
       name => $variable,
-      description => $description,
-    }, {on_conflict => \['("perl_version","name") do update set
-      "description"=EXCLUDED."description"']}
+    }, {on_conflict => \['("perl_version","name") do nothing']}
     );
   }
 }
