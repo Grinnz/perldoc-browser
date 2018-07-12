@@ -148,3 +148,39 @@ $$ language plpgsql;
 
 --4 down
 alter table "variables" add column "description" text not null, add column "indexed" tsvector not null;
+
+--5 up
+create text search configuration "english_tag" (copy = "english");
+alter text search configuration "english_tag" add mapping for tag, entity with simple;
+
+create or replace function "pods_update_indexed"() returns trigger as $$
+begin
+  "new"."indexed" := case when "new"."contents"='' then to_tsvector('') else
+    setweight(to_tsvector('english_tag',translate("new"."name",'/.','  ')),'A') ||
+    setweight(to_tsvector('english_tag',translate("new"."abstract",'/.','  ')),'B') ||
+    setweight(to_tsvector('english_tag',translate("new"."description",'/.','  ')),'C') ||
+    setweight(to_tsvector('english_tag',translate("new"."contents",'/.','  ')),'D') end;
+  return new;
+end
+$$ language plpgsql;
+
+create or replace function "functions_update_indexed"() returns trigger as $$
+begin
+  "new"."indexed" := case when "new"."description"='' then to_tsvector('') else
+    setweight(to_tsvector('english_tag',translate("new"."name",'/.','  ')),'A') ||
+    setweight(to_tsvector('english_tag',translate("new"."description",'/.','  ')),'B') end;
+  return new;
+end
+$$ language plpgsql;
+
+create or replace function "faqs_update_indexed"() returns trigger as $$
+begin
+  "new"."indexed" := case when "new"."answer"='' then to_tsvector('') else
+    setweight(to_tsvector('english_tag',translate("new"."question",'/.','  ')),'A') ||
+    setweight(to_tsvector('english_tag',translate("new"."answer",'/.','  ')),'B') end;
+  return new;
+end
+$$ language plpgsql;
+
+--5 down
+drop text search configuration if exists "english_tag";
