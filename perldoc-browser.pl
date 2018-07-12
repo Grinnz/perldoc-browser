@@ -18,14 +18,6 @@ push @{app->plugins->namespaces}, 'PerldocBrowser::Plugin';
 
 plugin Config => {file => 'perldoc-browser.conf', default => {}};
 
-if (!app->config->{no_search}) {
-  require Mojo::Pg;
-  my $url = app->config->{pg} // die "Postgresql connection must be configured in 'pg'\n";
-  my $pg = Mojo::Pg->new($url);
-  $pg->migrations->from_file(app->home->child('perldoc-browser.sql'))->migrate;
-  helper pg => sub { $pg };
-}
-
 my $perls_dir = path(app->config->{perls_dir} // app->home->child('perls'));
 helper perls_dir => sub ($c) { $perls_dir };
 
@@ -76,7 +68,7 @@ any '/#url_perl_version/contact' => {module => 'contact', perl_version => $lates
     $c->render('perldoc', title => 'contact', parts => []);
   });
 };
-plugin 'PerldocSearch' unless app->config->{no_search};
+plugin 'PerldocSearchPg' unless app->config->{no_search};
 plugin 'PerldocRenderer';
 
 app->start;

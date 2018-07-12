@@ -1,4 +1,4 @@
-package PerldocBrowser::Plugin::PerldocSearch;
+package PerldocBrowser::Plugin::PerldocSearchPg;
 
 # This software is Copyright (c) 2018 Dan Book <dbook@cpan.org>.
 # This is free software, licensed under:
@@ -6,12 +6,21 @@ package PerldocBrowser::Plugin::PerldocSearch;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
+use List::Util 'all';
 use Mojo::DOM;
+use Mojo::File 'path';
+use Mojo::Pg;
 use Mojo::URL;
 use Mojo::Util qw(url_unescape trim);
 use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
+  my $url = $app->config->{pg} // die "Postgresql connection must be configured in 'pg'\n";
+  my $pg = Mojo::Pg->new($url);
+  $pg->migrations->from_file($app->home->child('perldoc-browser.sql'))->migrate;
+  $app->helper(pg => sub { $pg });
+
+  $app->helper(index_perl_version => \&_index_perl_version);
   $app->helper(index_pod => \&_index_pod);
   $app->helper(index_functions => \&_index_functions);
   $app->helper(index_variables => \&_index_variables);
@@ -149,6 +158,31 @@ sub _faq_search ($c, $query) {
     ts_headline('english_tag', "answer", plainto_tsquery('english_tag', $1), $2) AS "headline"
     FROM "faqs" WHERE "perl_version" = $3 AND "indexed" @@ plainto_tsquery('english_tag', $1)
     ORDER BY "rank" DESC, "question" LIMIT 20}, $query, $headline_opts, $c->stash('perl_version'))->hashes;
+}
+
+sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
+  my $db = $c->pg->db;
+  my $tx = $db->begin;
+  $c->clear_index($db, $perl_version, 'functions') if exists $pods->{perlfunc};
+  $c->clear_index($db, $perl_version, 'variables') if exists $pods->{perlvar};
+  $c->clear_index($db, $perl_version, 'faqs') if all { exists $pods->{"perlfaq$_"} } 1..9;
+  $c->clear_index($db, $perl_version, 'pods') if $index_pods;
+  foreach my $pod (keys %$pods) {
+    print "Indexing $pod for $perl_version ($pods->{$pod})\n";
+    my $src = path($pods->{$pod})->slurp;
+    $c->index_pod($db, $perl_version, $pod, $src) if $index_pods;
+    if ($pod eq 'perlfunc') {
+      print "Indexing functions for $perl_version\n";
+      $c->index_functions($db, $perl_version, $src);
+    } elsif ($pod eq 'perlvar') {
+      print "Indexing variables for $perl_version\n";
+      $c->index_variables($db, $perl_version, $src);
+    } elsif ($pod =~ m/^perlfaq[1-9]$/) {
+      print "Indexing $pod FAQs for $perl_version\n";
+      $c->index_faqs($db, $perl_version, $pod, $src);
+    }
+  }
+  $tx->commit;
 }
 
 sub _index_pod ($c, $db, $perl_version, $name, $src) {
