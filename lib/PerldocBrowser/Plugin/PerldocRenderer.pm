@@ -15,6 +15,7 @@ use Mojo::File 'path';
 use Mojo::URL;
 use Mojo::Util qw(trim url_unescape);
 use Pod::Simple::Search;
+use Pod::Simple::TextContent;
 use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
@@ -22,6 +23,7 @@ sub register ($self, $app, $conf) {
   $app->helper(split_variables => sub ($c, @args) { _split_variables(@args) });
   $app->helper(split_faqs => sub ($c, @args) { _split_faqs(@args) });
   $app->helper(pod_to_html => sub ($c, @args) { _pod_to_html(@args) });
+  $app->helper(pod_to_text_content => sub ($c, @args) { _pod_to_text_content(@args) });
   $app->helper(escape_pod => sub ($c, @args) { _escape_pod(@args) });
   $app->helper(render_perldoc_html => \&_html);
 
@@ -318,7 +320,7 @@ sub _split_functions ($src, $function = undef) {
       if ($is_header) {
         # new function heading
         if (defined $function) {
-          my $heading = trim(Mojo::DOM->new(_pod_to_html("=over\n\n$para\n\n=back", undef, 0))->all_text);
+          my $heading = _pod_to_text_content("=over\n\n$para\n\n=back");
           # check -X section later for filetest operators
           $filetest_section = 1 if !$found and $heading =~ m/^-X\b/ and $function =~ m/^-[a-zA-WYZ]$/;
           # see if this is the start or end of the function we want
@@ -388,7 +390,7 @@ sub _split_variables ($src, $variable = undef) {
       $is_header = 1 if $para =~ m/^=item/;
       if ($is_header) {
         if (defined $variable) {
-          my $heading = trim(Mojo::DOM->new(_pod_to_html("=over\n\n$para\n\n=back", undef, 0))->all_text);
+          my $heading = _pod_to_text_content("=over\n\n$para\n\n=back");
           # see if this is the start or end of the variable we want
           $is_variable_header = 1 if $heading eq $variable;
           $found = 'header' if !$found and $is_variable_header;
@@ -439,7 +441,7 @@ sub _split_faqs ($src, $question = undef) {
     $is_header = 1 if $para =~ m/^=head2/;
     if ($is_header) {
       if (defined $question) {
-        my $heading = trim(Mojo::DOM->new(_pod_to_html("=pod\n\n$para", undef, 0))->all_text);
+        my $heading = _pod_to_text_content("=pod\n\n$para");
         # see if this is the start or end of the question we want
         $is_question_header = 1 if $heading eq $question;
         $found = 'header' if !$found and $is_question_header;
@@ -485,9 +487,16 @@ sub _pod_to_html ($pod, $url_perl_version = '', $with_errata = 1) {
   $parser->anchor_items(1);
   $parser->no_errata_section(1) unless $with_errata;
   $parser->output_string(\(my $output));
-  return $@ unless eval { $parser->parse_string_document("$pod"); 1 };
-
+  $parser->parse_string_document("$pod");
   return $output;
+}
+
+sub _pod_to_text_content ($pod) {
+  my $parser = Pod::Simple::TextContent->new;
+  $parser->no_errata_section(1);
+  $parser->output_string(\(my $output));
+  $parser->parse_string_document("$pod");
+  return trim($output);
 }
 
 my %escapes = ('<' => 'lt', '>' => 'gt', '|' => 'verbar', '/' => 'sol', '"' => 'quot');

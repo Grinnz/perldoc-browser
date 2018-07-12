@@ -125,7 +125,7 @@ sub _digits_variable_match ($c, $query) {
 my $headline_opts = 'StartSel="__HEADLINE_START__", StopSel="__HEADLINE_STOP__", MaxWords=15, MinWords=10, MaxFragments=2';
 
 sub _pod_search ($c, $query) {
-  $query =~ tr!/.!  !;
+  $query =~ tr!/.!  !; # postgres likes to tokenize foo.bar and foo/bar funny
   return $c->pg->db->query(q{SELECT "name", "abstract",
     ts_rank_cd("indexed", plainto_tsquery('english', $1), 1) AS "rank",
     ts_headline('english', "contents", plainto_tsquery('english', $1), $2) AS "headline"
@@ -189,7 +189,7 @@ sub _index_functions ($c, $db, $perl_version, $src) {
       $list_level-- if $para =~ m/^=back/;
       # 0: navigatable, 1: navigatable and returned in search results
       if (!$list_level and $para =~ m/^=item/) {
-        my $heading = trim(Mojo::DOM->new($c->pod_to_html("=over\n\n$para\n\n=back", undef, 0))->all_text);
+        my $heading = $c->pod_to_text_content("=over\n\n$para\n\n=back");
         if ($heading =~ m/^([-\w\/]+)/) {
           $names{"$1"} //= $indexed_name ? 0 : 1;
           $indexed_name = 1;
@@ -204,7 +204,7 @@ sub _index_functions ($c, $db, $perl_version, $src) {
 
   foreach my $function (keys %functions) {
     my $pod = join "\n\n", '=over', @{$functions{$function}}, '=back';
-    my $description = trim(Mojo::DOM->new($c->pod_to_html($pod, undef, 0))->all_text);
+    my $description = $c->pod_to_text_content($pod);
 
     $db->insert('functions', {
       perl_version => $perl_version,
@@ -226,7 +226,7 @@ sub _index_variables ($c, $db, $perl_version, $src) {
       $list_level-- if $para =~ m/^=back/;
       # 0: navigatable, 1: navigatable and returned in search results
       if (!$list_level and $para =~ m/^=item/) {
-        my $heading = trim(Mojo::DOM->new($c->pod_to_html("=over\n\n$para\n\n=back", undef, 0))->all_text);
+        my $heading = $c->pod_to_text_content("=over\n\n$para\n\n=back");
         $names{"$1"} = 0 if $heading =~ m/^([\$\@%].+)$/ or $heading =~ m/^([a-zA-Z]+)$/;
       }
     }
@@ -235,7 +235,7 @@ sub _index_variables ($c, $db, $perl_version, $src) {
 
   foreach my $variable (keys %variables) {
     my $pod = join "\n\n", '=over', @{$variables{$variable}}, '=back';
-    my $description = trim(Mojo::DOM->new($c->pod_to_html($pod, undef, 0))->all_text);
+    my $description = $c->pod_to_text_content($pod);
 
     $db->insert('variables', {
       perl_version => $perl_version,
@@ -253,7 +253,7 @@ sub _index_faqs ($c, $db, $perl_version, $perlfaq, $src) {
     foreach my $para (@$block) {
       # 0: navigatable, 1: navigatable and returned in search results
       if ($para =~ m/^=head2/) {
-        my $heading = trim(Mojo::DOM->new($c->pod_to_html("=pod\n\n$para", undef, 0))->all_text);
+        my $heading = $c->pod_to_text_content("=pod\n\n$para");
         $questions{$heading} = 1;
       }
     }
@@ -261,7 +261,7 @@ sub _index_faqs ($c, $db, $perl_version, $perlfaq, $src) {
   }
 
   foreach my $question (keys %faqs) {
-    my $answer = trim(Mojo::DOM->new($c->pod_to_html(join("\n\n", '=pod', @{$faqs{$question}}), undef, 0))->all_text);
+    my $answer = $c->pod_to_text_content(join "\n\n", '=pod', @{$faqs{$question}});
 
     $db->insert('faqs', {
       perl_version => $perl_version,
