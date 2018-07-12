@@ -118,7 +118,7 @@ sub _variable_name_match ($c, $query) {
 sub _digits_variable_match ($c, $query) {
   return undef unless $query =~ m/^\$[1-9][0-9]*$/;
   my $match = $c->pg->db->query('SELECT "name" FROM "variables" WHERE "perl_version" = $1
-    AND lower("name") LIKE lower($2) ORDER BY "name" LIMIT 1', $c->stash('perl_version'), '$<I<digits>>%')->arrays->first;
+    AND lower("name") LIKE lower($2) ORDER BY "name" LIMIT 1', $c->stash('perl_version'), '$<digits>%')->arrays->first;
   return defined $match ? $match->[0] : undef;
 }
 
@@ -185,13 +185,14 @@ sub _index_functions ($c, $db, $perl_version, $src) {
       $list_level++ if $para =~ m/^=over/;
       $list_level-- if $para =~ m/^=back/;
       # 0: navigatable, 1: navigatable and returned in search results
-      unless ($list_level) {
-        if ($para =~ m/^=item (?:I<)?([-\w\/]+)/) {
+      if (!$list_level and $para =~ m/^=item/) {
+        my $heading = trim(Mojo::DOM->new($c->pod_to_html("=over\n\n$para\n\n=back", undef, 0))->all_text);
+        if ($heading =~ m/^([-\w\/]+)/) {
           $names{"$1"} //= $indexed_name ? 0 : 1;
           $indexed_name = 1;
         }
-        $names{"$1"} //= 0 if $para =~ m/^=item (?:I<)?([-\w]+)/;
-        $is_filetest = 1 if $para =~ m/^=item (?:I<)?-X/;
+        $names{"$1"} //= 0 if $heading =~ m/^([-\w]+)/;
+        $is_filetest = 1 if $heading =~ m/^-X\b/;
       }
       do { $names{"$_"} //= 0 for $para =~ m/^\s+(-[a-zA-Z])\s/mg } if $is_filetest;
     }
@@ -200,8 +201,7 @@ sub _index_functions ($c, $db, $perl_version, $src) {
 
   foreach my $function (keys %functions) {
     my $pod = join "\n\n", '=over', @{$functions{$function}}, '=back';
-    my $dom = Mojo::DOM->new($c->pod_to_html($pod, undef, 0));
-    my $description = trim($dom->all_text);
+    my $description = trim(Mojo::DOM->new($c->pod_to_html($pod, undef, 0))->all_text);
 
     $db->insert('functions', {
       perl_version => $perl_version,
@@ -222,8 +222,9 @@ sub _index_variables ($c, $db, $perl_version, $src) {
       $list_level++ if $para =~ m/^=over/;
       $list_level-- if $para =~ m/^=back/;
       # 0: navigatable, 1: navigatable and returned in search results
-      unless ($list_level) {
-        $names{"$1"} = 0 if $para =~ m/\A=item ([\$\@%].+)$/m or $para =~ m/\A=item ([a-zA-Z]+)$/m;
+      if (!$list_level and $para =~ m/^=item/) {
+        my $heading = trim(Mojo::DOM->new($c->pod_to_html("=over\n\n$para\n\n=back", undef, 0))->all_text);
+        $names{"$1"} = 0 if $heading =~ m/^([\$\@%].+)$/ or $heading =~ m/^([a-zA-Z]+)$/;
       }
     }
     push @{$variables{$_}}, $names{$_} ? @$block : () for keys %names;
@@ -231,8 +232,7 @@ sub _index_variables ($c, $db, $perl_version, $src) {
 
   foreach my $variable (keys %variables) {
     my $pod = join "\n\n", '=over', @{$variables{$variable}}, '=back';
-    my $dom = Mojo::DOM->new($c->pod_to_html($pod, undef, 0));
-    my $description = trim($dom->all_text);
+    my $description = trim(Mojo::DOM->new($c->pod_to_html($pod, undef, 0))->all_text);
 
     $db->insert('variables', {
       perl_version => $perl_version,
@@ -251,14 +251,16 @@ sub _index_faqs ($c, $db, $perl_version, $perlfaq, $src) {
     my %questions;
     foreach my $para (@$block) {
       # 0: navigatable, 1: navigatable and returned in search results
-      $questions{"$1"} = 1 if $para =~ m/^=head2 (.+)/;
+      if ($para =~ m/^=head2/) {
+        my $heading = trim(Mojo::DOM->new($c->pod_to_html("=pod\n\n$para", undef, 0))->all_text);
+        $questions{$heading} = 1;
+      }
     }
     push @{$faqs{$_}}, $questions{$_} ? @$block : () for keys %questions;
   }
 
   foreach my $question (keys %faqs) {
-    my $dom = Mojo::DOM->new($c->pod_to_html(join("\n\n", '=pod', @{$faqs{$question}}), undef, 0));
-    my $answer = trim($dom->all_text);
+    my $answer = trim(Mojo::DOM->new($c->pod_to_html(join("\n\n", '=pod', @{$faqs{$question}}), undef, 0))->all_text);
 
     $db->insert('faqs', {
       perl_version => $perl_version,

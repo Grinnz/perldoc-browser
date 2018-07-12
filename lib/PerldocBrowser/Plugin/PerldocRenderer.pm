@@ -13,7 +13,7 @@ use Mojo::ByteStream;
 use Mojo::DOM;
 use Mojo::File 'path';
 use Mojo::URL;
-use Mojo::Util 'url_unescape';
+use Mojo::Util qw(trim url_unescape);
 use Pod::Simple::Search;
 use experimental 'signatures';
 
@@ -318,10 +318,11 @@ sub _split_functions ($src, $function = undef) {
       if ($is_header) {
         # new function heading
         if (defined $function) {
+          my $heading = trim(Mojo::DOM->new(_pod_to_html("=over\n\n$para\n\n=back", undef, 0))->all_text);
           # check -X section later for filetest operators
-          $filetest_section = 1 if !$found and $para =~ m/^=item (?:I<)?-X/ and $function =~ m/^-[a-zA-WYZ]$/;
+          $filetest_section = 1 if !$found and $heading =~ m/^-X\b/ and $function =~ m/^-[a-zA-WYZ]$/;
           # see if this is the start or end of the function we want
-          $is_function_header = 1 if $para =~ m/^=item (?:I<)?\Q$function\E(\W|$)/;
+          $is_function_header = 1 if $heading =~ m/^\Q$function\E(\W|$)/;
           $found = 'header' if !$found and $is_function_header;
           $found = 'end' if $found eq 'content' and !$is_function_header;
         } else {
@@ -387,8 +388,9 @@ sub _split_variables ($src, $variable = undef) {
       $is_header = 1 if $para =~ m/^=item/;
       if ($is_header) {
         if (defined $variable) {
+          my $heading = trim(Mojo::DOM->new(_pod_to_html("=over\n\n$para\n\n=back", undef, 0))->all_text);
           # see if this is the start or end of the variable we want
-          $is_variable_header = 1 if $para =~ m/^=item \Q$variable\E(\n|$)/;
+          $is_variable_header = 1 if $heading eq $variable;
           $found = 'header' if !$found and $is_variable_header;
           $found = 'end' if $found eq 'content' and !$is_variable_header;
         } else {
@@ -437,8 +439,9 @@ sub _split_faqs ($src, $question = undef) {
     $is_header = 1 if $para =~ m/^=head2/;
     if ($is_header) {
       if (defined $question) {
+        my $heading = trim(Mojo::DOM->new(_pod_to_html("=pod\n\n$para", undef, 0))->all_text);
         # see if this is the start or end of the question we want
-        $is_question_header = 1 if $para =~ m/^=head2 \Q$question\E(\n|$)/;
+        $is_question_header = 1 if $heading eq $question;
         $found = 'header' if !$found and $is_question_header;
         $found = 'end' if $found eq 'content' and !$is_question_header;
       } else {
