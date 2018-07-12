@@ -18,7 +18,7 @@ sub run ($self, @versions) {
   $self->app->home->child('log')->make_path;
   foreach my $version (@versions) {
     my $v = eval { version->parse($version) };
-    my $is_devel = defined $v && ($v->{version}[1] % 2) ? 1 : 0;
+    my $is_devel = $version eq 'blead' || (defined $v && ($v->{version}[1] % 2)) ? 1 : 0;
     my $target = $self->app->perls_dir->child($version);
     $target->remove_tree if -d $target;
     my $logfile = $self->app->home->child('log', "perl-build-$version.log");

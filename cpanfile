@@ -1,6 +1,7 @@
 requires 'perl' => '5.020';
 requires 'Capture::Tiny';
 requires 'IPC::System::Simple';
+requires 'List::Util' => '1.33';
 requires 'MetaCPAN::Pod::XHTML';
 requires 'Module::Metadata';
 requires 'Mojolicious' => '7.84';
