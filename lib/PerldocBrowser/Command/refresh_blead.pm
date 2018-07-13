@@ -7,6 +7,8 @@ package PerldocBrowser::Command::refresh_blead;
 use 5.020;
 use Mojo::Base 'Mojolicious::Command';
 use Capture::Tiny 'capture_merged';
+use List::Util 1.50 'head';
+use Time::Seconds;
 use version;
 use experimental 'signatures';
 
@@ -23,18 +25,16 @@ sub run ($self, @versions) {
   my @args = ('--noman', '-Dusedevel', '--symlink-devel-executables');
   my ($output, $exit) = capture_merged { system 'perl-build', @args, 'blead', $target };
   $logfile->spurt($output);
-  if ($exit) {
-    print "Failed to install Perl blead to $target (logfile can be found at $logfile)\n";
-  } else {
-    print "Installed Perl blead to $target\n";
-    my $link = $self->app->perls_dir->child('blead');
-    symlink $target, $link or die "Failed to symlink $target to $link: $!";
-    print "Reassigned Perl blead symlink to $target\n";
-    $self->app->perls_dir->child('bleads')->list({dir => 1})->grep(sub { $_->basename ne $date })->each(sub {
-      $_->remove_tree;
-      print "Removed old Perl blead $_\n";
-    });
-  }
+  die "Failed to install Perl blead to $target: $! (logfile can be found at $logfile)\n" if $exit < 0;
+  die "Failed to install Perl blead to $target (logfile can be found at $logfile)\n" if $exit;
+  print "Installed Perl blead to $target\n";
+  my $link = $self->app->perls_dir->child('blead');
+  my $exit = system 'ln', '-sfT', $target, $link;
+  die "Failed to symlink $target to $link: $!\n" if $exit < 0;
+  die "Failed to symlink $target to $link\n" if $exit;
+  print "Reassigned Perl blead symlink to $target\n";
+  my @bleads = $self->app->perls_dir->child('bleads')->list({dir => 1})->sort(sub { $a->basename <=> $b->basename });
+  do { $_->remove_tree; print "Removed old Perl blead $_\n" } for head -2, @bleads;
 }
 
 1;

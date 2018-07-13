@@ -6,7 +6,7 @@ package PerldocBrowser::Plugin::PerldocSearchPg;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
-use List::Util 'all';
+use List::Util 1.33 'all';
 use Mojo::DOM;
 use Mojo::File 'path';
 use Mojo::Pg;
