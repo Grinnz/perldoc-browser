@@ -29,7 +29,7 @@ sub run ($self, @versions) {
   die "Failed to install Perl blead to $target (logfile can be found at $logfile)\n" if $exit;
   print "Installed Perl blead to $target\n";
   my $link = $self->app->perls_dir->child('blead');
-  my $exit = system 'ln', '-sfT', $target, $link;
+  $exit = system 'ln', '-sfT', $target, $link;
   die "Failed to symlink $target to $link: $!\n" if $exit < 0;
   die "Failed to symlink $target to $link\n" if $exit;
   print "Reassigned Perl blead symlink to $target\n";
