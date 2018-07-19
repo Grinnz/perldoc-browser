@@ -16,9 +16,9 @@ sub register ($self, $app, $conf) {
   return 1 if $backend eq 'none';
 
   if ($backend eq 'pg') {
-    $app->plugin('PerldocSearchPg');
+    $app->plugin('PerldocSearch::Pg');
   } elsif ($backend eq 'es') {
-    $app->plugin('PerldocSearchElastic');
+    $app->plugin('PerldocSearch::Elastic');
   } else {
     die "Unknown search_backend '$backend' configured\n";
   }

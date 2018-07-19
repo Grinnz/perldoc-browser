@@ -1,4 +1,4 @@
-package PerldocBrowser::Plugin::PerldocSearchElastic;
+package PerldocBrowser::Plugin::PerldocSearch::Elastic;
 
 # This software is Copyright (c) 2018 Dan Book <dbook@cpan.org>.
 # This is free software, licensed under:
