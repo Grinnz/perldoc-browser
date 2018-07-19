@@ -68,7 +68,8 @@ any '/#url_perl_version/contact' => {module => 'contact', perl_version => $lates
     $c->render('perldoc', title => 'contact', parts => []);
   });
 };
-plugin 'PerldocSearchPg' unless app->config->{no_search};
+
+plugin 'PerldocSearch';
 plugin 'PerldocRenderer';
 
 app->start;

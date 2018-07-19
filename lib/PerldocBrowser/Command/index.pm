@@ -19,7 +19,6 @@ sub run ($self, @versions) {
   if ($versions[0] eq 'all') {
     @versions = @{$self->app->all_perl_versions};
   }
-  my $db = $self->app->pg->db;
   foreach my $version (@versions) {
     my $inc_dirs = $self->app->inc_dirs($version) // [];
     my %pod_paths;
