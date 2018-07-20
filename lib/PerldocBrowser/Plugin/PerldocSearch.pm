@@ -45,24 +45,25 @@ sub _search ($c) {
   my $query = trim($c->param('q') // '');
   $c->stash(cpan => Mojo::URL->new('https://metacpan.org/search')->query(q => $query));
 
+  my $perl_version = $c->stash('perl_version');
   my $url_perl_version = $c->stash('url_perl_version');
   my $url_prefix = $url_perl_version ? "/$url_perl_version" : '';
 
-  my $function = $c->function_name_match($query);
+  my $function = $c->function_name_match($perl_version, $query);
   return $c->redirect_to(Mojo::URL->new("$url_prefix/functions/")->path($function)) if defined $function;
 
-  my $variable = $c->variable_name_match($query);
+  my $variable = $c->variable_name_match($perl_version, $query);
   return $c->redirect_to(Mojo::URL->new("$url_prefix/variables/")->path($variable)) if defined $variable;
 
-  my $digits = $c->digits_variable_match($query);
+  my $digits = $c->digits_variable_match($perl_version, $query);
   return $c->redirect_to(Mojo::URL->new("$url_prefix/variables/")->path($digits)) if defined $digits;
 
-  my $pod = $c->pod_name_match($query);
+  my $pod = $c->pod_name_match($perl_version, $query);
   return $c->redirect_to(Mojo::URL->new("$url_prefix/")->path($pod)) if defined $pod;
 
-  my $function_results = $c->function_search($query);
-  my $faq_results = $c->faq_search($query);
-  my $pod_results = $c->pod_search($query);
+  my $function_results = $c->function_search($perl_version, $query);
+  my $faq_results = $c->faq_search($perl_version, $query);
+  my $pod_results = $c->pod_search($perl_version, $query);
 
   my @paras = ('=encoding UTF-8');
   push @paras, '=head2 FAQ', '=over';
