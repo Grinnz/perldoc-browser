@@ -33,7 +33,7 @@ sub run ($self, @versions) {
   die "Failed to symlink $target to $link: $!\n" if $exit < 0;
   die "Failed to symlink $target to $link\n" if $exit;
   print "Reassigned Perl blead symlink to $target\n";
-  my @bleads = $self->app->perls_dir->child('bleads')->list({dir => 1})->sort(sub { $a->basename <=> $b->basename });
+  my @bleads = $self->app->perls_dir->child('bleads')->list({dir => 1})->sort(sub { $a->basename <=> $b->basename })->each;
   do { $_->remove_tree; print "Removed old Perl blead $_\n" } for head -2, @bleads;
 }
 
