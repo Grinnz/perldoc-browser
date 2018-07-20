@@ -24,7 +24,6 @@ helper perls_dir => sub ($c) { $perls_dir };
 my $all_versions = -d $perls_dir ? $perls_dir->list({dir => 1})
   ->grep(sub { -d && -x path($_)->child('bin', 'perl') })
   ->map(sub { $_->basename })->sort(sub { versioncmp($b, $a) }) : [];
-die "No perls found in $perls_dir\n" unless @$all_versions;
 
 helper all_perl_versions => sub ($c) { [@$all_versions] };
 
