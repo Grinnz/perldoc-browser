@@ -24,5 +24,5 @@ feature 'es', 'Elasticsearch Backend', sub {
 };
 
 feature 'sqlite', 'SQLite Backend', sub {
-  requires 'Mojo::SQLite' => '3.000';
+  requires 'Mojo::SQLite' => '3.001';
 };
