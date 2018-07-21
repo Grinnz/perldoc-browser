@@ -99,7 +99,7 @@ my %highlight_opts = (
 sub _pod_search ($c, $perl_version, $query) {
   my $matches = $c->es->search(index => "pods_$perl_version", body => {
     query => {bool => {should => [
-      {match => {name => {query => $query, operator => 'and'}}},
+      {match => {'name.text' => {query => $query, operator => 'and'}}},
       {match => {abstract => {query => $query, operator => 'and', boost => 0.4}}},
       {match => {description => {query => $query, operator => 'and', boost => 0.2}}},
       {match => {contents => {query => $query, operator => 'and', boost => 0.1}}},
@@ -124,7 +124,7 @@ sub _pod_search ($c, $perl_version, $query) {
 sub _function_search ($c, $perl_version, $query) {
   my $matches = $c->es->search(index => "functions_$perl_version", body => {
     query => {bool => {should => [
-      {match => {name => {query => $query, operator => 'and'}}},
+      {match => {'name.text' => {query => $query, operator => 'and'}}},
       {match => {description => {query => $query, operator => 'and', boost => 0.4}}},
     ]}},
     _source => 'name',
@@ -146,7 +146,7 @@ sub _function_search ($c, $perl_version, $query) {
 sub _faq_search ($c, $perl_version, $query) {
   my $matches = $c->es->search(index => "faqs_$perl_version", body => {
     query => {bool => {should => [
-      {match => {question => {query => $query, operator => 'and'}}},
+      {match => {'question.text' => {query => $query, operator => 'and'}}},
       {match => {answer => {query => $query, operator => 'and', boost => 0.4}}},
     ]}},
     _source => ['perlfaq','question'],
