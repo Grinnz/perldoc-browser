@@ -2,6 +2,62 @@
 
 Perldoc Browser
 
+=head1 INSTALLATION
+
+Perldoc Browser requires at least Perl v5.20.0 and may have other requirements
+if you enable a search backend. Perl dependencies are listed in F<cpanfile>.
+To install them, use cpanm:
+
+  cpanm --installdeps . # no search dependencies
+  cpanm --installdeps --with-feature=pg .
+  cpanm --installdeps --with-feature=es .
+  cpanm --installdeps --with-feature=sqlite .
+  cpanm --installdeps --with-all-features .
+
+=head1 CONFIGURATION
+
+Perldoc Browser is configured by F<perldoc-browser.conf> in the application
+directory. The configuration file is a Perl hash. The C<hypnotoad> key will be
+used to configure L<Hypnotoad|Mojo::Server::Hypnotoad/"SETTINGS"> if it is used
+to start the web application.
+
+The search backend can be set using the C<search_backend> key. Recognized
+values are C<pg>, C<es>, C<sqlite>, and C<none> (default: disables the search
+and indexing).
+
+The C<pg> backend requires L<Mojo::Pg> and a PostgreSQL server running at least
+version 9.6. The C<pg> configuration key must be set to a database connection
+URL in the form C<postgresql://user:password@host:port/database>.
+
+The C<es> backend requires L<Search::Elasticsearch> and an Elasticsearch server
+running at least version 6.0. The C<es> configuration key may be set to the URL
+to connect to the server (defaults to C<http://localhost:9200>).
+
+The C<sqlite> backend requires L<Mojo::SQLite>. The database is stored in the
+application home directory as F<perldoc-browser.sqlite> by default. This may be
+configured by setting the C<sqlite> configuration key to a file path, which
+must be an absolute path to a writable directory.
+
+=head1 PERL MANAGEMENT
+
+Perldoc Browser renders documentation from any Perls it finds installed in the
+configured C<perls_dir>, which defaults to F<perls> in the application
+directory. The C<install> command can be used to use L<Perl::Build> to install
+one or more Perls to this directory.
+
+  ./perldoc-browser.pl install 5.10.1 5.28.0
+
+Once a search backend is enabled, Perls must be indexed in this backend for
+contents of documents and document/function/variable names to be available to
+the search. The C<index> command will index or reindex the contents and names
+of one or more Perls.
+
+  ./perldoc-browser.pl index 5.10.1 5.28.0
+  ./perldoc-browser.pl index --functions 5.10.1 # only reindex function names/content
+  ./perldoc-browser.pl index --variables 5.10.1 # only reindex variable names
+  ./perldoc-browser.pl index --faqs 5.10.1 # only reindex faq content
+  ./perldoc-browser.pl index all # reindexes all Perls found in perls_dir
+
 =head1 AUTHOR
 
 Dan Book <dbook@cpan.org>

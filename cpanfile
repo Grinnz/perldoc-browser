@@ -22,3 +22,7 @@ feature 'es', 'Elasticsearch Backend', sub {
   requires 'Search::Elasticsearch' => '6.00';
   requires 'Log::Any::Adapter::MojoLog';
 };
+
+feature 'sqlite', 'SQLite Backend', sub {
+  requires 'Mojo::SQLite' => '3.000';
+};

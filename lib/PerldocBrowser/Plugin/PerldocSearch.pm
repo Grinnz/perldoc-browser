@@ -12,13 +12,15 @@ use Mojo::Util 'trim';
 use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
-  my $backend = $app->config->{search_backend} // 'pg';
+  my $backend = $app->config->{search_backend} // 'none';
   return 1 if $backend eq 'none';
 
-  if ($backend eq 'pg') {
+  if ($backend eq 'pg' or $backend eq 'postgres' or $backend eq 'postgresql') {
     $app->plugin('PerldocSearch::Pg');
-  } elsif ($backend eq 'es') {
+  } elsif ($backend eq 'es' or $backend eq 'elastic' or $backend eq 'elasticsearch') {
     $app->plugin('PerldocSearch::Elastic');
+  } elsif ($backend eq 'sqlite') {
+    $app->plugin('PerldocSearch::SQLite');
   } else {
     die "Unknown search_backend '$backend' configured\n";
   }
@@ -73,6 +75,7 @@ sub _search ($c) {
       $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
       $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
       $headline =~ s/\n+/ /g;
+      $headline = trim $headline;
       push @paras, qq{=item L<$perlfaq/"$question">\n\n$headline};
     }
   } else {
@@ -85,6 +88,7 @@ sub _search ($c) {
       $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
       $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
       $headline =~ s/\n+/ /g;
+      $headline = trim $headline;
       push @paras, qq{=item L<perlfunc/"$name">\n\n$headline};
     }
   } else {
@@ -97,6 +101,7 @@ sub _search ($c) {
       $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
       $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
       $headline =~ s/\n+/ /g;
+      $headline = trim $headline;
       push @paras, "=item L<$name> - $abstract\n\n$headline";
     }
   } else {

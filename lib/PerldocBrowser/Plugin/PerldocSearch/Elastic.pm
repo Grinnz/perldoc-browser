@@ -237,7 +237,7 @@ sub _create_index ($es, $type, $perl_version, $name) {
       default => {
         type => 'custom',
         tokenizer => 'standard',
-        filter => [qw(standard english_stop english_stemmer asciifolding lowercase)],
+        filter => [qw(standard english_stop asciifolding english_stemmer lowercase)],
       },
     },
     filter => {
