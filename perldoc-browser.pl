@@ -12,13 +12,17 @@ use Sort::Versions;
 use version;
 use experimental 'signatures';
 use lib::relative 'lib';
+use Mojo::Collection qw(c);
 
 push @{app->commands->namespaces}, 'PerldocBrowser::Command';
 push @{app->plugins->namespaces}, 'PerldocBrowser::Plugin';
 
 plugin Config => {file => 'perldoc-browser.conf', default => {}};
 
-my $perls_dir = path(app->config->{perls_dir} // app->home->child('perls'));
+my $perls_dir =
+  path( app->config->{perls_dir} //= c( @INC, app->home->child('perls') )
+        ->map( sub { $_ =~ /(^.+\/perls)\/?/; $1 ? $1 : (); } )->first );
+
 helper perls_dir => sub ($c) { $perls_dir };
 
 my $all_versions = -d $perls_dir ? $perls_dir->list({dir => 1})
