@@ -13,7 +13,7 @@ use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
   my $url = $app->config->{sqlite} // $app->home->child('perldoc-browser.sqlite');
-  my $sql = Mojo::SQLite->new($url);
+  my $sql = Mojo::SQLite->new->from_filename($url);
   $sql->migrations->from_data->migrate;
   $app->helper(sqlite => sub { $sql });
 

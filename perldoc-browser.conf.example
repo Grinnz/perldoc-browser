@@ -1,0 +1,11 @@
+{
+  hypnotoad => { listen => ['http://*:8080'], proxy => 1 },
+  sqlite => '/path/to/perldoc-browser.sqlite',
+  pg => 'postgresql://perldoc:secret@/perldoc',
+  es => 'http://127.0.0.1:9200',
+  search_backend => 'sqlite',
+  contact_pod => [
+    '=head1 CONTACT',
+    'This is where contact information goes for the /contact page.',
+  ],
+}
