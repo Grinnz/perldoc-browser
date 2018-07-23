@@ -6,7 +6,7 @@
 
 use 5.020;
 my @current_inc;
-BEGIN { @current_inc = @INC }
+BEGIN { @current_inc = grep { !ref } @INC }
 
 use Mojolicious::Lite;
 use Config;
@@ -85,6 +85,7 @@ app->start;
 sub _inc_dirs_for_perl ($bin) {
   local $ENV{PERLLIB} = '';
   local $ENV{PERL5LIB} = '';
+  local $ENV{PERL5OPT} = '';
   return [grep { $_ ne '.' } split /\n+/, capturex $bin, '-MConfig', '-e',
     'print "$_\n" for @INC; print "$Config{scriptdir}\n"'];
 }
