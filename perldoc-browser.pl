@@ -5,7 +5,11 @@
 #   The Artistic License 2.0 (GPL Compatible)
 
 use 5.020;
+my @current_inc;
+BEGIN { @current_inc = @INC }
+
 use Mojolicious::Lite;
+use Config;
 use IPC::System::Simple 'capturex';
 use Mojo::File 'path';
 use Sort::Versions;
@@ -21,40 +25,45 @@ plugin Config => {file => 'perldoc-browser.conf', default => {}};
 my $perls_dir = path(app->config->{perls_dir} // app->home->child('perls'));
 helper perls_dir => sub ($c) { $perls_dir };
 
-my $all_versions = -d $perls_dir ? $perls_dir->list({dir => 1})
+my $all_versions = [];
+$all_versions = $perls_dir->list({dir => 1})
   ->grep(sub { -d && -x path($_)->child('bin', 'perl') })
-  ->map(sub { $_->basename })->sort(sub { versioncmp($b, $a) }) : [];
-
-helper all_perl_versions => sub ($c) { [@$all_versions] };
+  ->map(sub { $_->basename })
+  ->sort(sub { versioncmp($b, $a) }) if -d $perls_dir;
 
 my (@perl_versions, @dev_versions);
 my $latest_version = app->config->{latest_perl_version};
-foreach my $perl_version (@$all_versions) {
-  my $v = eval { version->parse($perl_version =~ s/^perl-//r) };
-  if (defined $v and $v->{version}[1] % 2) {
-    push @dev_versions, $perl_version;
-  } elsif ($perl_version eq 'blead' or $perl_version =~ m/-RC\d+$/) {
-    push @dev_versions, $perl_version;
-  } else {
-    push @perl_versions, $perl_version;
-    $latest_version //= $perl_version if defined $v;
+
+my %inc_dirs;
+if (@$all_versions) {
+  foreach my $perl_version (@$all_versions) {
+    my $v = eval { version->parse($perl_version =~ s/^perl-//r) };
+    if (defined $v and $v->{version}[1] % 2) {
+      push @dev_versions, $perl_version;
+    } elsif ($perl_version eq 'blead' or $perl_version =~ m/-RC\d+$/) {
+      push @dev_versions, $perl_version;
+    } else {
+      push @perl_versions, $perl_version;
+      $latest_version //= $perl_version if defined $v;
+    }
+    $inc_dirs{$perl_version} = _inc_dirs_for_perl($perls_dir->child($perl_version, 'bin', 'perl'));
   }
+  $latest_version //= $all_versions->first;
+} else {
+  my $v = version->parse($]);
+  my $current_version = $Config{version};
+  ($Config{PERL_VERSION} % 2) ? (push @dev_versions, $current_version) : (push @perl_versions, $current_version);
+  push @$all_versions, $current_version;
+  $latest_version //= $current_version;
+  $inc_dirs{$current_version} = [@current_inc, $Config{scriptdir}];
 }
+
+helper all_perl_versions => sub ($c) { [@$all_versions] };
 
 helper perl_versions => sub ($c) { [@perl_versions] };
 helper dev_versions => sub ($c) { [@dev_versions] };
 
-$latest_version //= $all_versions->first;
-
 helper latest_perl_version => sub ($c) { $latest_version };
-
-my %inc_dirs;
-foreach my $perl_version (@$all_versions) {
-  my $perl_bin = $perls_dir->child($perl_version, 'bin', 'perl');
-  local $ENV{PERLLIB} = '';
-  local $ENV{PERL5LIB} = '';
-  $inc_dirs{$perl_version} = [grep { $_ ne '.' } split /\n+/, capturex $perl_bin, '-MConfig', '-e', 'print "$_\n" for @INC; print "$Config{scriptdir}\n"'];
-}
 
 helper inc_dirs => sub ($c, $perl_version) { $inc_dirs{$perl_version} // [] };
 
@@ -72,3 +81,10 @@ plugin 'PerldocSearch';
 plugin 'PerldocRenderer';
 
 app->start;
+
+sub _inc_dirs_for_perl ($bin) {
+  local $ENV{PERLLIB} = '';
+  local $ENV{PERL5LIB} = '';
+  return [grep { $_ ne '.' } split /\n+/, capturex $bin, '-MConfig', '-e',
+    'print "$_\n" for @INC; print "$Config{scriptdir}\n"'];
+}

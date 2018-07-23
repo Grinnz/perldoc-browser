@@ -10,9 +10,11 @@
         <div class="dropdown-menu" aria-labelledby="dropdownlink-stable">
 % my $current_path = defined stash('function') ? 'functions/' . stash('function') : defined stash('variable') ? 'variables/' . stash('variable') : $module;
           <a class="dropdown-item" href="<%= url_with("/$current_path") %>">Latest</a>
+% if (@{perl_versions()}) {
           <div class="dropdown-divider"></div>
-% foreach my $perl_option (@{perl_versions()}) {
+%   foreach my $perl_option (@{perl_versions()}) {
           <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with("/$perl_option/$current_path") %>"><%= $perl_option %></a>
+%   }
 % }
         </div>
       </li>
