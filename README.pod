@@ -9,6 +9,7 @@ if you enable a search backend. Perl dependencies are listed in F<cpanfile>.
 To install them, use cpanm:
 
   cpanm --installdeps . # no search dependencies
+  cpanm --installdeps --with-feature=install . # for install command
   cpanm --installdeps --with-feature=pg .
   cpanm --installdeps --with-feature=es .
   cpanm --installdeps --with-feature=sqlite .
