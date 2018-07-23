@@ -33,6 +33,7 @@ sub register ($self, $app, $conf) {
 }
 
 sub _pod_name_match ($c, $perl_version, $query) {
+  return undef unless $c->es->indices->exists(index => "pods_$perl_version");
   my $match = $c->es->search(index => "pods_$perl_version", body => {
     query => {bool => {should => [
       {term => {'name.ci' => $query}},
@@ -47,6 +48,7 @@ sub _pod_name_match ($c, $perl_version, $query) {
 }
 
 sub _function_name_match ($c, $perl_version, $query) {
+  return undef unless $c->es->indices->exists(index => "functions_$perl_version");
   my $match = $c->es->search(index => "functions_$perl_version", body => {
     query => {bool => {should => [
       {term => {'name.ci' => $query}},
@@ -61,6 +63,7 @@ sub _function_name_match ($c, $perl_version, $query) {
 }
 
 sub _variable_name_match ($c, $perl_version, $query) {
+  return undef unless $c->es->indices->exists(index => "variables_$perl_version");
   my $match = $c->es->search(index => "variables_$perl_version", body => {
     query => {bool => {should => [
       {term => {'name.ci' => $query}},
@@ -76,6 +79,7 @@ sub _variable_name_match ($c, $perl_version, $query) {
 
 sub _digits_variable_match ($c, $perl_version, $query) {
   return undef unless $query =~ m/^\$[1-9][0-9]*$/;
+  return undef unless $c->es->indices->exists(index => "variables_$perl_version");
   my $match = $c->es->search(index => "variables_$perl_version", body => {
     query => {prefix => {name => '$<digits>'}},
     _source => 'name',
@@ -97,6 +101,7 @@ my %highlight_opts = (
 );
 
 sub _pod_search ($c, $perl_version, $query) {
+  return [] unless $c->es->indices->exists(index => "pods_$perl_version");
   my $matches = $c->es->search(index => "pods_$perl_version", body => {
     query => {bool => {should => [
       {match => {'name.text' => {query => $query, operator => 'and'}}},
@@ -122,6 +127,7 @@ sub _pod_search ($c, $perl_version, $query) {
 }
 
 sub _function_search ($c, $perl_version, $query) {
+  return [] unless $c->es->indices->exists(index => "functions_$perl_version");
   my $matches = $c->es->search(index => "functions_$perl_version", body => {
     query => {bool => {should => [
       {match => {'name.text' => {query => $query, operator => 'and'}}},
@@ -144,6 +150,7 @@ sub _function_search ($c, $perl_version, $query) {
 }
 
 sub _faq_search ($c, $perl_version, $query) {
+  return [] unless $c->es->indices->exists(index => "faqs_$perl_version");
   my $matches = $c->es->search(index => "faqs_$perl_version", body => {
     query => {bool => {should => [
       {match => {'question.text' => {query => $query, operator => 'and'}}},
