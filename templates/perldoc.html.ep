@@ -147,16 +147,16 @@
           % if ($module eq 'search') {
           "<%= Mojo::Util::trim param('q') %>"
           % } else {
-          %= link_to $module => url_for("$url_prefix/$module")
+          %= link_to $module => url_for('/')->path("$url_prefix/$module")
           % }
           % if (defined stash('function')) {
-            % my $function = Mojo::Util::url_escape(stash('function'));
+            % my $function = stash('function');
             % $source = "functions/$function.txt";
-            / <%= link_to stash('function') => url_for("$url_prefix/functions/$function") %>
+            / <%= link_to stash('function') => url_for('/')->path("$url_prefix/functions/$function") %>
           % } elsif (defined stash('variable')) {
-            % my $variable = Mojo::Util::url_escape(stash('variable'));
+            % my $variable = stash('variable');
             % $source = "variables/$variable.txt";
-            / <%= link_to stash('variable') => url_for("$url_prefix/variables/$variable") %>
+            / <%= link_to stash('variable') => url_for('/')->path("$url_prefix/variables/$variable") %>
           % } elsif (defined stash('module_version')) {
             version <%= stash('module_version') %>
           % }
@@ -164,7 +164,7 @@
             % if ($module eq 'search') {
             (<%= link_to 'Search CPAN' => $cpan %>)
             % } else {
-            (<%= link_to 'source' => url_for("$url_prefix/$source") %>,
+            (<%= link_to 'source' => url_for('/')->path("$url_prefix/$source") %>,
             <%= link_to 'CPAN' => $cpan %>)
             % }
           </div>
