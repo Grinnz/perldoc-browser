@@ -184,10 +184,11 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
   $index_name{pods} = "pods_${perl_version}_$time" if $index_pods;
   _create_index($es, $_, $perl_version, $index_name{$_}) for keys %index_name;
   try {
+    my $bulk_pod = _bulk_helper($es, $index_name{pods}, "pods_$perl_version");
     foreach my $pod (keys %$pods) {
       print "Indexing $pod for $perl_version ($pods->{$pod})\n";
       my $src = path($pods->{$pod})->slurp;
-      _index_pod($es, $index_name{pods}, $perl_version, $c->prepare_index_pod($pod, $src)) if $index_pods;
+      _index_pod($bulk_pod, $c->prepare_index_pod($pod, $src)) if $index_pods;
       if ($pod eq 'perlfunc') {
         print "Indexing functions for $perl_version\n";
         _index_functions($es, $index_name{functions}, $perl_version, $c->prepare_index_functions($src));
@@ -199,6 +200,7 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
         _index_faqs($es, $index_name{faqs}, $perl_version, $pod, $c->prepare_index_faqs($src));
       }
     }
+    $bulk_pod->flush if $index_pods;
   } catch {
     $es->indices->delete(index => [values %index_name]);
     die $@;
@@ -260,16 +262,12 @@ sub _create_index ($es, $type, $perl_version, $name) {
   $es->indices->create(index => $name, body => \%body);
 }
 
-sub _index_pod ($es, $index_name, $perl_version, $properties) {
-  $es->update(
-    index => $index_name,
-    type => "pods_$perl_version",
+sub _index_pod ($bulk, $properties) {
+  $bulk->update({
     id => $properties->{name},
-    body => {
-      doc => $properties,
-      doc_as_upsert => true,
-    },
-  );
+    doc => $properties,
+    doc_as_upsert => true,
+  });
 }
 
 sub _index_functions ($es, $index_name, $perl_version, $functions) {
