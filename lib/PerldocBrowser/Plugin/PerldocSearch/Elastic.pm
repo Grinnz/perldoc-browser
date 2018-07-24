@@ -9,6 +9,7 @@ use Mojo::Base 'Mojolicious::Plugin';
 use List::Util 1.33 'all';
 use Mojo::File 'path';
 use Mojo::JSON 'true';
+use Mojo::Util 'dumper';
 use Search::Elasticsearch;
 use Syntax::Keyword::Try;
 use experimental 'signatures';
@@ -104,7 +105,7 @@ sub _pod_search ($c, $perl_version, $query) {
   return [] unless $c->es->indices->exists(index => "pods_$perl_version");
   my $matches = $c->es->search(index => "pods_$perl_version", body => {
     query => {bool => {should => [
-      {match => {'name.text' => {query => $query, operator => 'and'}}},
+      {match => {'name.text' => {query => $query, operator => 'and' }}},
       {match => {abstract => {query => $query, operator => 'and', boost => 0.4}}},
       {match => {description => {query => $query, operator => 'and', boost => 0.2}}},
       {match => {contents => {query => $query, operator => 'and', boost => 0.1}}},
@@ -243,13 +244,14 @@ sub _create_index ($es, $type, $perl_version, $name) {
     analyzer => {
       default => {
         type => 'custom',
-        tokenizer => 'standard',
-        filter => [qw(standard english_stop asciifolding english_stemmer lowercase)],
+        tokenizer => 'whitespace',
+        filter => [qw(subwords english_stop asciifolding lowercase english_stemmer)],
       },
     },
     filter => {
       english_stemmer => {type => 'stemmer', language => 'english'},
       english_stop => {type => 'stop', stopwords => '_english_', ignore_case => true},
+      subwords => {type => 'word_delimiter', preserve_original => true, catenate_all => true},
     },
     normalizer => {
       ci_ascii => {type => 'custom', filter => [qw(asciifolding lowercase)]},
@@ -259,45 +261,64 @@ sub _create_index ($es, $type, $perl_version, $name) {
 }
 
 sub _index_pod ($es, $index_name, $perl_version, $properties) {
-  $es->index(
+  $es->update(
     index => $index_name,
     type => "pods_$perl_version",
     id => $properties->{name},
-    body => $properties,
+    body => {
+      doc => $properties,
+      doc_as_upsert => true,
+    },
   );
 }
 
 sub _index_functions ($es, $index_name, $perl_version, $functions) {
+  my $bulk = _bulk_helper($es, $index_name, "functions_$perl_version");
   foreach my $properties (@$functions) {
-    $es->index(
-      index => $index_name,
-      type => "functions_$perl_version",
+    $bulk->update({
       id => $properties->{name},
-      body => $properties,
-    );
+      doc => $properties,
+      doc_as_upsert => true,
+    });
   }
+  $bulk->flush;
 }
 
 sub _index_variables ($es, $index_name, $perl_version, $variables) {
+  my $bulk = _bulk_helper($es, $index_name, "variables_$perl_version");
   foreach my $properties (@$variables) {
-    $es->index(
-      index => $index_name,
-      type => "variables_$perl_version",
+    $bulk->update({
       id => $properties->{name},
-      body => $properties,
-    );
+      doc => $properties,
+      doc_as_upsert => true,
+    });
   }
+  $bulk->flush;
 }
 
 sub _index_faqs ($es, $index_name, $perl_version, $perlfaq, $faqs) {
+  my $bulk = _bulk_helper($es, $index_name, "faqs_$perl_version");
   foreach my $properties (@$faqs) {
-    $es->index(
-      index => $index_name,
-      type => "faqs_$perl_version",
+    $bulk->update({
       id => "${perlfaq}_$properties->{question}",
-      body => {perlfaq => $perlfaq, %$properties},
-    );
+      doc => {perlfaq => $perlfaq, %$properties},
+      doc_as_upsert => true,
+    });
   }
+  $bulk->flush;
+}
+
+sub _bulk_helper ($es, $index, $type) {
+  return $es->bulk_helper(index => $index, type => $type,
+    on_conflict => sub {
+      my ($action, $response) = @_;
+      warn "Bulk conflict [$action]: " . dumper($response);
+    },
+    on_error => sub {
+      my ($action, $response) = @_;
+      die "Bulk error [$action]: " . dumper($response);
+    },
+  );
 }
 
 1;

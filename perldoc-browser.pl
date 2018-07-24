@@ -50,7 +50,6 @@ if (@$all_versions) {
   }
   $latest_version //= $all_versions->first;
 } else {
-  my $v = version->parse($]);
   my $current_version = $Config{version};
   ($Config{PERL_VERSION} % 2) ? (push @dev_versions, $current_version) : (push @perl_versions, $current_version);
   push @$all_versions, $current_version;
@@ -86,6 +85,6 @@ sub _inc_dirs_for_perl ($bin) {
   local $ENV{PERLLIB} = '';
   local $ENV{PERL5LIB} = '';
   local $ENV{PERL5OPT} = '';
-  return [grep { $_ ne '.' } split /\n+/, capturex $bin, '-MConfig', '-e',
+  return [grep { length $_ && $_ ne '.' } split /\n+/, capturex $bin, '-MConfig', '-e',
     'print "$_\n" for @INC; print "$Config{scriptdir}\n"'];
 }
