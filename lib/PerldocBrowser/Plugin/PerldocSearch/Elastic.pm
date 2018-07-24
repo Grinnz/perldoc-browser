@@ -201,6 +201,7 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
       }
     }
     $bulk_pod->flush if $index_pods;
+    $es->indices->forcemerge(index => [values %index_name]);
   } catch {
     $es->indices->delete(index => [values %index_name]);
     die $@;
