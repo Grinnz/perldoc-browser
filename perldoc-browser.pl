@@ -6,7 +6,7 @@
 
 use 5.020;
 my @current_inc;
-BEGIN { @current_inc = grep { !ref } @INC }
+BEGIN { @current_inc = grep { !ref and $_ ne '.' } @INC }
 
 use Mojolicious::Lite;
 use Config;
