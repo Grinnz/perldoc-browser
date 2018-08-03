@@ -52,16 +52,16 @@ sub _search ($c) {
   my $url_prefix = $url_perl_version ? "/$url_perl_version" : '';
 
   my $function = $c->function_name_match($perl_version, $query);
-  return $c->redirect_to(Mojo::URL->new("$url_prefix/functions/")->path($function)) if defined $function;
+  return $c->res->code(301) && $c->redirect_to(Mojo::URL->new("$url_prefix/functions/")->path($function)) if defined $function;
 
   my $variable = $c->variable_name_match($perl_version, $query);
-  return $c->redirect_to(Mojo::URL->new("$url_prefix/variables/")->path($variable)) if defined $variable;
+  return $c->res->code(301) && $c->redirect_to(Mojo::URL->new("$url_prefix/variables/")->path($variable)) if defined $variable;
 
   my $digits = $c->digits_variable_match($perl_version, $query);
-  return $c->redirect_to(Mojo::URL->new("$url_prefix/variables/")->path($digits)) if defined $digits;
+  return $c->res->code(301) && $c->redirect_to(Mojo::URL->new("$url_prefix/variables/")->path($digits)) if defined $digits;
 
   my $pod = $c->pod_name_match($perl_version, $query);
-  return $c->redirect_to(Mojo::URL->new("$url_prefix/")->path($pod)) if defined $pod;
+  return $c->res->code(301) && $c->redirect_to(Mojo::URL->new("$url_prefix/")->path($pod)) if defined $pod;
 
   my $function_results = $c->function_search($perl_version, $query);
   my $faq_results = $c->faq_search($perl_version, $query);

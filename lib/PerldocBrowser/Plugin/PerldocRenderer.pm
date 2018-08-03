@@ -180,7 +180,7 @@ sub _perldoc ($c) {
   $c->stash(cpan => "https://metacpan.org/pod/$module");
 
   my $path = _find_pod($c, $module);
-  return $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
+  return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
 
   if (defined(my $module_meta = _find_module($c, $module))) {
     $c->stash(module_version => $module_meta->version($module));
@@ -195,7 +195,7 @@ sub _function ($c) {
   $c->stash(cpan => "https://metacpan.org/pod/perlfunc#$function");
 
   my $src = _get_function_pod($c, $function);
-  return $c->redirect_to($c->stash('cpan')) unless defined $src;
+  return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
 
   $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
 }
@@ -208,7 +208,7 @@ sub _variable ($c) {
   $c->stash(cpan => Mojo::URL->new("https://metacpan.org/pod/perlvar")->fragment($fragment));
 
   my $src = _get_variable_pod($c, $variable);
-  return $c->redirect_to($c->stash('cpan')) unless defined $src;
+  return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
 
   $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
 }
@@ -217,7 +217,7 @@ sub _functions_index ($c) {
   $c->stash(cpan => 'https://metacpan.org/pod/perlfunc#Perl-Functions-by-Category');
 
   my $src = _get_function_categories($c);
-  return $c->redirect_to($c->stash('cpan')) unless defined $src;
+  return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
 
   $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
 }
@@ -226,7 +226,7 @@ sub _modules_index ($c) {
   $c->stash(cpan => 'https://metacpan.org');
 
   my $src = _get_module_list($c);
-  return $c->redirect_to($c->stash('cpan')) unless defined $src;
+  return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
 
   $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
 }
