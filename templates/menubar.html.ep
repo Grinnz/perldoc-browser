@@ -8,12 +8,13 @@
       <li class="nav-item dropdown" style="white-space: nowrap">
         <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-stable" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><%= $perl_version %></a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-stable">
-% my $current_path = defined stash('function') ? 'functions/' . stash('function') : defined stash('variable') ? 'variables/' . stash('variable') : $module;
-          <a class="dropdown-item" href="<%= url_with('/')->path($current_path) %>">Latest</a>
+% my $current_path = defined stash('function') ? append_url_path('/functions/', stash('function')) : defined stash('variable') ? append_url_path('/variables/', stash('variable')) : append_url_path('/', $module);
+          <a class="dropdown-item" href="<%= url_with("$current_path") %>">Latest</a>
 % if (@{perl_versions()}) {
           <div class="dropdown-divider"></div>
 %   foreach my $perl_option (@{perl_versions()}) {
-          <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with('/')->path("$perl_option/$current_path") %>"><%= $perl_option %></a>
+%     my $prefix = append_url_path('/', $perl_option);
+          <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with("$prefix$current_path") %>"><%= $perl_option %></a>
 %   }
 % }
         </div>
@@ -23,26 +24,27 @@
         <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-dev" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Dev</a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-dev">
 %   foreach my $perl_option (@{dev_versions()}) {
-          <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with('/')->path("$perl_option/$current_path") %>"><%= $perl_option %></a>
+%     my $prefix = append_url_path('/', $perl_option);
+          <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with("$prefix$current_path") %>"><%= $perl_option %></a>
 %   }
         </div>
       </li>
 % }
-% my $current_prefix = $url_perl_version ? "/$url_perl_version" : '';
+% my $current_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
       <li class="nav-item">
-        <a class="nav-link" href="<%= url_for('/')->path("$current_prefix/perl") %>">perl</a>
+        <a class="nav-link" href="<%= url_for("$current_prefix/perl") %>">perl</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="<%= url_for('/')->path("$current_prefix/functions") %>">functions</a>
+        <a class="nav-link" href="<%= url_for("$current_prefix/functions") %>">functions</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="<%= url_for('/')->path("$current_prefix/modules") %>">modules</a>
+        <a class="nav-link" href="<%= url_for("$current_prefix/modules") %>">modules</a>
       </li>
     </ul>
     <ul class="navbar-nav">
 % if (defined config('contact_pod')) {
       <li class="nav-item">
-        <a class="nav-link" href="<%= url_for('/')->path("$current_prefix/contact") %>">Contact</a>
+        <a class="nav-link" href="<%= url_for("$current_prefix/contact") %>">Contact</a>
       </li>
 % }
       <li class="nav-item">
@@ -50,7 +52,7 @@
       </li>
     <ul>
 % if ((config('search_backend') // 'none') ne 'none') {
-    <form class="form-inline" method="get" action="<%= url_for('/')->path("$current_prefix/search") %>">
+    <form class="form-inline" method="get" action="<%= url_for("$current_prefix/search") %>">
       <input class="form-control-sm mr-3" type="search" name="q" placeholder="Search" aria-label="Search">
     </form>
 % }
