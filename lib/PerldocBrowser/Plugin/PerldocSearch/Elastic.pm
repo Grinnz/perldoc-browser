@@ -254,7 +254,7 @@ sub _create_index ($es, $type, $perl_version, $name) {
     filter => {
       english_stemmer => {type => 'stemmer', language => 'english'},
       english_stop => {type => 'stop', stopwords => '_english_', ignore_case => true},
-      subwords => {type => 'word_delimiter', preserve_original => true, catenate_all => true},
+      subwords => {type => 'word_delimiter_graph', preserve_original => true, catenate_all => true},
     },
     normalizer => {
       ci_ascii => {type => 'custom', filter => [qw(asciifolding lowercase)]},
