@@ -110,6 +110,11 @@
         max-width: 850px;
       }
       #perldocdiv > ul:first-of-type a { text-decoration: none }
+      #disambiguation {
+        font-style: italic;
+        padding-left: 1em;
+        margin-bottom: 1em;
+      }
       #links { padding-bottom: 1em }
       #wrapperlicious .permalink {
         display: none;
@@ -172,6 +177,13 @@
             % }
           </div>
         </div>
+          % if (defined(my $alt_type = stash 'alt_page_type')) {
+            % my $alt_name = stash('function') // stash('variable') // $module;
+            % my $alt_prefix = $alt_type eq 'function' ? "$url_prefix/functions/" : "$url_prefix/";
+        <div id="disambiguation">
+          <strong><%= $alt_name %></strong> may also refer to the <%= $alt_type %>: <%= link_to $alt_name => url_for(append_url_path($alt_prefix, $alt_name)) %>
+        </div>
+          % }
         % }
         % if (@$parts and @{$parts->[0]}) {
         <h1><a id="toc"><%= stash('module') eq 'search' ? 'SEARCH RESULTS' : 'CONTENTS' %></a></h1>

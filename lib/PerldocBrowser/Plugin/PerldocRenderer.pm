@@ -187,6 +187,11 @@ sub _perldoc ($c) {
     $c->stash(module_version => $module_meta->version($module));
   }
 
+  if (defined $c->search_backend) {
+    my $function = $c->function_name_match($c->stash('perl_version'), $module);
+    $c->stash(alt_page_type => 'function') if defined $function;
+  }
+
   my $src = path($path)->slurp;
   $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
 }
@@ -207,6 +212,11 @@ sub _function ($c) {
       my $fragment = Mojo::URL->new($link->attr('href'))->fragment;
       $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlfunc')->fragment($fragment));
     }
+  }
+
+  if (defined $c->search_backend) {
+    my $pod = $c->pod_name_match($c->stash('perl_version'), $function);
+    $c->stash(alt_page_type => 'module') if defined $pod;
   }
 
   $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });

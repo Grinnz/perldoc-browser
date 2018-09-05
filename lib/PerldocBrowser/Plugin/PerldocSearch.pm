@@ -13,14 +13,19 @@ use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
   my $backend = $app->config->{search_backend} // 'none';
-  return 1 if $backend eq 'none';
 
-  if ($backend eq 'pg' or $backend eq 'postgres' or $backend eq 'postgresql') {
+  if ($backend eq 'none') {
+    $app->helper(search_backend => sub { undef });
+    return 1;
+  } elsif ($backend eq 'pg' or $backend eq 'postgres' or $backend eq 'postgresql') {
     $app->plugin('PerldocSearch::Pg');
+    $app->helper(search_backend => sub { 'pg' });
   } elsif ($backend eq 'es' or $backend eq 'elastic' or $backend eq 'elasticsearch') {
     $app->plugin('PerldocSearch::Elastic');
+    $app->helper(search_backend => sub { 'es' });
   } elsif ($backend eq 'sqlite') {
     $app->plugin('PerldocSearch::SQLite');
+    $app->helper(search_backend => sub { 'sqlite' });
   } else {
     die "Unknown search_backend '$backend' configured\n";
   }
