@@ -168,7 +168,7 @@ sub _html ($c, $src) {
 
   # Try to find a title
   my $title = $c->param('variable') // $c->param('function') // $c->param('module');
-  $dom->find('h1 + p')->first(sub { $title = shift->text });
+  $dom->find('h1 + p')->first(sub { $title = shift->all_text });
 
   # Combine everything to a proper response
   $c->content_for(perldoc => "$dom");
