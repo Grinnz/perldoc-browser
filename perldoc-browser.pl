@@ -38,7 +38,7 @@ my %inc_dirs;
 if (@$all_versions) {
   foreach my $perl_version (@$all_versions) {
     my $v = eval { version->parse($perl_version =~ s/^perl-//r) };
-    if (defined $v and $v->{version}[1] < 6 and $v->{version}[1] >= 500) {
+    if (defined $v and $v->{version}[1] < 6 and $v->{version}[2] >= 500) {
       push @dev_versions, $perl_version;
     } elsif (defined $v and $v->{version}[1] >= 6 and $v->{version}[1] % 2) {
       push @dev_versions, $perl_version;
