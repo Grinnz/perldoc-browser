@@ -38,9 +38,9 @@ my %inc_dirs;
 if (@$all_versions) {
   foreach my $perl_version (@$all_versions) {
     my $v = eval { version->parse($perl_version =~ s/^perl-//r) };
-    if (defined $v and @{$v->{version}} >= 3 and $v->{version}[1] < 6 and $v->{version}[2] >= 500) {
+    if (defined $v and $v < version->parse('v5.6.0') and ($v->{version}[2] // 0) >= 500) {
       push @dev_versions, $perl_version;
-    } elsif (defined $v and @{$v->{version}} >= 2 and $v->{version}[1] >= 6 and $v->{version}[1] % 2) {
+    } elsif (defined $v and $v >= version->parse('v5.6.0') and ($v->{version}[1] // 0) % 2) {
       push @dev_versions, $perl_version;
     } elsif ($perl_version eq 'blead' or $perl_version =~ m/-RC\d+$/) {
       push @dev_versions, $perl_version;
