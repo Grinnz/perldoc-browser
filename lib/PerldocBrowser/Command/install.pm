@@ -26,7 +26,7 @@ sub run ($self, @versions) {
     open my $logfh, '>>', $logfile or die "Failed to open $logfile for logging: $!\n";
     print "Installing Perl $version to $target (logfile can be found at $logfile) ...\n";
     my $v = eval { version->parse($version =~ s/^perl-//r) };
-    if (defined $v && $v->{version}[1] < 6) { # ancient perls
+    if (defined $v and @{$v->{version}} >= 2 and $v->{version}[1] < 6) { # ancient perls
       require CPAN::Perl::Releases;
       require Devel::PatchPerl;
       require File::pushd;
