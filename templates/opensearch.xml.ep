@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>Perldoc Browser</ShortName>
+  <Description>Search Perl documentation online with Perldoc Browser</Description>
+  <Tags>perl perldoc documentation</Tags>
+  <Contact><%= config('contact_email') // 'perl5-porters@perl.org' %></Contact>
+  <Url type="text/html" template="<%= url_for('/search')->to_abs %>?q={searchTerms}"/>
+  <Query role="example" searchTerms="perl doc"/>
+  <Language>en-us</Language>
+</OpenSearchDescription>

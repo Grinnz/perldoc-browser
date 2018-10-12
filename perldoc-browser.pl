@@ -78,6 +78,8 @@ any '/#url_perl_version/contact' => {module => 'contact', perl_version => $lates
   });
 };
 
+any '/opensearch';
+
 plugin 'PerldocSearch';
 plugin 'PerldocRenderer';
 
