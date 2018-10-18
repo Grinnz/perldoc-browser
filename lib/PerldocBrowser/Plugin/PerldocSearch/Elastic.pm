@@ -101,8 +101,9 @@ my %highlight_opts = (
   post_tags => '__HEADLINE_STOP__',
 );
 
-sub _pod_search ($c, $perl_version, $query) {
+sub _pod_search ($c, $perl_version, $query, $limit = undef) {
   return [] unless _index_is_ready($c, "pods_$perl_version");
+  $limit //= 1000;
   my $matches = $c->es->search(index => "pods_$perl_version", body => {
     query => {bool => {should => [
       {match => {'name.text' => {query => $query, operator => 'and' }}},
@@ -112,7 +113,7 @@ sub _pod_search ($c, $perl_version, $query) {
     ]}},
     _source => ['name','abstract'],
     highlight => {fields => {contents => {}}, %highlight_opts},
-    size => 20,
+    size => $limit,
     sort => ['_score'],
   });
   my @results;
@@ -127,8 +128,9 @@ sub _pod_search ($c, $perl_version, $query) {
   return \@results;
 }
 
-sub _function_search ($c, $perl_version, $query) {
+sub _function_search ($c, $perl_version, $query, $limit = undef) {
   return [] unless _index_is_ready($c, "functions_$perl_version");
+  $limit //= 1000;
   my $matches = $c->es->search(index => "functions_$perl_version", body => {
     query => {bool => {should => [
       {match => {'name.text' => {query => $query, operator => 'and'}}},
@@ -136,7 +138,7 @@ sub _function_search ($c, $perl_version, $query) {
     ]}},
     _source => 'name',
     highlight => {fields => {description => {}}, %highlight_opts},
-    size => 20,
+    size => $limit,
     sort => ['_score'],
   });
   my @results;
@@ -150,8 +152,9 @@ sub _function_search ($c, $perl_version, $query) {
   return \@results;
 }
 
-sub _faq_search ($c, $perl_version, $query) {
+sub _faq_search ($c, $perl_version, $query, $limit = undef) {
   return [] unless _index_is_ready($c, "faqs_$perl_version");
+  $limit //= 1000;
   my $matches = $c->es->search(index => "faqs_$perl_version", body => {
     query => {bool => {should => [
       {match => {'question.text' => {query => $query, operator => 'and'}}},
@@ -159,7 +162,7 @@ sub _faq_search ($c, $perl_version, $query) {
     ]}},
     _source => ['perlfaq','question'],
     highlight => {fields => {answer => {}}, %highlight_opts},
-    size => 20,
+    size => $limit,
     sort => ['_score'],
   });
   my @results;

@@ -4,7 +4,7 @@ requires 'IPC::System::Simple';
 requires 'List::Util' => '1.50';
 requires 'MetaCPAN::Pod::XHTML';
 requires 'Module::Metadata';
-requires 'Mojolicious' => '7.84';
+requires 'Mojolicious' => '8.0';
 requires 'Perl::Build';
 requires 'Pod::Simple::Search';
 requires 'Pod::Simple::TextContent';

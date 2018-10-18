@@ -55,6 +55,8 @@ sub _search ($c) {
   my $perl_version = $c->stash('perl_version');
   my $url_perl_version = $c->stash('url_perl_version');
   my $url_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
+  my $limit = $c->param('limit') // 20;
+  $limit = 20 unless $limit =~ m/\A[0-9]+\z/;
 
   my $function = $c->function_name_match($perl_version, $query);
   return $c->res->code(301) && $c->redirect_to($c->url_for($c->append_url_path("$url_prefix/functions/", $function))) if defined $function;
@@ -68,13 +70,21 @@ sub _search ($c) {
   my $pod = $c->pod_name_match($perl_version, $query);
   return $c->res->code(301) && $c->redirect_to($c->url_for($c->append_url_path("$url_prefix/", $pod))) if defined $pod;
 
-  my $function_results = $c->function_search($perl_version, $query);
-  my $faq_results = $c->faq_search($perl_version, $query);
-  my $pod_results = $c->pod_search($perl_version, $query);
+  my $search_limit = $limit ? $limit+1 : undef;
+  my $function_results = $c->function_search($perl_version, $query, $search_limit);
+  my $faq_results = $c->faq_search($perl_version, $query, $search_limit);
+  my $pod_results = $c->pod_search($perl_version, $query, $search_limit);
+
+  my $more_url = $c->url_with("$url_prefix/search")->to_abs->query({limit => 0});
 
   my @paras = ('=encoding UTF-8');
   push @paras, '=head2 FAQ', '=over';
+  my $more_faqs;
   if (@$faq_results) {
+    if ($limit) {
+      $more_faqs = @$faq_results > $limit;
+      splice @$faq_results, $limit;
+    }
     foreach my $faq (@$faq_results) {
       my ($perlfaq, $question, $headline) = ($faq->{perlfaq}, map { $c->escape_pod($_) } @$faq{'question','headline'});
       $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
@@ -86,8 +96,15 @@ sub _search ($c) {
   } else {
     push @paras, '=item I<No results>';
   }
-  push @paras, '=back', '=head2 Functions', '=over';
+  push @paras, '=back';
+  push @paras, "I<< More results found. Refine your search terms or L<show all results|$more_url>. >>" if $more_faqs;
+  push @paras, '=head2 Functions', '=over';
+  my $more_functions;
   if (@$function_results) {
+    if ($limit) {
+      $more_functions = @$function_results > $limit;
+      splice @$function_results, $limit;
+    }
     foreach my $function (@$function_results) {
       my ($name, $headline) = map { $c->escape_pod($_) } @$function{'name','headline'};
       $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
@@ -99,8 +116,15 @@ sub _search ($c) {
   } else {
     push @paras, '=item I<No results>';
   }
-  push @paras, '=back', '=head2 Documentation', '=over';
+  push @paras, '=back';
+  push @paras, "I<< More results found. Refine your search terms or L<show all results|$more_url>. >>" if $more_functions;
+  push @paras, '=head2 Documentation', '=over';
+  my $more_pods;
   if (@$pod_results) {
+    if ($limit) {
+      $more_pods = @$pod_results > $limit;
+      splice @$pod_results, $limit;
+    }
     foreach my $page (@$pod_results) {
       my ($name, $abstract, $headline) = map { $c->escape_pod($_) } @$page{'name','abstract','headline'};
       $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
@@ -113,6 +137,7 @@ sub _search ($c) {
     push @paras, '=item I<No results>';
   }
   push @paras, '=back';
+  push @paras, "I<< More results found. Refine your search terms or L<show all results|$more_url>. >>" if $more_pods;
   my $src = join "\n\n", @paras;
 
   $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });

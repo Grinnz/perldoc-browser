@@ -57,34 +57,40 @@ sub _digits_variable_match ($c, $perl_version, $query) {
   return defined $match ? $match->[0] : undef;
 }
 
-sub _pod_search ($c, $perl_version, $query) {
+sub _pod_search ($c, $perl_version, $query, $limit = undef) {
+  my $limit_str = defined $limit ? ' LIMIT ?' : '';
+  my @limit_param = defined $limit ? $limit : ();
   $query =~ s/"/""/g;
   $query = join ' ', map { qq{"$_"} } split ' ', $query;
   return $c->sqlite->db->query(q{SELECT "name", "abstract",
     snippet("pods_index", 3, '__HEADLINE_START__', '__HEADLINE_STOP__', ' ... ', 36) AS "headline"
     FROM "pods_index" WHERE "rowid" IN (SELECT "id" FROM "pods" WHERE "perl_version" = ? AND "contents" != '')
-    AND "pods_index" MATCH ? ORDER BY "rank" LIMIT 20},
-    $perl_version, $query)->hashes;
+    AND "pods_index" MATCH ? ORDER BY "rank"} . $limit_str,
+    $perl_version, $query, @limit_param)->hashes;
 }
 
-sub _function_search ($c, $perl_version, $query) {
+sub _function_search ($c, $perl_version, $query, $limit = undef) {
+  my $limit_str = defined $limit ? ' LIMIT ?' : '';
+  my @limit_param = defined $limit ? $limit : ();
   $query =~ s/"/""/g;
   $query = join ' ', map { qq{"$_"} } split ' ', $query;
   return $c->sqlite->db->query(q{SELECT "name",
     snippet("functions_index", 1, '__HEADLINE_START__', '__HEADLINE_STOP__', ' ... ', 36) AS "headline"
     FROM "functions_index" WHERE "rowid" IN (SELECT "id" FROM "functions" WHERE "perl_version" = ? AND "description" != '')
-    AND "functions_index" MATCH ? ORDER BY "rank" LIMIT 20},
-    $perl_version, $query)->hashes;
+    AND "functions_index" MATCH ? ORDER BY "rank"} . $limit_str,
+    $perl_version, $query, @limit_param)->hashes;
 }
 
-sub _faq_search ($c, $perl_version, $query) {
+sub _faq_search ($c, $perl_version, $query, $limit = undef) {
+  my $limit_str = defined $limit ? ' LIMIT ?' : '';
+  my @limit_param = defined $limit ? $limit : ();
   $query =~ s/"/""/g;
   $query = join ' ', map { qq{"$_"} } split ' ', $query;
   return $c->sqlite->db->query(q{SELECT "perlfaq", "question",
     snippet("faqs_index", 1, '__HEADLINE_START__', '__HEADLINE_STOP__', ' ... ', 36) AS "headline"
     FROM "faqs_index" WHERE "rowid" IN (SELECT "id" FROM "faqs" WHERE "perl_version" = ? AND "answer" != '')
-    AND "faqs_index" MATCH ? ORDER BY "rank" LIMIT 20},
-    $perl_version, $query)->hashes;
+    AND "faqs_index" MATCH ? ORDER BY "rank"} . $limit_str,
+    $perl_version, $query, @limit_param)->hashes;
 }
 
 sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {

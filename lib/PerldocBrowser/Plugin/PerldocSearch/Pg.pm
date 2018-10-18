@@ -59,31 +59,37 @@ sub _digits_variable_match ($c, $perl_version, $query) {
 
 my $headline_opts = 'StartSel="__HEADLINE_START__", StopSel="__HEADLINE_STOP__", MaxWords=15, MinWords=10, MaxFragments=2';
 
-sub _pod_search ($c, $perl_version, $query) {
+sub _pod_search ($c, $perl_version, $query, $limit = undef) {
+  my $limit_str = defined $limit ? ' LIMIT $4' : '';
+  my @limit_param = defined $limit ? $limit : ();
   $query =~ tr!/.!  !; # postgres likes to tokenize foo.bar and foo/bar funny
   return $c->pg->db->query(q{SELECT "name", "abstract",
     ts_rank_cd("indexed", plainto_tsquery('english_tag', $1), 1) AS "rank",
     ts_headline('english_tag', "contents", plainto_tsquery('english_tag', $1), $2) AS "headline"
     FROM "pods" WHERE "perl_version" = $3 AND "indexed" @@ plainto_tsquery('english_tag', $1)
-    ORDER BY "rank" DESC, "name" LIMIT 20}, $query, $headline_opts, $perl_version)->hashes;
+    ORDER BY "rank" DESC, "name"} . $limit_str, $query, $headline_opts, $perl_version, @limit_param)->hashes;
 }
 
-sub _function_search ($c, $perl_version, $query) {
+sub _function_search ($c, $perl_version, $query, $limit = undef) {
+  my $limit_str = defined $limit ? ' LIMIT $4' : '';
+  my @limit_param = defined $limit ? $limit : ();
   $query =~ tr!/.!  !;
   return $c->pg->db->query(q{SELECT "name",
     ts_rank_cd("indexed", plainto_tsquery('english_tag', $1), 1) AS "rank",
     ts_headline('english_tag', "description", plainto_tsquery('english_tag', $1), $2) AS "headline"
     FROM "functions" WHERE "perl_version" = $3 AND "indexed" @@ plainto_tsquery('english_tag', $1)
-    ORDER BY "rank" DESC, "name" LIMIT 20}, $query, $headline_opts, $perl_version)->hashes;
+    ORDER BY "rank" DESC, "name"} . $limit_str, $query, $headline_opts, $perl_version, @limit_param)->hashes;
 }
 
-sub _faq_search ($c, $perl_version, $query) {
+sub _faq_search ($c, $perl_version, $query, $limit = undef) {
+  my $limit_str = defined $limit ? ' LIMIT $4' : '';
+  my @limit_param = defined $limit ? $limit : ();
   $query =~ tr!/.!  !;
   return $c->pg->db->query(q{SELECT "perlfaq", "question",
     ts_rank_cd("indexed", plainto_tsquery('english_tag', $1), 1) AS "rank",
     ts_headline('english_tag', "answer", plainto_tsquery('english_tag', $1), $2) AS "headline"
     FROM "faqs" WHERE "perl_version" = $3 AND "indexed" @@ plainto_tsquery('english_tag', $1)
-    ORDER BY "rank" DESC, "question" LIMIT 20}, $query, $headline_opts, $perl_version)->hashes;
+    ORDER BY "rank" DESC, "question"} . $limit_str, $query, $headline_opts, $perl_version, @limit_param)->hashes;
 }
 
 sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
