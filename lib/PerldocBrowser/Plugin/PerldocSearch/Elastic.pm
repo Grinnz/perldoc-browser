@@ -6,7 +6,7 @@ package PerldocBrowser::Plugin::PerldocSearch::Elastic;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
-use List::Util 1.33 'all';
+use List::Util 1.33 qw(all any);
 use Mojo::File 'path';
 use Mojo::JSON 'true';
 use Mojo::Util 'dumper';
@@ -34,7 +34,7 @@ sub register ($self, $app, $conf) {
 }
 
 sub _pod_name_match ($c, $perl_version, $query) {
-  return undef unless $c->es->indices->exists(index => "pods_$perl_version");
+  return undef unless _index_is_ready($c, "pods_$perl_version");
   my $match = $c->es->search(index => "pods_$perl_version", body => {
     query => {bool => {should => [
       {term => {'name.ci' => $query}},
@@ -49,7 +49,7 @@ sub _pod_name_match ($c, $perl_version, $query) {
 }
 
 sub _function_name_match ($c, $perl_version, $query) {
-  return undef unless $c->es->indices->exists(index => "functions_$perl_version");
+  return undef unless _index_is_ready($c, "functions_$perl_version");
   my $match = $c->es->search(index => "functions_$perl_version", body => {
     query => {bool => {should => [
       {term => {'name.ci' => $query}},
@@ -64,7 +64,7 @@ sub _function_name_match ($c, $perl_version, $query) {
 }
 
 sub _variable_name_match ($c, $perl_version, $query) {
-  return undef unless $c->es->indices->exists(index => "variables_$perl_version");
+  return undef unless _index_is_ready($c, "variables_$perl_version");
   my $match = $c->es->search(index => "variables_$perl_version", body => {
     query => {bool => {should => [
       {term => {'name.ci' => $query}},
@@ -80,7 +80,7 @@ sub _variable_name_match ($c, $perl_version, $query) {
 
 sub _digits_variable_match ($c, $perl_version, $query) {
   return undef unless $query =~ m/^\$[1-9][0-9]*$/;
-  return undef unless $c->es->indices->exists(index => "variables_$perl_version");
+  return undef unless _index_is_ready($c, "variables_$perl_version");
   my $match = $c->es->search(index => "variables_$perl_version", body => {
     query => {prefix => {name => '$<digits>'}},
     _source => 'name',
@@ -102,7 +102,7 @@ my %highlight_opts = (
 );
 
 sub _pod_search ($c, $perl_version, $query) {
-  return [] unless $c->es->indices->exists(index => "pods_$perl_version");
+  return [] unless _index_is_ready($c, "pods_$perl_version");
   my $matches = $c->es->search(index => "pods_$perl_version", body => {
     query => {bool => {should => [
       {match => {'name.text' => {query => $query, operator => 'and' }}},
@@ -128,7 +128,7 @@ sub _pod_search ($c, $perl_version, $query) {
 }
 
 sub _function_search ($c, $perl_version, $query) {
-  return [] unless $c->es->indices->exists(index => "functions_$perl_version");
+  return [] unless _index_is_ready($c, "functions_$perl_version");
   my $matches = $c->es->search(index => "functions_$perl_version", body => {
     query => {bool => {should => [
       {match => {'name.text' => {query => $query, operator => 'and'}}},
@@ -151,7 +151,7 @@ sub _function_search ($c, $perl_version, $query) {
 }
 
 sub _faq_search ($c, $perl_version, $query) {
-  return [] unless $c->es->indices->exists(index => "faqs_$perl_version");
+  return [] unless _index_is_ready($c, "faqs_$perl_version");
   my $matches = $c->es->search(index => "faqs_$perl_version", body => {
     query => {bool => {should => [
       {match => {'question.text' => {query => $query, operator => 'and'}}},
@@ -305,6 +305,14 @@ sub _index_faqs ($es, $index_name, $perl_version, $perlfaq, $faqs) {
     });
   }
   $bulk->flush;
+}
+
+sub _index_is_ready ($c, $index) {
+  return 0 unless $c->es->indices->exists(index => $index);
+  my $health = $c->es->cluster->health(level => 'indices', index => $index);
+  my @indices = values %{$health->{indices}};
+  return 0 if !@indices or any { ($_->{status} // 'red') eq 'red' } @indices;
+  return 1;
 }
 
 sub _bulk_helper ($es, $index, $type) {
