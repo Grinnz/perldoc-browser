@@ -130,15 +130,15 @@
         display: block;
       }
     </style>
-% if (defined $c->config->{google_analytics_tracking_id}) {
+% if (defined config->{google_analytics_tracking_id}) {
     <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=<%= $c->config->{google_analytics_tracking_id} %>"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=<%= config->{google_analytics_tracking_id} %>"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
 
-      gtag('config', '<%= $c->config->{google_analytics_tracking_id} %>');
+      gtag('config', '<%= config->{google_analytics_tracking_id} %>');
     </script>
 % }
   </head>

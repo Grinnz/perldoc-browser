@@ -34,8 +34,9 @@ sub register ($self, $app, $conf) {
 }
 
 sub _pod_name_match ($c, $perl_version, $query) {
-  return undef unless _index_is_ready($c, "pods_$perl_version");
-  my $match = $c->es->search(index => "pods_$perl_version", body => {
+  my $es = $c->helpers->es;
+  return undef unless _index_is_ready($es, "pods_$perl_version");
+  my $match = $es->search(index => "pods_$perl_version", body => {
     query => {bool => {should => [
       {term => {'name.ci' => $query}},
       {term => {name => {value => $query, boost => 2.0}}},
@@ -49,8 +50,9 @@ sub _pod_name_match ($c, $perl_version, $query) {
 }
 
 sub _function_name_match ($c, $perl_version, $query) {
-  return undef unless _index_is_ready($c, "functions_$perl_version");
-  my $match = $c->es->search(index => "functions_$perl_version", body => {
+  my $es = $c->helpers->es;
+  return undef unless _index_is_ready($es, "functions_$perl_version");
+  my $match = $es->search(index => "functions_$perl_version", body => {
     query => {bool => {should => [
       {term => {'name.ci' => $query}},
       {term => {name => {value => $query, boost => 2.0}}},
@@ -64,8 +66,9 @@ sub _function_name_match ($c, $perl_version, $query) {
 }
 
 sub _variable_name_match ($c, $perl_version, $query) {
-  return undef unless _index_is_ready($c, "variables_$perl_version");
-  my $match = $c->es->search(index => "variables_$perl_version", body => {
+  my $es = $c->helpers->es;
+  return undef unless _index_is_ready($es, "variables_$perl_version");
+  my $match = $es->search(index => "variables_$perl_version", body => {
     query => {bool => {should => [
       {term => {'name.ci' => $query}},
       {term => {name => {value => $query, boost => 2.0}}},
@@ -80,8 +83,9 @@ sub _variable_name_match ($c, $perl_version, $query) {
 
 sub _digits_variable_match ($c, $perl_version, $query) {
   return undef unless $query =~ m/^\$[1-9][0-9]*$/;
-  return undef unless _index_is_ready($c, "variables_$perl_version");
-  my $match = $c->es->search(index => "variables_$perl_version", body => {
+  my $es = $c->helpers->es;
+  return undef unless _index_is_ready($es, "variables_$perl_version");
+  my $match = $es->search(index => "variables_$perl_version", body => {
     query => {prefix => {name => '$<digits>'}},
     _source => 'name',
     size => 1,
@@ -102,9 +106,10 @@ my %highlight_opts = (
 );
 
 sub _pod_search ($c, $perl_version, $query, $limit = undef) {
-  return [] unless _index_is_ready($c, "pods_$perl_version");
+  my $es = $c->helpers->es;
+  return [] unless _index_is_ready($es, "pods_$perl_version");
   $limit //= 1000;
-  my $matches = $c->es->search(index => "pods_$perl_version", body => {
+  my $matches = $es->search(index => "pods_$perl_version", body => {
     query => {bool => {should => [
       {match => {'name.text' => {query => $query, operator => 'and' }}},
       {match => {abstract => {query => $query, operator => 'and', boost => 0.4}}},
@@ -129,9 +134,10 @@ sub _pod_search ($c, $perl_version, $query, $limit = undef) {
 }
 
 sub _function_search ($c, $perl_version, $query, $limit = undef) {
-  return [] unless _index_is_ready($c, "functions_$perl_version");
+  my $es = $c->helpers->es;
+  return [] unless _index_is_ready($es, "functions_$perl_version");
   $limit //= 1000;
-  my $matches = $c->es->search(index => "functions_$perl_version", body => {
+  my $matches = $es->search(index => "functions_$perl_version", body => {
     query => {bool => {should => [
       {match => {'name.text' => {query => $query, operator => 'and'}}},
       {match => {description => {query => $query, operator => 'and', boost => 0.4}}},
@@ -153,9 +159,10 @@ sub _function_search ($c, $perl_version, $query, $limit = undef) {
 }
 
 sub _faq_search ($c, $perl_version, $query, $limit = undef) {
-  return [] unless _index_is_ready($c, "faqs_$perl_version");
+  my $es = $c->helpers->es;
+  return [] unless _index_is_ready($es, "faqs_$perl_version");
   $limit //= 1000;
-  my $matches = $c->es->search(index => "faqs_$perl_version", body => {
+  my $matches = $es->search(index => "faqs_$perl_version", body => {
     query => {bool => {should => [
       {match => {'question.text' => {query => $query, operator => 'and'}}},
       {match => {answer => {query => $query, operator => 'and', boost => 0.4}}},
@@ -178,7 +185,8 @@ sub _faq_search ($c, $perl_version, $query, $limit = undef) {
 }
 
 sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
-  my $es = $c->es;
+  my $h = $c->helpers;
+  my $es = $h->es;
   my %index_name;
   my $time = time;
   $index_name{functions} = "functions_${perl_version}_$time" if exists $pods->{perlfunc};
@@ -191,16 +199,16 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
     foreach my $pod (keys %$pods) {
       print "Indexing $pod for $perl_version ($pods->{$pod})\n";
       my $src = path($pods->{$pod})->slurp;
-      _index_pod($bulk_pod, $c->prepare_index_pod($pod, $src)) if $index_pods;
+      _index_pod($bulk_pod, $h->prepare_index_pod($pod, $src)) if $index_pods;
       if ($pod eq 'perlfunc') {
         print "Indexing functions for $perl_version\n";
-        _index_functions($es, $index_name{functions}, $perl_version, $c->prepare_index_functions($src));
+        _index_functions($es, $index_name{functions}, $perl_version, $h->prepare_index_functions($src));
       } elsif ($pod eq 'perlvar') {
         print "Indexing variables for $perl_version\n";
-        _index_variables($es, $index_name{variables}, $perl_version, $c->prepare_index_variables($src));
+        _index_variables($es, $index_name{variables}, $perl_version, $h->prepare_index_variables($src));
       } elsif (defined $index_name{faqs} and $pod =~ m/^perlfaq[1-9]$/) {
         print "Indexing $pod FAQs for $perl_version\n";
-        _index_faqs($es, $index_name{faqs}, $perl_version, $pod, $c->prepare_index_faqs($src));
+        _index_faqs($es, $index_name{faqs}, $perl_version, $pod, $h->prepare_index_faqs($src));
       }
     }
     $bulk_pod->flush if $index_pods;
@@ -310,9 +318,9 @@ sub _index_faqs ($es, $index_name, $perl_version, $perlfaq, $faqs) {
   $bulk->flush;
 }
 
-sub _index_is_ready ($c, $index) {
-  return 0 unless $c->es->indices->exists(index => $index);
-  my $health = $c->es->cluster->health(level => 'indices', index => $index);
+sub _index_is_ready ($es, $index) {
+  return 0 unless $es->indices->exists(index => $index);
+  my $health = $es->cluster->health(level => 'indices', index => $index);
   my @indices = values %{$health->{indices}};
   return 0 if !@indices or any { ($_->{status} // 'red') eq 'red' } @indices;
   return 1;

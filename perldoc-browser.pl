@@ -17,6 +17,8 @@ use version;
 use experimental 'signatures';
 use lib::relative 'lib';
 
+app->attr('search_backend');
+
 push @{app->commands->namespaces}, 'PerldocBrowser::Command';
 push @{app->plugins->namespaces}, 'PerldocBrowser::Plugin';
 
@@ -73,7 +75,8 @@ any '/#url_perl_version/contact' => {module => 'contact', perl_version => $lates
   $c->stash(perl_version => $c->stash('url_perl_version')) if $c->stash('url_perl_version');
   my $src = join "\n\n", @{$c->app->config->{contact_pod} // []};
   $c->respond_to(txt => {data => $src}, html => sub {
-    $c->content_for(perldoc => $c->pod_to_html($src));
+    my $h = $c->helpers;
+    $h->content_for(perldoc => $h->pod_to_html($src));
     $c->render('perldoc', title => 'contact', parts => []);
   });
 };

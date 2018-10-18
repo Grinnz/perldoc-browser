@@ -15,17 +15,16 @@ sub register ($self, $app, $conf) {
   my $backend = $app->config->{search_backend} // 'none';
 
   if ($backend eq 'none') {
-    $app->helper(search_backend => sub { undef });
     return 1;
   } elsif ($backend eq 'pg' or $backend eq 'postgres' or $backend eq 'postgresql') {
     $app->plugin('PerldocSearch::Pg');
-    $app->helper(search_backend => sub { 'pg' });
+    $app->search_backend('pg');
   } elsif ($backend eq 'es' or $backend eq 'elastic' or $backend eq 'elasticsearch') {
     $app->plugin('PerldocSearch::Elastic');
-    $app->helper(search_backend => sub { 'es' });
+    $app->search_backend('es');
   } elsif ($backend eq 'sqlite') {
     $app->plugin('PerldocSearch::SQLite');
-    $app->helper(search_backend => sub { 'sqlite' });
+    $app->search_backend('sqlite');
   } else {
     die "Unknown search_backend '$backend' configured\n";
   }
@@ -49,33 +48,34 @@ sub register ($self, $app, $conf) {
 }
 
 sub _search ($c) {
+  my $h = $c->helpers;
   my $query = trim($c->param('q') // '');
   $c->stash(cpan => Mojo::URL->new('https://metacpan.org/search')->query(q => $query));
 
   my $perl_version = $c->stash('perl_version');
   my $url_perl_version = $c->stash('url_perl_version');
-  my $url_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
+  my $url_prefix = $url_perl_version ? $h->append_url_path('/', $url_perl_version) : '';
   my $limit = $c->param('limit') // 20;
   $limit = 20 unless $limit =~ m/\A[0-9]+\z/;
 
-  my $function = $c->function_name_match($perl_version, $query);
-  return $c->res->code(301) && $c->redirect_to($c->url_for($c->append_url_path("$url_prefix/functions/", $function))) if defined $function;
+  my $function = $h->function_name_match($perl_version, $query);
+  return $c->res->code(301) && $c->redirect_to($c->url_for($h->append_url_path("$url_prefix/functions/", $function))) if defined $function;
 
-  my $variable = $c->variable_name_match($perl_version, $query);
-  return $c->res->code(301) && $c->redirect_to($c->url_for($c->append_url_path("$url_prefix/variables/", $variable))) if defined $variable;
+  my $variable = $h->variable_name_match($perl_version, $query);
+  return $c->res->code(301) && $c->redirect_to($c->url_for($h->append_url_path("$url_prefix/variables/", $variable))) if defined $variable;
 
-  my $digits = $c->digits_variable_match($perl_version, $query);
-  return $c->res->code(301) && $c->redirect_to($c->url_for($c->append_url_path("$url_prefix/variables/", $digits))) if defined $digits;
+  my $digits = $h->digits_variable_match($perl_version, $query);
+  return $c->res->code(301) && $c->redirect_to($c->url_for($h->append_url_path("$url_prefix/variables/", $digits))) if defined $digits;
 
-  my $pod = $c->pod_name_match($perl_version, $query);
-  return $c->res->code(301) && $c->redirect_to($c->url_for($c->append_url_path("$url_prefix/", $pod))) if defined $pod;
+  my $pod = $h->pod_name_match($perl_version, $query);
+  return $c->res->code(301) && $c->redirect_to($c->url_for($h->append_url_path("$url_prefix/", $pod))) if defined $pod;
 
   my $search_limit = $limit ? $limit+1 : undef;
-  my $function_results = $c->function_search($perl_version, $query, $search_limit);
-  my $faq_results = $c->faq_search($perl_version, $query, $search_limit);
-  my $pod_results = $c->pod_search($perl_version, $query, $search_limit);
+  my $function_results = $h->function_search($perl_version, $query, $search_limit);
+  my $faq_results = $h->faq_search($perl_version, $query, $search_limit);
+  my $pod_results = $h->pod_search($perl_version, $query, $search_limit);
 
-  my $more_url = $c->url_with("$url_prefix/search")->to_abs->query({limit => 0});
+  my $more_url = $h->url_with("$url_prefix/search")->to_abs->query({limit => 0});
 
   my @paras = ('=encoding UTF-8');
   push @paras, '=head2 FAQ', '=over';
@@ -86,7 +86,7 @@ sub _search ($c) {
       splice @$faq_results, $limit;
     }
     foreach my $faq (@$faq_results) {
-      my ($perlfaq, $question, $headline) = ($faq->{perlfaq}, map { $c->escape_pod($_) } @$faq{'question','headline'});
+      my ($perlfaq, $question, $headline) = ($faq->{perlfaq}, map { $h->escape_pod($_) } @$faq{'question','headline'});
       $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
       $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
       $headline =~ s/\n+/ /g;
@@ -106,7 +106,7 @@ sub _search ($c) {
       splice @$function_results, $limit;
     }
     foreach my $function (@$function_results) {
-      my ($name, $headline) = map { $c->escape_pod($_) } @$function{'name','headline'};
+      my ($name, $headline) = map { $h->escape_pod($_) } @$function{'name','headline'};
       $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
       $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
       $headline =~ s/\n+/ /g;
@@ -126,7 +126,7 @@ sub _search ($c) {
       splice @$pod_results, $limit;
     }
     foreach my $page (@$pod_results) {
-      my ($name, $abstract, $headline) = map { $c->escape_pod($_) } @$page{'name','abstract','headline'};
+      my ($name, $abstract, $headline) = map { $h->escape_pod($_) } @$page{'name','abstract','headline'};
       $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
       $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
       $headline =~ s/\n+/ /g;
@@ -140,14 +140,15 @@ sub _search ($c) {
   push @paras, "I<< More results found. Refine your search terms or L<show all results|$more_url>. >>" if $more_pods;
   my $src = join "\n\n", @paras;
 
-  $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
+  $c->respond_to(txt => {data => $src}, html => sub { $h->render_perldoc_html($src) });
 }
 
 sub _prepare_index_pod ($c, $name, $src) {
+  my $h = $c->helpers;
   my %properties = (name => $name, abstract => '', description => '', contents => '');
 
   unless ($name eq 'perltoc' or $name =~ m/^perlfaq/) {
-    my $dom = Mojo::DOM->new($c->pod_to_html($src, undef, 0));
+    my $dom = Mojo::DOM->new($h->pod_to_html($src, undef, 0));
     my $headings = $dom->find('h1');
 
     my $name_heading = $headings->first(sub { trim($_->all_text) eq 'NAME' });
@@ -169,7 +170,8 @@ sub _prepare_index_pod ($c, $name, $src) {
 }
 
 sub _prepare_index_functions ($c, $src) {
-  my $blocks = $c->split_functions($src);
+  my $h = $c->helpers;
+  my $blocks = $h->split_functions($src);
   my %functions;
   foreach my $block (@$blocks) {
     my ($list_level, $is_filetest, $indexed_name, %names) = (0);
@@ -178,7 +180,7 @@ sub _prepare_index_functions ($c, $src) {
       $list_level-- if $para =~ m/^=back/;
       # 0: navigatable, 1: navigatable and returned in search results
       if (!$list_level and $para =~ m/^=item/) {
-        my $heading = $c->pod_to_text_content("=over\n\n$para\n\n=back");
+        my $heading = $h->pod_to_text_content("=over\n\n$para\n\n=back");
         if ($heading =~ m/^([-\w\/]+)/) {
           $names{"$1"} //= $indexed_name ? 0 : 1;
           $indexed_name = 1;
@@ -194,7 +196,7 @@ sub _prepare_index_functions ($c, $src) {
   my @functions;
   foreach my $function (keys %functions) {
     my $pod = join "\n\n", '=over', @{$functions{$function}}, '=back';
-    my $description = $c->pod_to_text_content($pod);
+    my $description = $h->pod_to_text_content($pod);
 
     push @functions, {name => $function, description => $description};
   }
@@ -203,7 +205,8 @@ sub _prepare_index_functions ($c, $src) {
 }
 
 sub _prepare_index_variables ($c, $src) {
-  my $blocks = $c->split_variables($src);
+  my $h = $c->helpers;
+  my $blocks = $h->split_variables($src);
   my %variables;
   foreach my $block (@$blocks) {
     my ($list_level, %names) = (0);
@@ -212,7 +215,7 @@ sub _prepare_index_variables ($c, $src) {
       $list_level-- if $para =~ m/^=back/;
       # 0: navigatable, 1: navigatable and returned in search results
       if (!$list_level and $para =~ m/^=item/) {
-        my $heading = $c->pod_to_text_content("=over\n\n$para\n\n=back");
+        my $heading = $h->pod_to_text_content("=over\n\n$para\n\n=back");
         $names{"$1"} = 0 if $heading =~ m/^([\$\@%].+)$/ or $heading =~ m/^([a-zA-Z]+)$/;
       }
     }
@@ -222,7 +225,7 @@ sub _prepare_index_variables ($c, $src) {
   my @variables;
   foreach my $variable (keys %variables) {
     my $pod = join "\n\n", '=over', @{$variables{$variable}}, '=back';
-    my $description = $c->pod_to_text_content($pod);
+    my $description = $h->pod_to_text_content($pod);
 
     push @variables, {name => $variable};
   }
@@ -231,14 +234,15 @@ sub _prepare_index_variables ($c, $src) {
 }
 
 sub _prepare_index_faqs ($c, $src) {
-  my $blocks = $c->split_faqs($src);
+  my $h = $c->helpers;
+  my $blocks = $h->split_faqs($src);
   my %faqs;
   foreach my $block (@$blocks) {
     my %questions;
     foreach my $para (@$block) {
       # 0: navigatable, 1: navigatable and returned in search results
       if ($para =~ m/^=head2/) {
-        my $heading = $c->pod_to_text_content("=pod\n\n$para");
+        my $heading = $h->pod_to_text_content("=pod\n\n$para");
         $questions{$heading} = 1;
       }
     }
@@ -247,7 +251,7 @@ sub _prepare_index_faqs ($c, $src) {
 
   my @faqs;
   foreach my $question (keys %faqs) {
-    my $answer = $c->pod_to_text_content(join "\n\n", '=pod', @{$faqs{$question}});
+    my $answer = $h->pod_to_text_content(join "\n\n", '=pod', @{$faqs{$question}});
 
     push @faqs, {question => $question, answer => $answer};
   }

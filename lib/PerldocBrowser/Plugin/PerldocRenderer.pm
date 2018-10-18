@@ -60,17 +60,18 @@ sub register ($self, $app, $conf) {
 }
 
 sub _find_pod($c, $module) {
-  my $inc_dirs = $c->inc_dirs($c->stash('perl_version'));
+  my $inc_dirs = $c->helpers->inc_dirs($c->stash('perl_version'));
   return Pod::Simple::Search->new->inc(0)->find($module, @$inc_dirs);
 }
 
 sub _find_module($c, $module) {
-  my $inc_dirs = $c->inc_dirs($c->stash('perl_version'));
+  my $inc_dirs = $c->helpers->inc_dirs($c->stash('perl_version'));
   return Module::Metadata->new_from_module($module, inc => $inc_dirs);
 }
 
 sub _html ($c, $src) {
-  my $dom = Mojo::DOM->new($c->pod_to_html($src, $c->stash('url_perl_version')));
+  my $h = $c->helpers;
+  my $dom = Mojo::DOM->new($h->pod_to_html($src, $c->stash('url_perl_version')));
 
   # Rewrite code blocks for syntax highlighting and correct indentation
   for my $e ($dom->find('pre > code')->each) {
@@ -82,7 +83,7 @@ sub _html ($c, $src) {
   }
 
   my $url_perl_version = $c->stash('url_perl_version');
-  my $url_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
+  my $url_prefix = $url_perl_version ? $h->append_url_path('/', $url_perl_version) : '';
 
   if ($c->param('module') eq 'functions') {
     # Rewrite links on function pages
@@ -91,14 +92,14 @@ sub _html ($c, $src) {
       next if length $link->path;
       next unless length(my $fragment = $link->fragment);
       my ($function) = $fragment =~ m/^(.[^-]*)/;
-      $e->attr(href => $c->url_for($c->append_url_path("$url_prefix/functions/", $function)));
+      $e->attr(href => $c->url_for($h->append_url_path("$url_prefix/functions/", $function)));
     }
 
     # Insert links on functions index
     if (!defined $c->param('function')) {
       for my $e ($dom->find(':not(a) > code')->each) {
         my $text = $e->all_text;
-        $e->wrap($c->link_to('' => $c->url_for($c->append_url_path("$url_prefix/functions/", "$1"))))
+        $e->wrap($c->link_to('' => $c->url_for($h->append_url_path("$url_prefix/functions/", "$1"))))
           if $text =~ m/^([-\w]+)\/*$/ or $text =~ m/^([-\w\/]+)$/;
       }
     }
@@ -111,7 +112,7 @@ sub _html ($c, $src) {
       next if length $link->path;
       next unless length (my $fragment = $link->fragment);
       if ($fragment =~ m/^[\$\@%]/ or $fragment =~ m/^[a-zA-Z]+$/) {
-        $e->attr(href => $c->url_for($c->append_url_path("$url_prefix/variables/", $fragment)));
+        $e->attr(href => $c->url_for($h->append_url_path("$url_prefix/variables/", $fragment)));
       } else {
         $e->attr(href => $c->url_for(Mojo::URL->new("$url_prefix/perlvar")->fragment($fragment)));
       }
@@ -122,7 +123,7 @@ sub _html ($c, $src) {
   if ($c->param('module') eq 'modules') {
     for my $e ($dom->find('dt')->each) {
       my $module = $e->all_text;
-      $e->child_nodes->last->wrap($c->link_to('' => $c->url_for($c->append_url_path("$url_prefix/", $module))));
+      $e->child_nodes->last->wrap($c->link_to('' => $c->url_for($h->append_url_path("$url_prefix/", $module))));
     }
   }
 
@@ -130,16 +131,16 @@ sub _html ($c, $src) {
   if ($c->param('module') eq 'perl') {
     for my $e ($dom->find('pre > code')->each) {
       my $str = $e->content;
-      $e->content($str) if $str =~ s/^\s*\K(perl\S+)/$c->link_to("$1" => $c->url_for($c->append_url_path("$url_prefix\/", "$1")))/mge;
+      $e->content($str) if $str =~ s/^\s*\K(perl\S+)/$c->link_to("$1" => $c->url_for($h->append_url_path("$url_prefix\/", "$1")))/mge;
     }
     for my $e ($dom->find(':not(pre) > code')->each) {
       my $text = $e->all_text;
-      $e->wrap($c->link_to('' => $c->url_for($c->append_url_path("$url_prefix/", "$1")))) if $text =~ m/^perldoc (\w+)$/;
-      $e->content($text) if $text =~ s/^use \K([a-z]+)(;|$)/$c->link_to("$1" => $c->url_for($c->append_url_path("$url_prefix\/", "$1"))) . $2/e;
+      $e->wrap($c->link_to('' => $c->url_for($h->append_url_path("$url_prefix/", "$1")))) if $text =~ m/^perldoc (\w+)$/;
+      $e->content($text) if $text =~ s/^use \K([a-z]+)(;|$)/$c->link_to("$1" => $c->url_for($h->append_url_path("$url_prefix\/", "$1"))) . $2/e;
     }
     for my $e ($dom->find('p > b')->each) {
       my $text = $e->all_text;
-      $e->content($text) if $text =~ s/^use \K([a-z]+)(;|$)/$c->link_to("$1" => $c->url_for($c->append_url_path("$url_prefix\/", "$1"))) . $2/e;
+      $e->content($text) if $text =~ s/^use \K([a-z]+)(;|$)/$c->link_to("$1" => $c->url_for($h->append_url_path("$url_prefix\/", "$1"))) . $2/e;
     }
   }
 
@@ -148,7 +149,7 @@ sub _html ($c, $src) {
     for my $e ($dom->find('a[href]')->each) {
       next unless $e->attr('href') =~ /^[^#]+perlfunc#(.[^-]*)/;
       my $function = url_unescape "$1";
-      $e->attr(href => $c->url_for($c->append_url_path("$url_prefix/functions/", $function)))->content($function);
+      $e->attr(href => $c->url_for($h->append_url_path("$url_prefix/functions/", $function)))->content($function);
     }
   }
 
@@ -171,14 +172,15 @@ sub _html ($c, $src) {
   $dom->find('h1 + p')->first(sub { $title = shift->all_text });
 
   # Combine everything to a proper response
-  $c->content_for(perldoc => "$dom");
+  $h->content_for(perldoc => "$dom");
   $c->render('perldoc', title => $title, parts => \@parts);
 }
 
 sub _perldoc ($c) {
+  my $h = $c->helpers;
   # Find module or redirect to CPAN
   my $module = $c->param('module');
-  $c->stash(cpan => $c->append_url_path('https://metacpan.org/pod', $module));
+  $c->stash(cpan => $h->append_url_path('https://metacpan.org/pod', $module));
 
   my $path = _find_pod($c, $module);
   return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
@@ -187,16 +189,17 @@ sub _perldoc ($c) {
     $c->stash(module_version => $module_meta->version($module));
   }
 
-  if (defined $c->search_backend) {
-    my $function = $c->function_name_match($c->stash('perl_version'), $module);
+  if (defined $c->app->search_backend) {
+    my $function = $h->function_name_match($c->stash('perl_version'), $module);
     $c->stash(alt_page_type => 'function') if defined $function;
   }
 
   my $src = path($path)->slurp;
-  $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
+  $c->respond_to(txt => {data => $src}, html => sub { $h->render_perldoc_html($src) });
 }
 
 sub _function ($c) {
+  my $h = $c->helpers;
   my $function = $c->param('function');
   $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlfunc')->fragment($function));
 
@@ -205,34 +208,35 @@ sub _function ($c) {
 
   my $heading = first { m/^=item/ } split /\n\n+/, $src;
   if (defined $heading) {
-    my $target = $c->pod_to_text_content(join "\n\n", '=over', $heading, '=back');
-    my $escaped = $c->escape_pod($target);
-    my $link = Mojo::DOM->new($c->pod_to_html(qq{=pod\n\nL<< /"$escaped" >>}))->at('a');
+    my $target = $h->pod_to_text_content(join "\n\n", '=over', $heading, '=back');
+    my $escaped = $h->escape_pod($target);
+    my $link = Mojo::DOM->new($h->pod_to_html(qq{=pod\n\nL<< /"$escaped" >>}))->at('a');
     if (defined $link) {
       my $fragment = Mojo::URL->new($link->attr('href'))->fragment;
       $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlfunc')->fragment($fragment));
     }
   }
 
-  if (defined $c->search_backend) {
-    my $pod = $c->pod_name_match($c->stash('perl_version'), $function);
+  if (defined $c->app->search_backend) {
+    my $pod = $h->pod_name_match($c->stash('perl_version'), $function);
     $c->stash(alt_page_type => 'module') if defined $pod;
   }
 
-  $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
+  $c->respond_to(txt => {data => $src}, html => sub { $h->render_perldoc_html($src) });
 }
 
 sub _variable ($c) {
+  my $h = $c->helpers;
   my $variable = $c->param('variable');
-  my $escaped = $c->escape_pod($variable);
-  my $link = Mojo::DOM->new($c->pod_to_html(qq{=pod\n\nL<< /"$escaped" >>}))->at('a');
+  my $escaped = $h->escape_pod($variable);
+  my $link = Mojo::DOM->new($h->pod_to_html(qq{=pod\n\nL<< /"$escaped" >>}))->at('a');
   my $fragment = defined $link ? Mojo::URL->new($link->attr('href'))->fragment : $variable;
   $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlvar')->fragment($fragment));
 
   my $src = _get_variable_pod($c, $variable);
   return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
 
-  $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
+  $c->respond_to(txt => {data => $src}, html => sub { $h->render_perldoc_html($src) });
 }
 
 sub _functions_index ($c) {
@@ -241,7 +245,7 @@ sub _functions_index ($c) {
   my $src = _get_function_categories($c);
   return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
 
-  $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
+  $c->respond_to(txt => {data => $src}, html => sub { $c->helpers->render_perldoc_html($src) });
 }
 
 sub _modules_index ($c) {
@@ -250,7 +254,7 @@ sub _modules_index ($c) {
   my $src = _get_module_list($c);
   return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
 
-  $c->respond_to(txt => {data => $src}, html => sub { $c->render_perldoc_html($src) });
+  $c->respond_to(txt => {data => $src}, html => sub { $c->helpers->render_perldoc_html($src) });
 }
 
 sub _get_function_pod ($c, $function) {
@@ -258,7 +262,7 @@ sub _get_function_pod ($c, $function) {
   return undef unless $path && -r $path;
   my $src = path($path)->slurp;
 
-  my $result = $c->split_functions($src, $function);
+  my $result = $c->helpers->split_functions($src, $function);
   return undef unless @$result;
   return join "\n\n", '=over', @$result, '=back';
 }
@@ -268,7 +272,7 @@ sub _get_variable_pod ($c, $variable) {
   return undef unless $path && -r $path;
   my $src = path($path)->slurp;
 
-  my $result = $c->split_variables($src, $variable);
+  my $result = $c->helpers->split_variables($src, $variable);
   return undef unless @$result;
   return join "\n\n", '=over', @$result, '=back';
 }

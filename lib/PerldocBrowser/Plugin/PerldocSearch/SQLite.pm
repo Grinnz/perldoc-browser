@@ -29,21 +29,21 @@ sub register ($self, $app, $conf) {
 }
 
 sub _pod_name_match ($c, $perl_version, $query) {
-  my $match = $c->sqlite->db->query('SELECT "name" FROM "pods" WHERE "perl_version" = ?
+  my $match = $c->helpers->sqlite->db->query('SELECT "name" FROM "pods" WHERE "perl_version" = ?
     AND "name" = ? COLLATE NOCASE ORDER BY "name" = ? DESC, "name" LIMIT 1',
     $perl_version, $query, $query)->arrays->first;
   return defined $match ? $match->[0] : undef;
 }
 
 sub _function_name_match ($c, $perl_version, $query) {
-  my $match = $c->sqlite->db->query('SELECT "name" FROM "functions" WHERE "perl_version" = ?
+  my $match = $c->helpers->sqlite->db->query('SELECT "name" FROM "functions" WHERE "perl_version" = ?
     AND "name" = ? COLLATE NOCASE ORDER BY "name" = ? DESC, "name" LIMIT 1',
     $perl_version, $query, $query)->arrays->first;
   return defined $match ? $match->[0] : undef;
 }
 
 sub _variable_name_match ($c, $perl_version, $query) {
-  my $match = $c->sqlite->db->query('SELECT "name" FROM "variables" WHERE "perl_version" = ?
+  my $match = $c->helpers->sqlite->db->query('SELECT "name" FROM "variables" WHERE "perl_version" = ?
     AND "name" = ? COLLATE NOCASE ORDER BY "name" = ? DESC, "name" LIMIT 1',
     $perl_version, $query, $query)->arrays->first;
   return defined $match ? $match->[0] : undef;
@@ -51,7 +51,7 @@ sub _variable_name_match ($c, $perl_version, $query) {
 
 sub _digits_variable_match ($c, $perl_version, $query) {
   return undef unless $query =~ m/^\$[1-9][0-9]*$/;
-  my $match = $c->sqlite->db->query('SELECT "name" FROM "variables" WHERE "perl_version" = ?
+  my $match = $c->helpers->sqlite->db->query('SELECT "name" FROM "variables" WHERE "perl_version" = ?
     AND "name" LIKE ? ORDER BY "name" LIMIT 1',
     $perl_version, '$<digits>%')->arrays->first;
   return defined $match ? $match->[0] : undef;
@@ -62,7 +62,7 @@ sub _pod_search ($c, $perl_version, $query, $limit = undef) {
   my @limit_param = defined $limit ? $limit : ();
   $query =~ s/"/""/g;
   $query = join ' ', map { qq{"$_"} } split ' ', $query;
-  return $c->sqlite->db->query(q{SELECT "name", "abstract",
+  return $c->helpers->sqlite->db->query(q{SELECT "name", "abstract",
     snippet("pods_index", 3, '__HEADLINE_START__', '__HEADLINE_STOP__', ' ... ', 36) AS "headline"
     FROM "pods_index" WHERE "rowid" IN (SELECT "id" FROM "pods" WHERE "perl_version" = ? AND "contents" != '')
     AND "pods_index" MATCH ? ORDER BY "rank"} . $limit_str,
@@ -74,7 +74,7 @@ sub _function_search ($c, $perl_version, $query, $limit = undef) {
   my @limit_param = defined $limit ? $limit : ();
   $query =~ s/"/""/g;
   $query = join ' ', map { qq{"$_"} } split ' ', $query;
-  return $c->sqlite->db->query(q{SELECT "name",
+  return $c->helpers->sqlite->db->query(q{SELECT "name",
     snippet("functions_index", 1, '__HEADLINE_START__', '__HEADLINE_STOP__', ' ... ', 36) AS "headline"
     FROM "functions_index" WHERE "rowid" IN (SELECT "id" FROM "functions" WHERE "perl_version" = ? AND "description" != '')
     AND "functions_index" MATCH ? ORDER BY "rank"} . $limit_str,
@@ -86,7 +86,7 @@ sub _faq_search ($c, $perl_version, $query, $limit = undef) {
   my @limit_param = defined $limit ? $limit : ();
   $query =~ s/"/""/g;
   $query = join ' ', map { qq{"$_"} } split ' ', $query;
-  return $c->sqlite->db->query(q{SELECT "perlfaq", "question",
+  return $c->helpers->sqlite->db->query(q{SELECT "perlfaq", "question",
     snippet("faqs_index", 1, '__HEADLINE_START__', '__HEADLINE_STOP__', ' ... ', 36) AS "headline"
     FROM "faqs_index" WHERE "rowid" IN (SELECT "id" FROM "faqs" WHERE "perl_version" = ? AND "answer" != '')
     AND "faqs_index" MATCH ? ORDER BY "rank"} . $limit_str,
@@ -94,7 +94,8 @@ sub _faq_search ($c, $perl_version, $query, $limit = undef) {
 }
 
 sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
-  my $db = $c->sqlite->db;
+  my $h = $c->helpers;
+  my $db = $h->sqlite->db;
   my $tx = $db->begin;
   $db->delete('functions', {perl_version => $perl_version}) if exists $pods->{perlfunc};
   $db->delete('variables', {perl_version => $perl_version}) if exists $pods->{perlvar};
@@ -103,16 +104,16 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
   foreach my $pod (keys %$pods) {
     print "Indexing $pod for $perl_version ($pods->{$pod})\n";
     my $src = path($pods->{$pod})->slurp;
-    _index_pod($db, $perl_version, $c->prepare_index_pod($pod, $src)) if $index_pods;
+    _index_pod($db, $perl_version, $h->prepare_index_pod($pod, $src)) if $index_pods;
     if ($pod eq 'perlfunc') {
       print "Indexing functions for $perl_version\n";
-      _index_functions($db, $perl_version, $c->prepare_index_functions($src));
+      _index_functions($db, $perl_version, $h->prepare_index_functions($src));
     } elsif ($pod eq 'perlvar') {
       print "Indexing variables for $perl_version\n";
-      _index_variables($db, $perl_version, $c->prepare_index_variables($src));
+      _index_variables($db, $perl_version, $h->prepare_index_variables($src));
     } elsif ($pod =~ m/^perlfaq[1-9]$/) {
       print "Indexing $pod FAQs for $perl_version\n";
-      _index_faqs($db, $perl_version, $pod, $c->prepare_index_faqs($src));
+      _index_faqs($db, $perl_version, $pod, $h->prepare_index_faqs($src));
     }
   }
   $tx->commit;

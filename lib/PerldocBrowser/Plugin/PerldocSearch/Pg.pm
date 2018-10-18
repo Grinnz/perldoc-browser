@@ -29,21 +29,21 @@ sub register ($self, $app, $conf) {
 }
 
 sub _pod_name_match ($c, $perl_version, $query) {
-  my $match = $c->pg->db->query('SELECT "name" FROM "pods" WHERE "perl_version" = $1
+  my $match = $c->helpers->pg->db->query('SELECT "name" FROM "pods" WHERE "perl_version" = $1
     AND lower("name") = lower($2) ORDER BY "name" = $2 DESC, "name" LIMIT 1',
     $perl_version, $query)->arrays->first;
   return defined $match ? $match->[0] : undef;
 }
 
 sub _function_name_match ($c, $perl_version, $query) {
-  my $match = $c->pg->db->query('SELECT "name" FROM "functions" WHERE "perl_version" = $1
+  my $match = $c->helpers->pg->db->query('SELECT "name" FROM "functions" WHERE "perl_version" = $1
     AND lower("name") = lower($2) ORDER BY "name" = $2 DESC, "name" LIMIT 1',
     $perl_version, $query)->arrays->first;
   return defined $match ? $match->[0] : undef;
 }
 
 sub _variable_name_match ($c, $perl_version, $query) {
-  my $match = $c->pg->db->query('SELECT "name" FROM "variables" WHERE "perl_version" = $1
+  my $match = $c->helpers->pg->db->query('SELECT "name" FROM "variables" WHERE "perl_version" = $1
     AND lower("name") = lower($2) ORDER BY "name" = $2 DESC, "name" LIMIT 1',
     $perl_version, $query)->arrays->first;
   return defined $match ? $match->[0] : undef;
@@ -51,7 +51,7 @@ sub _variable_name_match ($c, $perl_version, $query) {
 
 sub _digits_variable_match ($c, $perl_version, $query) {
   return undef unless $query =~ m/^\$[1-9][0-9]*$/;
-  my $match = $c->pg->db->query('SELECT "name" FROM "variables" WHERE "perl_version" = $1
+  my $match = $c->helpers->pg->db->query('SELECT "name" FROM "variables" WHERE "perl_version" = $1
     AND lower("name") LIKE lower($2) ORDER BY "name" LIMIT 1',
     $perl_version, '$<digits>%')->arrays->first;
   return defined $match ? $match->[0] : undef;
@@ -63,7 +63,7 @@ sub _pod_search ($c, $perl_version, $query, $limit = undef) {
   my $limit_str = defined $limit ? ' LIMIT $4' : '';
   my @limit_param = defined $limit ? $limit : ();
   $query =~ tr!/.!  !; # postgres likes to tokenize foo.bar and foo/bar funny
-  return $c->pg->db->query(q{SELECT "name", "abstract",
+  return $c->helpers->pg->db->query(q{SELECT "name", "abstract",
     ts_rank_cd("indexed", plainto_tsquery('english_tag', $1), 1) AS "rank",
     ts_headline('english_tag', "contents", plainto_tsquery('english_tag', $1), $2) AS "headline"
     FROM "pods" WHERE "perl_version" = $3 AND "indexed" @@ plainto_tsquery('english_tag', $1)
@@ -74,7 +74,7 @@ sub _function_search ($c, $perl_version, $query, $limit = undef) {
   my $limit_str = defined $limit ? ' LIMIT $4' : '';
   my @limit_param = defined $limit ? $limit : ();
   $query =~ tr!/.!  !;
-  return $c->pg->db->query(q{SELECT "name",
+  return $c->helpers->pg->db->query(q{SELECT "name",
     ts_rank_cd("indexed", plainto_tsquery('english_tag', $1), 1) AS "rank",
     ts_headline('english_tag', "description", plainto_tsquery('english_tag', $1), $2) AS "headline"
     FROM "functions" WHERE "perl_version" = $3 AND "indexed" @@ plainto_tsquery('english_tag', $1)
@@ -85,7 +85,7 @@ sub _faq_search ($c, $perl_version, $query, $limit = undef) {
   my $limit_str = defined $limit ? ' LIMIT $4' : '';
   my @limit_param = defined $limit ? $limit : ();
   $query =~ tr!/.!  !;
-  return $c->pg->db->query(q{SELECT "perlfaq", "question",
+  return $c->helpers->pg->db->query(q{SELECT "perlfaq", "question",
     ts_rank_cd("indexed", plainto_tsquery('english_tag', $1), 1) AS "rank",
     ts_headline('english_tag', "answer", plainto_tsquery('english_tag', $1), $2) AS "headline"
     FROM "faqs" WHERE "perl_version" = $3 AND "indexed" @@ plainto_tsquery('english_tag', $1)
@@ -93,7 +93,8 @@ sub _faq_search ($c, $perl_version, $query, $limit = undef) {
 }
 
 sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
-  my $db = $c->pg->db;
+  my $h = $c->helpers;
+  my $db = $h->pg->db;
   my $tx = $db->begin;
   $db->delete('functions', {perl_version => $perl_version}) if exists $pods->{perlfunc};
   $db->delete('variables', {perl_version => $perl_version}) if exists $pods->{perlvar};
@@ -102,16 +103,16 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
   foreach my $pod (keys %$pods) {
     print "Indexing $pod for $perl_version ($pods->{$pod})\n";
     my $src = path($pods->{$pod})->slurp;
-    _index_pod($db, $perl_version, $c->prepare_index_pod($pod, $src)) if $index_pods;
+    _index_pod($db, $perl_version, $h->prepare_index_pod($pod, $src)) if $index_pods;
     if ($pod eq 'perlfunc') {
       print "Indexing functions for $perl_version\n";
-      _index_functions($db, $perl_version, $c->prepare_index_functions($src));
+      _index_functions($db, $perl_version, $h->prepare_index_functions($src));
     } elsif ($pod eq 'perlvar') {
       print "Indexing variables for $perl_version\n";
-      _index_variables($db, $perl_version, $c->prepare_index_variables($src));
+      _index_variables($db, $perl_version, $h->prepare_index_variables($src));
     } elsif ($pod =~ m/^perlfaq[1-9]$/) {
       print "Indexing $pod FAQs for $perl_version\n";
-      _index_faqs($db, $perl_version, $pod, $c->prepare_index_faqs($src));
+      _index_faqs($db, $perl_version, $pod, $h->prepare_index_faqs($src));
     }
   }
   $tx->commit;
