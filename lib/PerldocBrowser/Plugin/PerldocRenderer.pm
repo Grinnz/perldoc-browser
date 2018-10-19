@@ -153,6 +153,15 @@ sub _html ($c, $src) {
     }
   }
 
+  # Try to find a title
+  my $title = $c->stash('page_name') // $c->param('module');
+  $dom->find('h1')->first(sub {
+    return unless $_->all_text eq 'NAME';
+    my $p = $_->next;
+    return unless $p->tag eq 'p';
+    $title = $p->all_text;
+  });
+
   # Rewrite headers
   my $highest = first { $dom->find($_)->size } qw(h1 h2 h3 h4);
   my @parts;
@@ -167,10 +176,6 @@ sub _html ($c, $src) {
     $e->content($permalink . $e->content);
   }
 
-  # Try to find a title
-  my $title = $c->param('variable') // $c->param('function') // $c->param('module');
-  $dom->find('h1 + p')->first(sub { $title = shift->all_text });
-
   # Combine everything to a proper response
   $h->content_for(perldoc => "$dom");
   $c->render('perldoc', title => $title, parts => \@parts);
@@ -180,6 +185,7 @@ sub _perldoc ($c) {
   my $h = $c->helpers;
   # Find module or redirect to CPAN
   my $module = $c->param('module');
+  $c->stash(page_name => $module);
   $c->stash(cpan => $h->append_url_path('https://metacpan.org/pod', $module));
 
   my $path = _find_pod($c, $module);
@@ -191,7 +197,7 @@ sub _perldoc ($c) {
 
   if (defined $c->app->search_backend) {
     my $function = $h->function_name_match($c->stash('perl_version'), $module);
-    $c->stash(alt_page_type => 'function') if defined $function;
+    $c->stash(alt_page_type => 'function', alt_page_name => $function) if defined $function;
   }
 
   my $src = path($path)->slurp;
@@ -201,6 +207,7 @@ sub _perldoc ($c) {
 sub _function ($c) {
   my $h = $c->helpers;
   my $function = $c->param('function');
+  $c->stash(page_name => $function);
   $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlfunc')->fragment($function));
 
   my $src = _get_function_pod($c, $function);
@@ -219,7 +226,7 @@ sub _function ($c) {
 
   if (defined $c->app->search_backend) {
     my $pod = $h->pod_name_match($c->stash('perl_version'), $function);
-    $c->stash(alt_page_type => 'module') if defined $pod;
+    $c->stash(alt_page_type => 'module', alt_page_name => $pod) if defined $pod;
   }
 
   $c->respond_to(txt => {data => $src}, html => sub { $h->render_perldoc_html($src) });
@@ -228,6 +235,7 @@ sub _function ($c) {
 sub _variable ($c) {
   my $h = $c->helpers;
   my $variable = $c->param('variable');
+  $c->stash(page_name => $variable);
   my $escaped = $h->escape_pod($variable);
   my $link = Mojo::DOM->new($h->pod_to_html(qq{=pod\n\nL<< /"$escaped" >>}))->at('a');
   my $fragment = defined $link ? Mojo::URL->new($link->attr('href'))->fragment : $variable;
@@ -240,6 +248,7 @@ sub _variable ($c) {
 }
 
 sub _functions_index ($c) {
+  $c->stash(page_name => 'functions');
   $c->stash(cpan => 'https://metacpan.org/pod/perlfunc#Perl-Functions-by-Category');
 
   my $src = _get_function_categories($c);
@@ -249,6 +258,7 @@ sub _functions_index ($c) {
 }
 
 sub _modules_index ($c) {
+  $c->stash(page_name => 'modules');
   $c->stash(cpan => 'https://metacpan.org');
 
   my $src = _get_module_list($c);

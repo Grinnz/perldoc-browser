@@ -49,6 +49,7 @@ sub register ($self, $app, $conf) {
 
 sub _search ($c) {
   my $h = $c->helpers;
+  $c->stash(page_name => 'search');
   my $query = trim($c->param('q') // '');
   $c->stash(cpan => Mojo::URL->new('https://metacpan.org/search')->query(q => $query));
 
