@@ -58,18 +58,21 @@ sub _search ($c) {
   my $url_prefix = $url_perl_version ? $h->append_url_path('/', $url_perl_version) : '';
   my $limit = $c->param('limit') // 20;
   $limit = 20 unless $limit =~ m/\A[0-9]+\z/;
+  my $no_redirect = $c->param('no_redirect');
 
-  my $function = $h->function_name_match($perl_version, $query);
-  return $c->res->code(301) && $c->redirect_to($c->url_for($h->append_url_path("$url_prefix/functions/", $function))) if defined $function;
+  unless ($no_redirect) {
+    my $function = $h->function_name_match($perl_version, $query);
+    return $c->res->code(301) && $c->redirect_to($c->url_for($h->append_url_path("$url_prefix/functions/", $function))) if defined $function;
 
-  my $variable = $h->variable_name_match($perl_version, $query);
-  return $c->res->code(301) && $c->redirect_to($c->url_for($h->append_url_path("$url_prefix/variables/", $variable))) if defined $variable;
+    my $variable = $h->variable_name_match($perl_version, $query);
+    return $c->res->code(301) && $c->redirect_to($c->url_for($h->append_url_path("$url_prefix/variables/", $variable))) if defined $variable;
 
-  my $digits = $h->digits_variable_match($perl_version, $query);
-  return $c->res->code(301) && $c->redirect_to($c->url_for($h->append_url_path("$url_prefix/variables/", $digits))) if defined $digits;
+    my $digits = $h->digits_variable_match($perl_version, $query);
+    return $c->res->code(301) && $c->redirect_to($c->url_for($h->append_url_path("$url_prefix/variables/", $digits))) if defined $digits;
 
-  my $pod = $h->pod_name_match($perl_version, $query);
-  return $c->res->code(301) && $c->redirect_to($c->url_for($h->append_url_path("$url_prefix/", $pod))) if defined $pod;
+    my $pod = $h->pod_name_match($perl_version, $query);
+    return $c->res->code(301) && $c->redirect_to($c->url_for($h->append_url_path("$url_prefix/", $pod))) if defined $pod;
+  }
 
   my $search_limit = $limit ? $limit+1 : undef;
   my $function_results = $h->function_search($perl_version, $query, $search_limit);
