@@ -83,3 +83,6 @@ License, Version 2.0 L<http://www.apache.org/licenses/LICENSE-2.0>.
 
 Bundled Perl 5 Raptor is Copyright (c) 2012, Sebastian Riedel, licensed under
 the CC-SA License, Version 4.0 L<http://creativecommons.org/licenses/by-sa/4.0>.
+
+Bundled Mojolicious artwork is Copyright (c) 2010-2018, Sebastian Riedel,
+licensed under the CC-SA License, Version 4.0 L<http://creativecommons.org/licenses/by-sa/4.0>.

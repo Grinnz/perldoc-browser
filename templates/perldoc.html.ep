@@ -8,11 +8,11 @@
     <title><% if (title) { %><%= title %> - <% } %>Perldoc Browser</title>
     <link rel="search" href="/opensearch.xml" type="application/opensearchdescription+xml" title="Perldoc Browser">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
-    %= javascript '/mojo/prettify/run_prettify.js'
-    %= stylesheet '/mojo/prettify/prettify-mojo-light.css'
+    %= javascript '/run_prettify.js'
+    %= stylesheet '/prettify-mojo-light.css'
     <style>
       body {
-        background: url(<%= url_for '/mojo/pinstripe-light.png' %>);
+        background: url(<%= url_for '/pinstripe-light.png' %>);
         color: #445555;
         font: 0.9em 'Helvetica Neue', Helvetica, sans-serif;
         font-weight: normal;
