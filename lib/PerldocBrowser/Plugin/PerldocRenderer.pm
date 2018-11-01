@@ -66,7 +66,12 @@ sub _find_pod($c, $module) {
 
 sub _find_module($c, $module) {
   my $inc_dirs = $c->helpers->inc_dirs($c->stash('perl_version'));
-  return Module::Metadata->new_from_module($module, inc => $inc_dirs);
+  my $meta;
+  { local $@;
+    $c->app->log->warn($@)
+      unless eval { $meta = Module::Metadata->new_from_module($module, inc => $inc_dirs); 1 };
+  }
+  return $meta;
 }
 
 sub _html ($c, $src) {
