@@ -29,6 +29,7 @@ sub register ($self, $app, $conf) {
   $app->helper(pod_search => \&_pod_search);
   $app->helper(function_search => \&_function_search);
   $app->helper(faq_search => \&_faq_search);
+  $app->helper(perldelta_search => \&_perldelta_search);
 
   $app->helper(index_perl_version => \&_index_perl_version);
 }
@@ -184,6 +185,32 @@ sub _faq_search ($c, $perl_version, $query, $limit = undef) {
   return \@results;
 }
 
+sub _perldelta_search ($c, $perl_version, $query, $limit = undef) {
+  my $es = $c->helpers->es;
+  return [] unless _index_is_ready($es, "perldeltas_$perl_version");
+  $limit //= 1000;
+  my $matches = $es->search(index => "perldeltas_$perl_version", body => {
+    query => {bool => {should => [
+      {match => {'heading.text' => {query => $query, operator => 'and'}}},
+      {match => {contents => {query => $query, operator => 'and', boost => 0.4}}},
+    ]}},
+    _source => ['perldelta','heading'],
+    highlight => {fields => {contents => {}}, %highlight_opts},
+    size => $limit,
+    sort => ['_score'],
+  });
+  my @results;
+  foreach my $match (@{$matches->{hits}{hits}}) {
+    my $headline = join ' ... ', @{$match->{highlight}{contents} // []};
+    push @results, {
+      perldelta => $match->{_source}{perldelta},
+      heading => $match->{_source}{heading},
+      headline => $headline,
+    };
+  }
+  return \@results;
+}
+
 sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
   my $h = $c->helpers;
   my $es = $h->es;
@@ -192,6 +219,7 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
   $index_name{functions} = "functions_${perl_version}_$time" if exists $pods->{perlfunc};
   $index_name{variables} = "variables_${perl_version}_$time" if exists $pods->{perlvar};
   $index_name{faqs} = "faqs_${perl_version}_$time" if all { exists $pods->{"perlfaq$_"} } 1..9;
+  $index_name{perldeltas} = "perldeltas_${perl_version}_$time" if any { m/^perl[0-9]+delta$/ } keys %$pods;
   $index_name{pods} = "pods_${perl_version}_$time" if $index_pods;
   _create_index($es, $_, $perl_version, $index_name{$_}) for keys %index_name;
   try {
@@ -209,6 +237,9 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
       } elsif (defined $index_name{faqs} and $pod =~ m/^perlfaq[1-9]$/) {
         print "Indexing $pod FAQs for $perl_version\n";
         _index_faqs($es, $index_name{faqs}, $perl_version, $pod, $h->prepare_index_faqs($src));
+      } elsif (defined $index_name{perldeltas} and $pod =~ m/^perl[0-9]+delta$/) {
+        print "Indexing $pod deltas for $perl_version\n";
+        _index_perldelta($es, $index_name{perldeltas}, $perl_version, $pod, $h->prepare_index_perldelta($src));
       }
     }
     $bulk_pod->flush if $index_pods;
@@ -248,6 +279,11 @@ my %index_properties = (
     perlfaq => {type => 'keyword'},
     question => {type => 'keyword', fields => {text => {type => 'text'}}},
     answer => {type => 'text', index_options => 'offsets'},
+  },
+  perldeltas => {
+    perldelta => {type => 'keyword'},
+    heading => {type => 'keyword', fields => {text => {type => 'text'}}},
+    contents => {type => 'text', index_options => 'offsets'},
   },
 );
 
@@ -312,6 +348,18 @@ sub _index_faqs ($es, $index_name, $perl_version, $perlfaq, $faqs) {
     $bulk->update({
       id => "${perlfaq}_$properties->{question}",
       doc => {perlfaq => $perlfaq, %$properties},
+      doc_as_upsert => true,
+    });
+  }
+  $bulk->flush;
+}
+
+sub _index_perldelta ($es, $index_name, $perl_version, $perldelta, $sections) {
+  my $bulk = _bulk_helper($es, $index_name, "perldeltas_$perl_version");
+  foreach my $properties (@$sections) {
+    $bulk->update({
+      id => "${perldelta}_$properties->{heading}",
+      doc => {perldelta => $perldelta, %$properties},
       doc_as_upsert => true,
     });
   }

@@ -6,7 +6,7 @@ package PerldocBrowser::Plugin::PerldocSearch::SQLite;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
-use List::Util 1.33 'all';
+use List::Util 1.33 qw(all any);
 use Mojo::File 'path';
 use Mojo::SQLite;
 use experimental 'signatures';
@@ -24,6 +24,7 @@ sub register ($self, $app, $conf) {
   $app->helper(pod_search => \&_pod_search);
   $app->helper(function_search => \&_function_search);
   $app->helper(faq_search => \&_faq_search);
+  $app->helper(perldelta_search => \&_perldelta_search);
 
   $app->helper(index_perl_version => \&_index_perl_version);
 }
@@ -93,6 +94,18 @@ sub _faq_search ($c, $perl_version, $query, $limit = undef) {
     $perl_version, $query, @limit_param)->hashes;
 }
 
+sub _perldelta_search ($c, $perl_version, $query, $limit = undef) {
+  my $limit_str = defined $limit ? ' LIMIT ?' : '';
+  my @limit_param = defined $limit ? $limit : ();
+  $query =~ s/"/""/g;
+  $query = join ' ', map { qq{"$_"} } split ' ', $query;
+  return $c->helpers->sqlite->db->query(q{SELECT "perldelta", "heading",
+    snippet("perldeltas_index", 1, '__HEADLINE_START__', '__HEADLINE_STOP__', ' ... ', 36) AS "headline"
+    FROM "perldeltas_index" WHERE "rowid" IN (SELECT "id" FROM "perldeltas" WHERE "perl_version" = ? AND "contents" != '')
+    AND "perldeltas_index" MATCH ? ORDER BY "rank"} . $limit_str,
+    $perl_version, $query, @limit_param)->hashes;
+}
+
 sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
   my $h = $c->helpers;
   my $db = $h->sqlite->db;
@@ -100,6 +113,7 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
   $db->delete('functions', {perl_version => $perl_version}) if exists $pods->{perlfunc};
   $db->delete('variables', {perl_version => $perl_version}) if exists $pods->{perlvar};
   $db->delete('faqs', {perl_version => $perl_version}) if all { exists $pods->{"perlfaq$_"} } 1..9;
+  $db->delete('perldeltas', {perl_version => $perl_version}) if any { m/^perl[0-9]+delta$/ } keys %$pods;
   $db->delete('pods', {perl_version => $perl_version}) if $index_pods;
   foreach my $pod (keys %$pods) {
     print "Indexing $pod for $perl_version ($pods->{$pod})\n";
@@ -114,6 +128,9 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
     } elsif ($pod =~ m/^perlfaq[1-9]$/) {
       print "Indexing $pod FAQs for $perl_version\n";
       _index_faqs($db, $perl_version, $pod, $h->prepare_index_faqs($src));
+    } elsif ($pod =~ m/^perl[0-9]+delta$/) {
+      print "Indexing $pod deltas for $perl_version\n";
+      _index_perldelta($db, $perl_version, $pod, $h->prepare_index_perldelta($src));
     }
   }
   $tx->commit;
@@ -146,6 +163,14 @@ sub _index_faqs ($db, $perl_version, $perlfaq, $faqs) {
     $db->query('INSERT OR REPLACE INTO "faqs"
       ("perl_version","perlfaq","question","answer") VALUES (?,?,?,?)',
       $perl_version, $perlfaq, @$properties{qw(question answer)});
+  }
+}
+
+sub _index_perldelta ($db, $perl_version, $perldelta, $sections) {
+  foreach my $properties (@$sections) {
+    $db->query('INSERT OR REPLACE INTO "perldeltas"
+      ("perl_version","perldelta","heading","contents") VALUES (?,?,?,?)',
+      $perl_version, $perldelta, @$properties{qw(heading contents)});
   }
 }
 
@@ -266,3 +291,40 @@ drop table if exists "functions";
 drop table if exists "variables";
 drop table if exists "faqs_index";
 drop table if exists "faqs";
+
+--2 up
+create table "perldeltas" (
+  id integer primary key autoincrement,
+  perl_version text not null,
+  perldelta text not null,
+  heading text not null,
+  contents text not null,
+  constraint "perldeltas_perl_version_perldelta_heading_key" unique ("perl_version","perldelta","heading")
+);
+create index "perldeltas_heading" on "perldeltas" ("heading" collate nocase);
+create virtual table "perldeltas_index" using fts5 (
+  heading, contents, perldelta unindexed,
+  content='perldeltas',
+  content_rowid='id',
+  tokenize='porter'
+);
+insert into "perldeltas_index" ("perldeltas_index", "rank") values ('rank', 'bm25(10.0, 4.0)');
+
+create trigger "perldeltas_ai" after insert on "perldeltas" begin
+  insert into "perldeltas_index" ("rowid","heading","contents","perldelta")
+  values (new."id",new."heading",new."contents",new."perldelta");
+end;
+create trigger "perldeltas_ad" after delete on "perldeltas" begin
+  insert into "perldeltas_index" ("perldeltas_index","rowid","heading","contents","perldelta")
+  values ('delete',old."id",old."heading",old."contents",old."perldelta");
+end;
+create trigger "perldeltas_au" after update on "perldeltas" begin
+  insert into "perldeltas_index" ("perldeltas_index","rowid","heading","contents","perldelta")
+  values ('delete',old."id",old."heading",old."contents",old."perldelta");
+  insert into "perldeltas_index" ("rowid","heading","contents","perldelta")
+  values (new."id",new."heading",new."contents",new."perldelta");
+end;
+
+--2 down
+drop table if exists "perldeltas_index";
+drop table if exists "perldeltas";

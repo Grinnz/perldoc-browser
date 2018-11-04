@@ -6,7 +6,7 @@ package PerldocBrowser::Plugin::PerldocSearch::Pg;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
-use List::Util 1.33 'all';
+use List::Util 1.33 qw(all any);
 use Mojo::File 'path';
 use Mojo::Pg;
 use experimental 'signatures';
@@ -24,6 +24,7 @@ sub register ($self, $app, $conf) {
   $app->helper(pod_search => \&_pod_search);
   $app->helper(function_search => \&_function_search);
   $app->helper(faq_search => \&_faq_search);
+  $app->helper(perldelta_search => \&_perldelta_search);
 
   $app->helper(index_perl_version => \&_index_perl_version);
 }
@@ -92,6 +93,17 @@ sub _faq_search ($c, $perl_version, $query, $limit = undef) {
     ORDER BY "rank" DESC, "question"} . $limit_str, $query, $headline_opts, $perl_version, @limit_param)->hashes;
 }
 
+sub _perldelta_search ($c, $perl_version, $query, $limit = undef) {
+  my $limit_str = defined $limit ? ' LIMIT $4' : '';
+  my @limit_param = defined $limit ? $limit : ();
+  $query =~ tr!/.!  !;
+  return $c->helpers->pg->db->query(q{SELECT "perldelta", "heading",
+    ts_rank_cd("indexed", plainto_tsquery('english_tag', $1), 1) AS "rank",
+    ts_headline('english_tag', "contents", plainto_tsquery('english_tag', $1), $2) AS "headline"
+    FROM "perldeltas" WHERE "perl_version" = $3 AND "indexed" @@ plainto_tsquery('english_tag', $1)
+    ORDER BY "rank" DESC, "heading"} . $limit_str, $query, $headline_opts, $perl_version, @limit_param)->hashes;
+}
+
 sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
   my $h = $c->helpers;
   my $db = $h->pg->db;
@@ -99,6 +111,7 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
   $db->delete('functions', {perl_version => $perl_version}) if exists $pods->{perlfunc};
   $db->delete('variables', {perl_version => $perl_version}) if exists $pods->{perlvar};
   $db->delete('faqs', {perl_version => $perl_version}) if all { exists $pods->{"perlfaq$_"} } 1..9;
+  $db->delete('perldeltas', {perl_version => $perl_version}) if any { m/^perl[0-9]+delta$/ } keys %$pods;
   $db->delete('pods', {perl_version => $perl_version}) if $index_pods;
   foreach my $pod (keys %$pods) {
     print "Indexing $pod for $perl_version ($pods->{$pod})\n";
@@ -113,6 +126,9 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
     } elsif ($pod =~ m/^perlfaq[1-9]$/) {
       print "Indexing $pod FAQs for $perl_version\n";
       _index_faqs($db, $perl_version, $pod, $h->prepare_index_faqs($src));
+    } elsif ($pod =~ m/^perl[0-9]+delta$/) {
+      print "Indexing $pod deltas for $perl_version\n";
+      _index_perldelta($db, $perl_version, $pod, $h->prepare_index_perldelta($src));
     }
   }
   $tx->commit;
@@ -157,6 +173,18 @@ sub _index_faqs ($db, $perl_version, $perlfaq, $faqs) {
       %$properties,
     }, {on_conflict => \['("perl_version","perlfaq","question") do update set
       "answer"=EXCLUDED."answer"']}
+    );
+  }
+}
+
+sub _index_perldelta ($db, $perl_version, $perldelta, $sections) {
+  foreach my $properties (@$sections) {
+    $db->insert('perldeltas', {
+      perl_version => $perl_version,
+      perldelta => $perldelta,
+      %$properties,
+    }, {on_conflict => \['("perl_version","perldelta","heading") do update set
+      "contents"=EXCLUDED."contents"']}
     );
   }
 }
@@ -351,3 +379,32 @@ $$ language plpgsql;
 
 --5 down
 drop text search configuration if exists "english_tag";
+
+--6 up
+create table "perldeltas" (
+  id serial primary key,
+  perl_version text not null,
+  perldelta text not null,
+  heading text not null,
+  contents text not null,
+  indexed tsvector not null,
+  constraint "perldeltas_perl_version_perldelta_heading_key" unique ("perl_version","perldelta","heading")
+);
+create index "perldeltas_indexed" on "perldeltas" using gin ("indexed");
+create index "perldeltas_heading" on "perldeltas" (lower("heading") text_pattern_ops);
+
+create or replace function "perldeltas_update_indexed"() returns trigger as $$
+begin
+  "new"."indexed" := case when "new"."heading"='' then to_tsvector('') else
+    setweight(to_tsvector('english_tag',translate("new"."heading",'/.','  ')),'A') ||
+    setweight(to_tsvector('english_tag',translate("new"."contents",'/.','  ')),'B') end;
+  return new;
+end
+$$ language plpgsql;
+
+create trigger "perldeltas_indexed_trigger" before insert or update on "perldeltas"
+  for each row execute procedure perldeltas_update_indexed();
+
+--6 down
+drop table if exists "perldeltas";
+drop function if exists "perldeltas_update_indexed";

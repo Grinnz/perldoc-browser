@@ -22,6 +22,7 @@ sub register ($self, $app, $conf) {
   $app->helper(split_functions => sub ($c, @args) { _split_functions(@args) });
   $app->helper(split_variables => sub ($c, @args) { _split_variables(@args) });
   $app->helper(split_faqs => sub ($c, @args) { _split_faqs(@args) });
+  $app->helper(split_perldelta => sub ($c, @args) { _split_perldelta(@args) });
   $app->helper(pod_to_html => sub ($c, @args) { _pod_to_html(@args) });
   $app->helper(pod_to_text_content => sub ($c, @args) { _pod_to_text_content(@args) });
   $app->helper(escape_pod => sub ($c, @args) { _escape_pod(@args) });
@@ -519,6 +520,60 @@ sub _split_faqs ($src, $question = undef) {
   }
 
   return defined $question ? \@faq : \@faqs;
+}
+
+sub _split_perldelta ($src, $section = undef) {
+  my $found = '';
+  my ($started, @section, @sections);
+
+  foreach my $para (split /\n\n+/, $src) {
+    my ($is_header, $is_section_header);
+    $is_header = 1 if $para =~ m/^=head\d/;
+
+    $started = 1 if !$started and $is_header and $para !~ m/^=head1\s+(NAME|DESCRIPTION)$/;
+    next unless $started;
+
+    if ($is_header) {
+      if (defined $section) {
+        my $heading = _pod_to_text_content("=pod\n\n$para");
+        # see if this is the start or end of the section we want
+        $is_section_header = 1 if $heading eq $section;
+        $found = 'header' if !$found and $is_section_header;
+        $found = 'end' if $found eq 'content' and !$is_section_header;
+      } else {
+        # this indicates a new section if we found content
+        $found = 'header' if !$found;
+        $found = 'end' if $found eq 'content';
+      }
+    } elsif ($found eq 'header') {
+      # section content if we're in a section
+      $found = 'content' unless $found eq 'end';
+    } elsif (!$found and defined $section) {
+      # skip content if this isn't the section we're looking for
+      @section = ();
+      next;
+    }
+
+    if ($found eq 'end') {
+      if (defined $section) {
+        # we're done
+        last;
+      } else {
+        # add this section if it has content
+        push @sections, [@section] if @section > 1;
+      }
+      # start next section
+      @section = ();
+      $found = $is_header && (!defined $section or $is_section_header) ? 'header' : '';
+    }
+
+    last if $para =~ m/^=head1\s+Reporting Bugs$/;
+
+    # section content
+    push @section, $para;
+  }
+
+  return defined $section ? \@section : \@sections;
 }
 
 sub _pod_to_html ($pod, $url_perl_version = '', $with_errata = 1) {

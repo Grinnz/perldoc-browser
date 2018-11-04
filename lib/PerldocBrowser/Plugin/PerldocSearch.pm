@@ -33,6 +33,7 @@ sub register ($self, $app, $conf) {
   $app->helper(prepare_index_functions => \&_prepare_index_functions);
   $app->helper(prepare_index_variables => \&_prepare_index_variables);
   $app->helper(prepare_index_faqs => \&_prepare_index_faqs);
+  $app->helper(prepare_index_perldelta => \&_prepare_index_perldelta);
 
   my %defaults = (
     module => 'search',
@@ -77,6 +78,7 @@ sub _search ($c) {
   my $search_limit = $limit ? $limit+1 : undef;
   my $function_results = $h->function_search($perl_version, $query, $search_limit);
   my $faq_results = $h->faq_search($perl_version, $query, $search_limit);
+  my $perldelta_results = $h->perldelta_search($perl_version, $query, $search_limit);
   my $pod_results = $h->pod_search($perl_version, $query, $search_limit);
 
   my $more_url = $h->url_with("$url_prefix/search")->to_abs->query({limit => 0});
@@ -142,6 +144,26 @@ sub _search ($c) {
   }
   push @paras, '=back';
   push @paras, "I<< More results found. Refine your search terms or L<show all results|$more_url>. >>" if $more_pods;
+  push @paras, '=head2 Perldeltas', '=over';
+  my $more_perldeltas;
+  if (@$perldelta_results) {
+    if ($limit) {
+      $more_perldeltas = @$perldelta_results > $limit;
+      splice @$perldelta_results, $limit;
+    }
+    foreach my $delta (@$perldelta_results) {
+      my ($perldelta, $heading, $headline) = ($delta->{perldelta}, map { $h->escape_pod($_) } @$delta{'heading','headline'});
+      $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
+      $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
+      $headline =~ s/\n+/ /g;
+      $headline = trim $headline;
+      push @paras, qq{=item L<$perldelta/"$heading">\n\n$headline};
+    }
+  } else {
+    push @paras, '=item I<No results>';
+  }
+  push @paras, '=back';
+  push @paras, "I<< More results found. Refine your search terms or L<show all results|$more_url>. >>" if $more_perldeltas;
   my $src = join "\n\n", @paras;
 
   $c->respond_to(txt => {data => $src}, html => sub { $h->render_perldoc_html($src) });
@@ -151,7 +173,7 @@ sub _prepare_index_pod ($c, $name, $src) {
   my $h = $c->helpers;
   my %properties = (name => $name, abstract => '', description => '', contents => '');
 
-  unless ($name eq 'perltoc' or $name =~ m/^perlfaq/) {
+  unless ($name eq 'perltoc' or $name =~ m/^perlfaq/ or $name =~ m/^perl[0-9]+delta$/) {
     my $dom = Mojo::DOM->new($h->pod_to_html($src, undef, 0));
     my $headings = $dom->find('h1');
 
@@ -261,6 +283,31 @@ sub _prepare_index_faqs ($c, $src) {
   }
 
   return \@faqs;
+}
+
+sub _prepare_index_perldelta ($c, $src) {
+  my $h = $c->helpers;
+  my $blocks = $h->split_perldelta($src);
+  my %sections;
+  foreach my $block (@$blocks) {
+    my %headings;
+    foreach my $para (@$block) {
+      # 0: navigatable, 1: navigatable and returned in search results
+      if ($para =~ m/^=head\d/) {
+        my $heading = $h->pod_to_text_content("=pod\n\n$para");
+        $headings{$heading} = 1;
+      }
+    }
+    push @{$sections{$_}}, $headings{$_} ? @$block : () for keys %headings;
+  }
+
+  my @sections;
+  foreach my $heading (keys %sections) {
+    my $contents = $h->pod_to_text_content(join "\n\n", '=pod', @{$sections{$heading}});
+    push @sections, {heading => $heading, contents => $contents};
+  }
+
+  return \@sections;
 }
 
 1;
