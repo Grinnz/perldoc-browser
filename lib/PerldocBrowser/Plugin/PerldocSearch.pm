@@ -60,8 +60,9 @@ sub _search ($c) {
   my $limit = $c->param('limit') // 20;
   $limit = 20 unless $limit =~ m/\A[0-9]+\z/;
   my $no_redirect = $c->param('no_redirect');
+  my $search_type = $c->param('type');
 
-  unless ($no_redirect) {
+  unless ($no_redirect or $search_type) {
     my $function = $h->function_name_match($perl_version, $query);
     return $c->res->code(301) && $c->redirect_to($c->url_for($h->append_url_path("$url_prefix/functions/", $function))) if defined $function;
 
@@ -76,94 +77,113 @@ sub _search ($c) {
   }
 
   my $search_limit = $limit ? $limit+1 : undef;
-  my $function_results = $h->function_search($perl_version, $query, $search_limit);
-  my $faq_results = $h->faq_search($perl_version, $query, $search_limit);
-  my $perldelta_results = $h->perldelta_search($perl_version, $query, $search_limit);
-  my $pod_results = $h->pod_search($perl_version, $query, $search_limit);
-
-  my $more_url = $h->url_with("$url_prefix/search")->to_abs->query({limit => 0});
+  my ($function_results, $faq_results, $perldelta_results, $pod_results);
+  $function_results = $h->function_search($perl_version, $query, $search_limit) if !$search_type or $search_type eq 'functions';
+  $faq_results = $h->faq_search($perl_version, $query, $search_limit) if !$search_type or $search_type eq 'faqs';
+  $perldelta_results = $h->perldelta_search($perl_version, $query, $search_limit) if !$search_type or $search_type eq 'perldeltas';
+  $pod_results = $h->pod_search($perl_version, $query, $search_limit) if !$search_type or $search_type eq 'pods';
 
   my @paras = ('=encoding UTF-8');
-  push @paras, '=head2 FAQ', '=over';
-  my $more_faqs;
-  if (@$faq_results) {
-    if ($limit) {
-      $more_faqs = @$faq_results > $limit;
-      splice @$faq_results, $limit;
+  if (!$search_type or $search_type eq 'faqs') {
+    push @paras, '=head2 FAQ', '=over';
+    my $more_faqs;
+    if (@$faq_results) {
+      if ($limit) {
+        $more_faqs = @$faq_results > $limit;
+        splice @$faq_results, $limit;
+      }
+      foreach my $faq (@$faq_results) {
+        my ($perlfaq, $question, $headline) = ($faq->{perlfaq}, map { $h->escape_pod($_) } @$faq{'question','headline'});
+        $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
+        $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
+        $headline =~ s/\n+/ /g;
+        $headline = trim $headline;
+        push @paras, qq{=item L<$perlfaq/"$question">\n\n$headline};
+      }
+    } else {
+      push @paras, '=item I<No results>';
     }
-    foreach my $faq (@$faq_results) {
-      my ($perlfaq, $question, $headline) = ($faq->{perlfaq}, map { $h->escape_pod($_) } @$faq{'question','headline'});
-      $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
-      $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
-      $headline =~ s/\n+/ /g;
-      $headline = trim $headline;
-      push @paras, qq{=item L<$perlfaq/"$question">\n\n$headline};
+    push @paras, '=back';
+    if ($more_faqs) {
+      my $more_url = $h->url_with("$url_prefix/search")->to_abs->query({limit => 0, type => 'faqs'});
+      push @paras, "I<< More results found. Refine your search terms or L<show all FAQ results|$more_url>. >>";
     }
-  } else {
-    push @paras, '=item I<No results>';
   }
-  push @paras, '=back';
-  push @paras, "I<< More results found. Refine your search terms or L<show all results|$more_url>. >>" if $more_faqs;
-  push @paras, '=head2 Functions', '=over';
-  my $more_functions;
-  if (@$function_results) {
-    if ($limit) {
-      $more_functions = @$function_results > $limit;
-      splice @$function_results, $limit;
+  if (!$search_type or $search_type eq 'functions') {
+    push @paras, '=head2 Functions', '=over';
+    my $more_functions;
+    if (@$function_results) {
+      if ($limit) {
+        $more_functions = @$function_results > $limit;
+        splice @$function_results, $limit;
+      }
+      foreach my $function (@$function_results) {
+        my ($name, $headline) = map { $h->escape_pod($_) } @$function{'name','headline'};
+        $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
+        $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
+        $headline =~ s/\n+/ /g;
+        $headline = trim $headline;
+        push @paras, qq{=item L<perlfunc/"$name">\n\n$headline};
+      }
+    } else {
+      push @paras, '=item I<No results>';
     }
-    foreach my $function (@$function_results) {
-      my ($name, $headline) = map { $h->escape_pod($_) } @$function{'name','headline'};
-      $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
-      $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
-      $headline =~ s/\n+/ /g;
-      $headline = trim $headline;
-      push @paras, qq{=item L<perlfunc/"$name">\n\n$headline};
+    push @paras, '=back';
+    if ($more_functions) {
+      my $more_url = $h->url_with("$url_prefix/search")->to_abs->query({limit => 0, type => 'functions'});
+      push @paras, "I<< More results found. Refine your search terms or L<show all function results|$more_url>. >>";
     }
-  } else {
-    push @paras, '=item I<No results>';
   }
-  push @paras, '=back';
-  push @paras, "I<< More results found. Refine your search terms or L<show all results|$more_url>. >>" if $more_functions;
-  push @paras, '=head2 Documentation', '=over';
-  my $more_pods;
-  if (@$pod_results) {
-    if ($limit) {
-      $more_pods = @$pod_results > $limit;
-      splice @$pod_results, $limit;
+  if (!$search_type or $search_type eq 'pods') {
+    push @paras, '=head2 Documentation', '=over';
+    my $more_pods;
+    if (@$pod_results) {
+      if ($limit) {
+        $more_pods = @$pod_results > $limit;
+        splice @$pod_results, $limit;
+      }
+      foreach my $page (@$pod_results) {
+        my ($name, $abstract, $headline) = map { $h->escape_pod($_) } @$page{'name','abstract','headline'};
+        $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
+        $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
+        $headline =~ s/\n+/ /g;
+        $headline = trim $headline;
+        push @paras, "=item L<$name> - $abstract\n\n$headline";
+      }
+    } else {
+      push @paras, '=item I<No results>';
     }
-    foreach my $page (@$pod_results) {
-      my ($name, $abstract, $headline) = map { $h->escape_pod($_) } @$page{'name','abstract','headline'};
-      $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
-      $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
-      $headline =~ s/\n+/ /g;
-      $headline = trim $headline;
-      push @paras, "=item L<$name> - $abstract\n\n$headline";
+    push @paras, '=back';
+    if ($more_pods) {
+      my $more_url = $h->url_with("$url_prefix/search")->to_abs->query({limit => 0, type => 'pods'});
+      push @paras, "I<< More results found. Refine your search terms or L<show all documentation results|$more_url>. >>";
     }
-  } else {
-    push @paras, '=item I<No results>';
   }
-  push @paras, '=back';
-  push @paras, "I<< More results found. Refine your search terms or L<show all results|$more_url>. >>" if $more_pods;
-  push @paras, '=head2 Perldeltas', '=over';
-  my $more_perldeltas;
-  if (@$perldelta_results) {
-    if ($limit) {
-      $more_perldeltas = @$perldelta_results > $limit;
-      splice @$perldelta_results, $limit;
+  if (!$search_type or $search_type eq 'perldeltas') {
+    push @paras, '=head2 Perldeltas', '=over';
+    my $more_perldeltas;
+    if (@$perldelta_results) {
+      if ($limit) {
+        $more_perldeltas = @$perldelta_results > $limit;
+        splice @$perldelta_results, $limit;
+      }
+      foreach my $delta (@$perldelta_results) {
+        my ($perldelta, $heading, $headline) = ($delta->{perldelta}, map { $h->escape_pod($_) } @$delta{'heading','headline'});
+        $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
+        $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
+        $headline =~ s/\n+/ /g;
+        $headline = trim $headline;
+        push @paras, qq{=item L<$perldelta/"$heading">\n\n$headline};
+      }
+    } else {
+      push @paras, '=item I<No results>';
     }
-    foreach my $delta (@$perldelta_results) {
-      my ($perldelta, $heading, $headline) = ($delta->{perldelta}, map { $h->escape_pod($_) } @$delta{'heading','headline'});
-      $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
-      $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
-      $headline =~ s/\n+/ /g;
-      $headline = trim $headline;
-      push @paras, qq{=item L<$perldelta/"$heading">\n\n$headline};
+    push @paras, '=back';
+    if ($more_perldeltas) {
+      my $more_url = $h->url_with("$url_prefix/search")->to_abs->query({limit => 0, type => 'perldeltas'});
+      push @paras, "I<< More results found. Refine your search terms or L<show all perldelta results|$more_url>. >>";
     }
-  } else {
-    push @paras, '=item I<No results>';
   }
-  push @paras, '=back';
-  push @paras, "I<< More results found. Refine your search terms or L<show all results|$more_url>. >>" if $more_perldeltas;
   my $src = join "\n\n", @paras;
 
   $c->respond_to(txt => {data => $src}, html => sub { $h->render_perldoc_html($src) });
