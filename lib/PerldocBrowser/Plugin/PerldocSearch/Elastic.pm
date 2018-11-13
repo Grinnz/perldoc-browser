@@ -307,6 +307,7 @@ sub _create_index ($es, $type, $perl_version, $name) {
       ci_ascii => {type => 'custom', filter => [qw(asciifolding lowercase)]},
     },
   };
+  $body{settings}{index}{number_of_shards} = 1;
   $es->indices->create(index => $name, body => \%body);
 }
 
