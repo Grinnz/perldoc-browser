@@ -111,12 +111,16 @@ sub _pod_search ($c, $perl_version, $query, $limit = undef) {
   return [] unless _index_is_ready($es, "pods_$perl_version");
   $limit //= 1000;
   my $matches = $es->search(index => "pods_$perl_version", body => {
-    query => {bool => {should => [
-      {match => {'name.text' => {query => $query, operator => 'and' }}},
-      {match => {abstract => {query => $query, operator => 'and', boost => 0.4}}},
-      {match => {description => {query => $query, operator => 'and', boost => 0.2}}},
-      {match => {contents => {query => $query, operator => 'and', boost => 0.1}}},
-    ]}},
+    query => {bool => {
+      filter => {exists => {field => 'contents'}},
+      should => [
+        {match => {'name.text' => {query => $query, operator => 'and' }}},
+        {match => {abstract => {query => $query, operator => 'and', boost => 0.4}}},
+        {match => {description => {query => $query, operator => 'and', boost => 0.2}}},
+        {match => {contents => {query => $query, operator => 'and', boost => 0.1}}},
+      ],
+      minimum_should_match => 1,
+    }},
     _source => ['name','abstract'],
     highlight => {fields => {contents => {}}, %highlight_opts},
     size => $limit,
@@ -139,10 +143,14 @@ sub _function_search ($c, $perl_version, $query, $limit = undef) {
   return [] unless _index_is_ready($es, "functions_$perl_version");
   $limit //= 1000;
   my $matches = $es->search(index => "functions_$perl_version", body => {
-    query => {bool => {should => [
-      {match => {'name.text' => {query => $query, operator => 'and'}}},
-      {match => {description => {query => $query, operator => 'and', boost => 0.4}}},
-    ]}},
+    query => {bool => {
+      filter => {exists => {field => 'description'}},
+      should => [
+        {match => {'name.text' => {query => $query, operator => 'and'}}},
+        {match => {description => {query => $query, operator => 'and', boost => 0.4}}},
+      ],
+      minimum_should_match => 1,
+    }},
     _source => 'name',
     highlight => {fields => {description => {}}, %highlight_opts},
     size => $limit,
@@ -164,10 +172,14 @@ sub _faq_search ($c, $perl_version, $query, $limit = undef) {
   return [] unless _index_is_ready($es, "faqs_$perl_version");
   $limit //= 1000;
   my $matches = $es->search(index => "faqs_$perl_version", body => {
-    query => {bool => {should => [
-      {match => {'question.text' => {query => $query, operator => 'and'}}},
-      {match => {answer => {query => $query, operator => 'and', boost => 0.4}}},
-    ]}},
+    query => {bool => {
+      filter => {exists => {field => 'answer'}},
+      should => [
+        {match => {'question.text' => {query => $query, operator => 'and'}}},
+        {match => {answer => {query => $query, operator => 'and', boost => 0.4}}},
+      ],
+      minimum_should_match => 1,
+    }},
     _source => ['perlfaq','question'],
     highlight => {fields => {answer => {}}, %highlight_opts},
     size => $limit,
@@ -190,10 +202,14 @@ sub _perldelta_search ($c, $perl_version, $query, $limit = undef) {
   return [] unless _index_is_ready($es, "perldeltas_$perl_version");
   $limit //= 1000;
   my $matches = $es->search(index => "perldeltas_$perl_version", body => {
-    query => {bool => {should => [
-      {match => {'heading.text' => {query => $query, operator => 'and'}}},
-      {match => {contents => {query => $query, operator => 'and', boost => 0.4}}},
-    ]}},
+    query => {bool => {
+      filter => {exists => {field => 'contents'}},
+      should => [
+        {match => {'heading.text' => {query => $query, operator => 'and'}}},
+        {match => {contents => {query => $query, operator => 'and', boost => 0.4}}},
+      ],
+      minimum_should_match => 1,
+    }},
     _source => ['perldelta','heading'],
     highlight => {fields => {contents => {}}, %highlight_opts},
     size => $limit,
@@ -312,6 +328,7 @@ sub _create_index ($es, $type, $perl_version, $name) {
 }
 
 sub _index_pod ($bulk, $properties) {
+  delete $properties->{contents} if $properties->{contents} eq '';
   $bulk->update({
     id => $properties->{name},
     doc => $properties,
@@ -322,6 +339,7 @@ sub _index_pod ($bulk, $properties) {
 sub _index_functions ($es, $index_name, $perl_version, $functions) {
   my $bulk = _bulk_helper($es, $index_name, "functions_$perl_version");
   foreach my $properties (@$functions) {
+    delete $properties->{description} if $properties->{description} eq '';
     $bulk->update({
       id => $properties->{name},
       doc => $properties,
@@ -346,6 +364,7 @@ sub _index_variables ($es, $index_name, $perl_version, $variables) {
 sub _index_faqs ($es, $index_name, $perl_version, $perlfaq, $faqs) {
   my $bulk = _bulk_helper($es, $index_name, "faqs_$perl_version");
   foreach my $properties (@$faqs) {
+    delete $properties->{answer} if $properties->{answer} eq '';
     $bulk->update({
       id => "${perlfaq}_$properties->{question}",
       doc => {perlfaq => $perlfaq, %$properties},
@@ -358,6 +377,7 @@ sub _index_faqs ($es, $index_name, $perl_version, $perlfaq, $faqs) {
 sub _index_perldelta ($es, $index_name, $perl_version, $perldelta, $sections) {
   my $bulk = _bulk_helper($es, $index_name, "perldeltas_$perl_version");
   foreach my $properties (@$sections) {
+    delete $properties->{contents} if $properties->{contents} eq '';
     $bulk->update({
       id => "${perldelta}_$properties->{heading}",
       doc => {perldelta => $perldelta, %$properties},

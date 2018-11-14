@@ -395,7 +395,7 @@ create index "perldeltas_heading" on "perldeltas" (lower("heading") text_pattern
 
 create or replace function "perldeltas_update_indexed"() returns trigger as $$
 begin
-  "new"."indexed" := case when "new"."heading"='' then to_tsvector('') else
+  "new"."indexed" := case when "new"."contents"='' then to_tsvector('') else
     setweight(to_tsvector('english_tag',translate("new"."heading",'/.','  ')),'A') ||
     setweight(to_tsvector('english_tag',translate("new"."contents",'/.','  ')),'B') end;
   return new;
