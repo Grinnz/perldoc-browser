@@ -328,7 +328,7 @@ sub _create_index ($es, $type, $perl_version, $name) {
 }
 
 sub _index_pod ($bulk, $properties) {
-  delete $properties->{contents} if $properties->{contents} eq '';
+  delete $properties->{contents} unless length $properties->{contents};
   $bulk->update({
     id => $properties->{name},
     doc => $properties,
@@ -339,7 +339,7 @@ sub _index_pod ($bulk, $properties) {
 sub _index_functions ($es, $index_name, $perl_version, $functions) {
   my $bulk = _bulk_helper($es, $index_name, "functions_$perl_version");
   foreach my $properties (@$functions) {
-    delete $properties->{description} if $properties->{description} eq '';
+    delete $properties->{description} unless length $properties->{description};
     $bulk->update({
       id => $properties->{name},
       doc => $properties,
@@ -364,7 +364,7 @@ sub _index_variables ($es, $index_name, $perl_version, $variables) {
 sub _index_faqs ($es, $index_name, $perl_version, $perlfaq, $faqs) {
   my $bulk = _bulk_helper($es, $index_name, "faqs_$perl_version");
   foreach my $properties (@$faqs) {
-    delete $properties->{answer} if $properties->{answer} eq '';
+    delete $properties->{answer} unless length $properties->{answer};
     $bulk->update({
       id => "${perlfaq}_$properties->{question}",
       doc => {perlfaq => $perlfaq, %$properties},
@@ -377,7 +377,7 @@ sub _index_faqs ($es, $index_name, $perl_version, $perlfaq, $faqs) {
 sub _index_perldelta ($es, $index_name, $perl_version, $perldelta, $sections) {
   my $bulk = _bulk_helper($es, $index_name, "perldeltas_$perl_version");
   foreach my $properties (@$sections) {
-    delete $properties->{contents} if $properties->{contents} eq '';
+    delete $properties->{contents} unless length $properties->{contents};
     $bulk->update({
       id => "${perldelta}_$properties->{heading}",
       doc => {perldelta => $perldelta, %$properties},
