@@ -112,6 +112,7 @@
         max-width: 850px;
       }
       #perldocdiv > ul:first-of-type a { text-decoration: none }
+      #moduleversion { float: right }
       #disambiguation {
         font-style: italic;
         padding-left: 1em;
@@ -165,9 +166,6 @@
             / <%= link_to stash('variable') => url_for(append_url_path("$url_prefix/variables/", $variable)) %>
           % } else {
             % $source = url_for(append_url_path("$url_prefix/", "$module.txt"));
-            % if (defined stash('module_version')) {
-              version <%= stash('module_version') %>
-            % }
           % }
           <div id="more">
             % if ($module eq 'search') {
@@ -177,6 +175,9 @@
             <%= link_to 'CPAN' => $cpan %>)
             % }
           </div>
+          % if (defined(my $ver = stash('module_version'))) {
+            <div id="moduleversion"><%= $ver =~ m/^v/ ? '' : 'version ' %><%= $ver %></div>
+          % }
         </div>
           % if (defined(my $alt_type = stash 'alt_page_type')) {
             % my $alt_prefix = $alt_type eq 'function' ? "$url_prefix/functions/" : "$url_prefix/";

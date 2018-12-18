@@ -69,7 +69,7 @@ sub _find_module($c, $module) {
   my $inc_dirs = $c->helpers->inc_dirs($c->stash('perl_version'));
   my $meta;
   { local $@;
-    $c->app->log->warn($@)
+    $c->app->log->debug("Error retrieving module metadata for $module: $@")
       unless eval { $meta = Module::Metadata->new_from_module($module, inc => $inc_dirs); 1 };
   }
   return $meta;
