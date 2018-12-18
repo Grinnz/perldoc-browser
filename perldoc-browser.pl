@@ -78,7 +78,7 @@ any '/#url_perl_version/contact' => {module => 'contact', perl_version => $lates
   $c->respond_to(txt => {data => $src}, html => sub {
     my $h = $c->helpers;
     $h->content_for(perldoc => $h->pod_to_html($src));
-    $c->render('perldoc', title => 'contact', parts => []);
+    $c->render('perldoc', title => 'contact');
   });
 };
 

@@ -187,7 +187,7 @@
         </div>
           % }
         % }
-        % if (@$toc) {
+        % if (@{stash('toc') // []}) {
         <h1><a id="toc"><%= stash('module') eq 'search' ? 'SEARCH RESULTS' : 'CONTENTS' %></a></h1>
         % my $render_contents; $render_contents = begin
           <ul>
@@ -201,7 +201,7 @@
             % }
           </ul>
         % end
-        %= $render_contents->($toc)
+        %= $render_contents->(stash 'toc')
         % }
         %= content 'perldoc'
       </div>
