@@ -187,22 +187,21 @@
         </div>
           % }
         % }
-        % if (@$parts and @{$parts->[0]}) {
+        % if (@$toc) {
         <h1><a id="toc"><%= stash('module') eq 'search' ? 'SEARCH RESULTS' : 'CONTENTS' %></a></h1>
-        <ul>
-          % for my $part (@$parts) {
-            <li>
-              %= link_to splice(@$part, 0, 2)
-              % if (@$part) {
-                <ul>
-                  % while (@$part) {
-                    <li><%= link_to splice(@$part, 0, 2) %></li>
-                  % }
-                </ul>
-              % }
-            </li>
-          % }
-        </ul>
+        % my $render_contents; $render_contents = begin
+          <ul>
+            % for my $entry (@{$_[0]}) {
+              <li>
+                %= link_to @$entry{'text','link'}
+                % if (defined $entry->{contents}) {
+                  %= $render_contents->($entry->{contents})
+                % }
+              </li>
+            % }
+          </ul>
+        % end
+        %= $render_contents->($toc)
         % }
         %= content 'perldoc'
       </div>

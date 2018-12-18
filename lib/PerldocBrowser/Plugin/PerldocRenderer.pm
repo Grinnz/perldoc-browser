@@ -16,6 +16,7 @@ use Mojo::URL;
 use Mojo::Util qw(trim url_unescape);
 use Pod::Simple::Search;
 use Pod::Simple::TextContent;
+use Scalar::Util 'weaken';
 use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
@@ -169,22 +170,32 @@ sub _html ($c, $src) {
   });
 
   # Rewrite headers
-  my $highest = first { $dom->find($_)->size } qw(h1 h2 h3 h4);
-  my @parts;
+  my %level = (h1 => 1, h2 => 2, h3 => 3, h4 => 4);
   my $linkable = 'h1, h2, h3, h4';
   $linkable .= ', dt' unless $c->param('module') eq 'search';
+  my (@toc, $parent);
   for my $e ($dom->find($linkable)->each) {
-    push @parts, [] if $e->tag eq ($highest // 'h1') || !@parts;
     my $link = Mojo::URL->new->fragment($e->{id});
     my $text = $e->all_text;
-    push @{$parts[-1]}, $text, $link unless $e->tag eq 'dt';
+    unless ($e->tag eq 'dt') {
+      my $entry = {tag => $e->tag, text => $text, link => $link};
+      $parent = $parent->{parent} until !defined $parent
+        or $level{$e->tag} > $level{$parent->{tag}};
+      if (defined $parent) {
+        weaken($entry->{parent} = $parent);
+        push @{$parent->{contents}}, $entry;
+      } else {
+        push @toc, $entry;
+      }
+      $parent = $entry;
+    }
     my $permalink = $c->link_to('#' => $link, class => 'permalink');
     $e->content($permalink . $e->content);
   }
 
   # Combine everything to a proper response
   $h->content_for(perldoc => "$dom");
-  $c->render('perldoc', title => $title, parts => \@parts);
+  $c->render('perldoc', title => $title, toc => \@toc);
 }
 
 sub _perldoc ($c) {
