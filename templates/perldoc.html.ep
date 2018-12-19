@@ -116,6 +116,7 @@
       #disambiguation {
         font-style: italic;
         padding-left: 1em;
+        margin-top: 1em;
         margin-bottom: 1em;
       }
       #wrapperlicious .permalink {
