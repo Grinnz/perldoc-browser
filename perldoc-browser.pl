@@ -12,6 +12,7 @@ use Mojolicious::Lite;
 use Config;
 use IPC::System::Simple 'capturex';
 use Mojo::File 'path';
+use Mojo::Util 'dumper';
 use Sort::Versions;
 use version;
 use experimental 'signatures';
@@ -69,6 +70,22 @@ helper dev_versions => sub ($c) { [@dev_versions] };
 helper latest_perl_version => sub ($c) { $latest_version };
 
 helper inc_dirs => sub ($c, $perl_version) { $inc_dirs{$perl_version} // [] };
+
+my $csp = join '; ',
+  q{default-src 'self'},
+  q{script-src 'self' cdnjs.cloudflare.com code.jquery.com stackpath.bootstrapcdn.com},
+  q{style-src 'self' 'unsafe-inline' cdn.rawgit.com stackpath.bootstrapcdn.com},
+  q{report-uri /csp-reports};
+
+hook after_render => sub { shift->res->headers->content_security_policy($csp) };
+
+post '/csp-reports' => sub ($c) {
+  if (defined(my $violation = $c->req->json)) {
+    my $serialized = dumper $violation;
+    $c->app->log->error("CSP violation: $serialized");
+  }
+  $c->render(data => '');
+};
 
 any '/#url_perl_version/contact' => {module => 'contact', perl_version => $latest_version, url_perl_version => ''}, sub ($c) {
   $c->stash(page_name => 'contact');
