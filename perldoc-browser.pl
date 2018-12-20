@@ -73,7 +73,7 @@ helper inc_dirs => sub ($c, $perl_version) { $inc_dirs{$perl_version} // [] };
 
 my $csp = join '; ',
   q{default-src 'self'},
-  q{img-src 'self' www.google-analytics.com},
+  q{img-src 'self' data: www.google-analytics.com},
   q{script-src 'self' 'unsafe-inline' cdnjs.cloudflare.com code.jquery.com stackpath.bootstrapcdn.com www.google-analytics.com www.googletagmanager.com},
   q{style-src 'self' 'unsafe-inline' cdn.rawgit.com stackpath.bootstrapcdn.com},
   q{report-uri /csp-reports};
