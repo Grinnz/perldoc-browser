@@ -5,6 +5,7 @@ requires 'List::Util' => '1.50';
 requires 'MetaCPAN::Pod::XHTML';
 requires 'Module::Metadata';
 requires 'Mojolicious' => '8.0';
+requires 'Mojo::Log::Role::Clearable';
 requires 'Perl::Build';
 requires 'Pod::Simple::Search';
 requires 'Pod::Simple::TextContent';

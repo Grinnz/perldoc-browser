@@ -25,6 +25,10 @@ push @{app->plugins->namespaces}, 'PerldocBrowser::Plugin';
 
 plugin Config => {file => 'perldoc-browser.conf', default => {}};
 
+if (defined(my $logfile = app->config->{logfile})) {
+  app->log->with_roles('+Clearable')->path($logfile);
+}
+
 my $perls_dir = path(app->config->{perls_dir} // app->home->child('perls'));
 helper perls_dir => sub ($c) { $perls_dir };
 
