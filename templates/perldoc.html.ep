@@ -109,7 +109,7 @@
         margin-right: auto;
         padding: 3em;
         padding-top: 1em;
-        max-width: 850px;
+        max-width: 960px;
       }
       #perldocdiv > ul:first-of-type a { text-decoration: none }
       #moduleversion { float: right }
@@ -146,7 +146,7 @@
   </head>
   <body onload="PR.prettyPrint()">
     %= include 'menubar'
-    <div id="wrapperlicious" class="container">
+    <div id="wrapperlicious" class="container-fluid">
       <div id="perldocdiv">
         % if ($module ne 'contact') {
         <div id="links">
