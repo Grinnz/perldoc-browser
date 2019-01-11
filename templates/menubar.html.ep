@@ -53,7 +53,7 @@
     <ul>
 % if (defined app->search_backend) {
     <form class="form-inline" method="get" action="<%= url_for("$current_prefix/search") %>">
-      <input class="form-control-sm mr-3" type="search" name="q" placeholder="Search" aria-label="Search">
+      <input class="form-control mr-3" type="search" name="q" placeholder="Search" aria-label="Search">
     </form>
 % }
   </div>
