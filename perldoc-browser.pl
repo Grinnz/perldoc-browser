@@ -83,7 +83,7 @@ my $csp = join '; ',
   q{style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com stackpath.bootstrapcdn.com},
   q{report-uri /csp-reports};
 
-hook after_render => sub { shift->res->headers->content_security_policy($csp) };
+hook after_render => sub ($c, @) { $c->res->headers->content_security_policy($csp) };
 
 post '/csp-reports' => sub ($c) {
   if (defined(my $violation = $c->req->json)) {

@@ -42,6 +42,22 @@
       </li>
     </ul>
     <ul class="navbar-nav">
+      <script>
+        function toggle_expand(){
+          var perldocdiv = document.getElementById('perldocdiv');
+          var width = window.getComputedStyle(perldocdiv).getPropertyValue('max-width');
+          var expand = (width == '' || width == 'none') ? 0 : 1;
+          perldocdiv.style.setProperty('max-width', expand ? 'none' : '960px');
+          var button = document.getElementById('content-expand-button');
+          if (expand) {
+            button.classList.replace('btn-outline-secondary', 'btn-secondary');
+          } else {
+            button.classList.replace('btn-secondary', 'btn-outline-secondary');
+          }
+          document.cookie = 'perldoc_expand=' + (expand ? 1 : 0) + '; path=/; expires=Tue, 19 Jan 2038 03:14:07 UTC';
+        }
+      </script>
+      <button id="content-expand-button" type="button" class="btn <%= $expand ? 'btn-secondary' : 'btn-outline-secondary' %> d-none d-lg-inline-block mr-2" onclick="toggle_expand()">Expand</button>
 % if (defined config('contact_pod')) {
       <li class="nav-item">
         <a class="nav-link" href="<%= url_for("$current_prefix/contact") %>">Contact</a>

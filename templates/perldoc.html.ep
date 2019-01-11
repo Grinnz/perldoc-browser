@@ -1,4 +1,5 @@
 % use Mojo::Util;
+% my $expand = $c->cookie('perldoc_expand');
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -109,7 +110,7 @@
         margin-right: auto;
         padding: 3em;
         padding-top: 1em;
-        max-width: 960px;
+        max-width: <%= $expand ? 'none' : '960px' %>;
       }
       #perldocdiv > ul:first-of-type a { text-decoration: none }
       #moduleversion { float: right }
@@ -145,7 +146,7 @@
 % }
   </head>
   <body onload="PR.prettyPrint()">
-    %= include 'menubar'
+    %= include 'menubar', expand => $expand
     <div id="wrapperlicious" class="container-fluid">
       <div id="perldocdiv">
         % if ($module ne 'contact') {
