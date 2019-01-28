@@ -79,7 +79,7 @@ sub run ($self, @versions) {
     } else {
       my $is_devel = $version eq 'blead' || (defined $v && ($v->{version}[1] % 2)) ? 1 : 0;
       my @args = ('--noman');
-      push @args, '-Dusedevel', '--symlink-devel-executables' if $is_devel;
+      push @args, '-Dusedevel', '-Uversiononly' if $is_devel;
       my ($output, $exit) = capture_merged { system 'perl-build', @args, $version, $target };
       $logfh->print($output);
       die "Failed to install Perl $version to $target\n" if $exit;
