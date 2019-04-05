@@ -36,8 +36,8 @@ sub register ($self, $app, $conf) {
 
 sub _pod_name_match ($c, $perl_version, $query) {
   my $es = $c->helpers->es;
-  return undef unless _index_is_ready($es, "pods_$perl_version");
-  my $match = $es->search(index => "pods_$perl_version", body => {
+  return undef unless _index_is_ready($es, "pods_\L$perl_version");
+  my $match = $es->search(index => "pods_\L$perl_version", body => {
     query => {bool => {should => [
       {term => {'name.ci' => $query}},
       {term => {name => {value => $query, boost => 2.0}}},
@@ -52,8 +52,8 @@ sub _pod_name_match ($c, $perl_version, $query) {
 
 sub _function_name_match ($c, $perl_version, $query) {
   my $es = $c->helpers->es;
-  return undef unless _index_is_ready($es, "functions_$perl_version");
-  my $match = $es->search(index => "functions_$perl_version", body => {
+  return undef unless _index_is_ready($es, "functions_\L$perl_version");
+  my $match = $es->search(index => "functions_\L$perl_version", body => {
     query => {bool => {should => [
       {term => {'name.ci' => $query}},
       {term => {name => {value => $query, boost => 2.0}}},
@@ -68,8 +68,8 @@ sub _function_name_match ($c, $perl_version, $query) {
 
 sub _variable_name_match ($c, $perl_version, $query) {
   my $es = $c->helpers->es;
-  return undef unless _index_is_ready($es, "variables_$perl_version");
-  my $match = $es->search(index => "variables_$perl_version", body => {
+  return undef unless _index_is_ready($es, "variables_\L$perl_version");
+  my $match = $es->search(index => "variables_\L$perl_version", body => {
     query => {bool => {should => [
       {term => {'name.ci' => $query}},
       {term => {name => {value => $query, boost => 2.0}}},
@@ -85,8 +85,8 @@ sub _variable_name_match ($c, $perl_version, $query) {
 sub _digits_variable_match ($c, $perl_version, $query) {
   return undef unless $query =~ m/^\$[1-9][0-9]*$/;
   my $es = $c->helpers->es;
-  return undef unless _index_is_ready($es, "variables_$perl_version");
-  my $match = $es->search(index => "variables_$perl_version", body => {
+  return undef unless _index_is_ready($es, "variables_\L$perl_version");
+  my $match = $es->search(index => "variables_\L$perl_version", body => {
     query => {prefix => {name => '$<digits>'}},
     _source => 'name',
     size => 1,
@@ -108,9 +108,9 @@ my %highlight_opts = (
 
 sub _pod_search ($c, $perl_version, $query, $limit = undef) {
   my $es = $c->helpers->es;
-  return [] unless _index_is_ready($es, "pods_$perl_version");
+  return [] unless _index_is_ready($es, "pods_\L$perl_version");
   $limit //= 1000;
-  my $matches = $es->search(index => "pods_$perl_version", body => {
+  my $matches = $es->search(index => "pods_\L$perl_version", body => {
     query => {bool => {
       filter => {exists => {field => 'contents'}},
       should => [
@@ -140,9 +140,9 @@ sub _pod_search ($c, $perl_version, $query, $limit = undef) {
 
 sub _function_search ($c, $perl_version, $query, $limit = undef) {
   my $es = $c->helpers->es;
-  return [] unless _index_is_ready($es, "functions_$perl_version");
+  return [] unless _index_is_ready($es, "functions_\L$perl_version");
   $limit //= 1000;
-  my $matches = $es->search(index => "functions_$perl_version", body => {
+  my $matches = $es->search(index => "functions_\L$perl_version", body => {
     query => {bool => {
       filter => {exists => {field => 'description'}},
       should => [
@@ -169,9 +169,9 @@ sub _function_search ($c, $perl_version, $query, $limit = undef) {
 
 sub _faq_search ($c, $perl_version, $query, $limit = undef) {
   my $es = $c->helpers->es;
-  return [] unless _index_is_ready($es, "faqs_$perl_version");
+  return [] unless _index_is_ready($es, "faqs_\L$perl_version");
   $limit //= 1000;
-  my $matches = $es->search(index => "faqs_$perl_version", body => {
+  my $matches = $es->search(index => "faqs_\L$perl_version", body => {
     query => {bool => {
       filter => {exists => {field => 'answer'}},
       should => [
@@ -199,9 +199,9 @@ sub _faq_search ($c, $perl_version, $query, $limit = undef) {
 
 sub _perldelta_search ($c, $perl_version, $query, $limit = undef) {
   my $es = $c->helpers->es;
-  return [] unless _index_is_ready($es, "perldeltas_$perl_version");
+  return [] unless _index_is_ready($es, "perldeltas_\L$perl_version");
   $limit //= 1000;
-  my $matches = $es->search(index => "perldeltas_$perl_version", body => {
+  my $matches = $es->search(index => "perldeltas_\L$perl_version", body => {
     query => {bool => {
       filter => {exists => {field => 'contents'}},
       should => [
@@ -230,32 +230,47 @@ sub _perldelta_search ($c, $perl_version, $query, $limit = undef) {
 sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
   my $h = $c->helpers;
   my $es = $h->es;
-  my %index_name;
   my $time = time;
-  $index_name{functions} = "functions_${perl_version}_$time" if exists $pods->{perlfunc};
-  $index_name{variables} = "variables_${perl_version}_$time" if exists $pods->{perlvar};
-  $index_name{faqs} = "faqs_${perl_version}_$time" if all { exists $pods->{"perlfaq$_"} } 1..9;
-  $index_name{perldeltas} = "perldeltas_${perl_version}_$time" if any { m/^perl[0-9]+delta$/ } keys %$pods;
-  $index_name{pods} = "pods_${perl_version}_$time" if $index_pods;
-  _create_index($es, $_, $perl_version, $index_name{$_}) for keys %index_name;
+  my (%index_name, %index_alias);
+  if (exists $pods->{perlfunc}) {
+    $index_alias{functions} = "functions_\L$perl_version";
+    $index_name{functions} = "$index_alias{functions}_$time";
+  }
+  if (exists $pods->{perlvar}) {
+    $index_alias{variables} = "variables_\L$perl_version";
+    $index_name{variables} = "$index_alias{variables}_$time";
+  }
+  if (all { exists $pods->{"perlfaq$_"} } 1..9) {
+    $index_alias{faqs} = "faqs_\L$perl_version";
+    $index_name{faqs} = "$index_alias{faqs}_$time";
+  }
+  if (any { m/^perl[0-9]+delta$/ } keys %$pods) {
+    $index_alias{perldeltas} = "perldeltas_\L$perl_version";
+    $index_name{perldeltas} = "$index_alias{perldeltas}_$time";
+  }
+  if ($index_pods) {
+    $index_alias{pods} = "pods_\L$perl_version";
+    $index_name{pods} = "$index_alias{pods}_$time";
+  }
+  _create_index($es, $_, $index_name{$_}, $index_alias{$_}) for keys %index_name;
   try {
-    my $bulk_pod = _bulk_helper($es, $index_name{pods}, "pods_$perl_version");
+    my $bulk_pod = _bulk_helper($es, $index_name{pods}, $index_alias{pods});
     foreach my $pod (keys %$pods) {
       print "Indexing $pod for $perl_version ($pods->{$pod})\n";
       my $src = path($pods->{$pod})->slurp;
       _index_pod($bulk_pod, $h->prepare_index_pod($pod, $src)) if $index_pods;
       if ($pod eq 'perlfunc') {
         print "Indexing functions for $perl_version\n";
-        _index_functions($es, $index_name{functions}, $perl_version, $h->prepare_index_functions($src));
+        _index_functions($es, $index_name{functions}, $index_alias{functions}, $h->prepare_index_functions($src));
       } elsif ($pod eq 'perlvar') {
         print "Indexing variables for $perl_version\n";
-        _index_variables($es, $index_name{variables}, $perl_version, $h->prepare_index_variables($src));
+        _index_variables($es, $index_name{variables}, $index_alias{variables}, $h->prepare_index_variables($src));
       } elsif (defined $index_name{faqs} and $pod =~ m/^perlfaq[1-9]$/) {
         print "Indexing $pod FAQs for $perl_version\n";
-        _index_faqs($es, $index_name{faqs}, $perl_version, $pod, $h->prepare_index_faqs($src));
+        _index_faqs($es, $index_name{faqs}, $index_alias{faqs}, $pod, $h->prepare_index_faqs($src));
       } elsif (defined $index_name{perldeltas} and $pod =~ m/^perl[0-9]+delta$/) {
         print "Indexing $pod deltas for $perl_version\n";
-        _index_perldelta($es, $index_name{perldeltas}, $perl_version, $pod, $h->prepare_index_perldelta($src));
+        _index_perldelta($es, $index_name{perldeltas}, $index_alias{perldeltas}, $pod, $h->prepare_index_perldelta($src));
       }
     }
     $bulk_pod->flush if $index_pods;
@@ -265,13 +280,14 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
     die $@;
   }
   foreach my $type (keys %index_name) {
-    my $name = "${type}_$perl_version";
-    my $index_exists = $es->indices->exists_alias(name => $name);
-    my $existing_indexes = $index_exists ? [keys %{$es->indices->get_alias(name => $name, ignore_unavailable => true)}] : [];
-    print "Swapping $name index(es) @$existing_indexes => $index_name{$type}\n";
+    my $name = $index_name{$type};
+    my $alias = $index_alias{$type};
+    my $index_exists = $es->indices->exists_alias(name => $alias);
+    my $existing_indexes = $index_exists ? [keys %{$es->indices->get_alias(name => $alias, ignore_unavailable => true)}] : [];
+    print "Swapping $alias index(es) @$existing_indexes => $name\n";
     $es->indices->update_aliases(body => {actions => [
-      {add => {alias => $name, index => $index_name{$type}}},
-      (map { +{remove => {alias => $name, index => $_}} } @$existing_indexes),
+      {add => {alias => $alias, index => $name}},
+      (map { +{remove => {alias => $alias, index => $_}} } @$existing_indexes),
     ]});
     $es->indices->delete(index => $existing_indexes) if @$existing_indexes;
   }
@@ -303,9 +319,9 @@ my %index_properties = (
   },
 );
 
-sub _create_index ($es, $type, $perl_version, $name) {
+sub _create_index ($es, $type, $name, $index_type = $name) {
   my %body;
-  $body{mappings}{"${type}_$perl_version"}{properties} = $index_properties{$type} // {};
+  $body{mappings}{$index_type}{properties} = $index_properties{$type} // {};
   $body{settings}{analysis} = {
     analyzer => {
       default => {
@@ -336,8 +352,8 @@ sub _index_pod ($bulk, $properties) {
   });
 }
 
-sub _index_functions ($es, $index_name, $perl_version, $functions) {
-  my $bulk = _bulk_helper($es, $index_name, "functions_$perl_version");
+sub _index_functions ($es, $index_name, $index_type, $functions) {
+  my $bulk = _bulk_helper($es, $index_name, $index_type);
   foreach my $properties (@$functions) {
     delete $properties->{description} unless length $properties->{description};
     $bulk->update({
@@ -349,8 +365,8 @@ sub _index_functions ($es, $index_name, $perl_version, $functions) {
   $bulk->flush;
 }
 
-sub _index_variables ($es, $index_name, $perl_version, $variables) {
-  my $bulk = _bulk_helper($es, $index_name, "variables_$perl_version");
+sub _index_variables ($es, $index_name, $index_type, $variables) {
+  my $bulk = _bulk_helper($es, $index_name, $index_type);
   foreach my $properties (@$variables) {
     $bulk->update({
       id => $properties->{name},
@@ -361,8 +377,8 @@ sub _index_variables ($es, $index_name, $perl_version, $variables) {
   $bulk->flush;
 }
 
-sub _index_faqs ($es, $index_name, $perl_version, $perlfaq, $faqs) {
-  my $bulk = _bulk_helper($es, $index_name, "faqs_$perl_version");
+sub _index_faqs ($es, $index_name, $index_type, $perlfaq, $faqs) {
+  my $bulk = _bulk_helper($es, $index_name, $index_type);
   foreach my $properties (@$faqs) {
     delete $properties->{answer} unless length $properties->{answer};
     $bulk->update({
@@ -374,8 +390,8 @@ sub _index_faqs ($es, $index_name, $perl_version, $perlfaq, $faqs) {
   $bulk->flush;
 }
 
-sub _index_perldelta ($es, $index_name, $perl_version, $perldelta, $sections) {
-  my $bulk = _bulk_helper($es, $index_name, "perldeltas_$perl_version");
+sub _index_perldelta ($es, $index_name, $index_type, $perldelta, $sections) {
+  my $bulk = _bulk_helper($es, $index_name, $index_type);
   foreach my $properties (@$sections) {
     delete $properties->{contents} unless length $properties->{contents};
     $bulk->update({
