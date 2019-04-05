@@ -117,6 +117,8 @@ sub _inc_dirs_for_perl ($bin) {
   local $ENV{PERL5LIB} = '';
   local $ENV{PERL5OPT} = '';
   run3 [$bin, '-MConfig', '-e', 'print "$_\n" for @INC; print "$Config{scriptdir}\n"'], undef, \my @output;
+  my $exit = $? >> 8;
+  die "Failed to retrieve include directories for $bin (exit $exit)\n" if $exit;
   chomp @output;
   return [grep { length $_ && $_ ne '.' } @output];
 }
