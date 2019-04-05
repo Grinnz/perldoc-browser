@@ -10,6 +10,7 @@ use Capture::Tiny 'capture_merged';
 use File::Basename;
 use File::Spec;
 use File::Temp;
+use IPC::Run3;
 use version;
 use experimental 'signatures';
 
@@ -64,15 +65,12 @@ sub run ($self, @versions) {
         my $in_build = File::pushd::pushd($build);
         
         my @args = ('-de', "-Dprefix=$target", '-Dman1dir=none', '-Dman3dir=none');
-        my ($output, $exit) = capture_merged { system 'sh', 'Configure', @args };
-        $logfh->print($output);
-        die "Failed to install Perl $version to $target\n" if $exit;
-        ($output, $exit) = capture_merged { system {'make'} 'make' };
-        $logfh->print($output);
-        die "Failed to install Perl $version to $target\n" if $exit;
-        ($output, $exit) = capture_merged { system 'make', 'install' };
-        $logfh->print($output);
-        die "Failed to install Perl $version to $target\n" if $exit;
+        run3 ['sh', 'Configure', @args], undef, $logfh, $logfh;
+        die "Failed to install Perl $version to $target\n" if $?;
+        run3 ['make'], undef, $logfh, $logfh;
+        die "Failed to install Perl $version to $target\n" if $?;
+        run3 ['make', 'install'], undef, $logfh, $logfh;
+        die "Failed to install Perl $version to $target\n" if $?;
       }
       
       print "Installed Perl $version to $target\n";
@@ -80,9 +78,8 @@ sub run ($self, @versions) {
       my $is_devel = $version eq 'blead' || (defined $v && ($v->{version}[1] % 2)) ? 1 : 0;
       my @args = ('--noman');
       push @args, '-Dusedevel', '-Uversiononly' if $is_devel;
-      my ($output, $exit) = capture_merged { system 'perl-build', @args, $version, $target };
-      $logfh->print($output);
-      die "Failed to install Perl $version to $target\n" if $exit;
+      run3 ['perl-build', @args, $version, $target], undef, $logfh, $logfh;
+      die "Failed to install Perl $version to $target\n" if $?;
       print "Installed Perl $version to $target\n";
     }
   }

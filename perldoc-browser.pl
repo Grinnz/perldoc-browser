@@ -10,7 +10,7 @@ BEGIN { @current_inc = grep { !ref and $_ ne '.' } @INC }
 
 use Mojolicious::Lite;
 use Config;
-use IPC::System::Simple 'capturex';
+use IPC::Run3;
 use Mojo::File 'path';
 use Mojo::Util 'dumper';
 use Sort::Versions;
@@ -116,6 +116,7 @@ sub _inc_dirs_for_perl ($bin) {
   local $ENV{PERLLIB} = '';
   local $ENV{PERL5LIB} = '';
   local $ENV{PERL5OPT} = '';
-  return [grep { length $_ && $_ ne '.' } split /\n+/, capturex $bin, '-MConfig', '-e',
-    'print "$_\n" for @INC; print "$Config{scriptdir}\n"'];
+  run3 [$bin, '-MConfig', '-e', 'print "$_\n" for @INC; print "$Config{scriptdir}\n"'], undef, \my @output;
+  chomp @output;
+  return [grep { length $_ && $_ ne '.' } @output];
 }

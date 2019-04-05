@@ -1,6 +1,5 @@
 requires 'perl' => '5.020';
-requires 'Capture::Tiny';
-requires 'IPC::System::Simple';
+requires 'IPC::Run3';
 requires 'List::Util' => '1.50';
 requires 'MetaCPAN::Pod::XHTML';
 requires 'Module::Metadata';
@@ -16,6 +15,7 @@ requires 'lib::relative';
 requires 'version';
 
 feature 'install', 'Perl installation support', sub {
+  requires 'Capture::Tiny';
   requires 'Perl::Build';
   requires 'HTTP::Tiny';
   requires 'IO::Socket::SSL' => '1.56';

@@ -6,7 +6,7 @@ package PerldocBrowser::Command::refresh_blead;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Command';
-use Capture::Tiny 'capture_merged';
+use IPC::Run3;
 use List::Util 1.50 'head';
 use Time::Seconds;
 use version;
@@ -23,10 +23,8 @@ sub run ($self, @versions) {
   my $logfile = $self->app->home->child('log', "perl-build-blead.log");
   print "Installing Perl blead to $target ...\n";
   my @args = ('--noman', '-Dusedevel', '--symlink-devel-executables');
-  my ($output, $exit) = capture_merged { system 'perl-build', @args, 'blead', $target };
-  $logfile->spurt($output);
-  die "Failed to install Perl blead to $target: $! (logfile can be found at $logfile)\n" if $exit < 0;
-  die "Failed to install Perl blead to $target (logfile can be found at $logfile)\n" if $exit;
+  run3 ['perl-build', @args, 'blead', $target], undef, "$logfile", "$logfile";
+  die "Failed to install Perl blead to $target (logfile can be found at $logfile)\n" if $?;
   print "Installed Perl blead to $target\n";
   my $link = $self->app->perls_dir->child('blead');
   $exit = system 'ln', '-sfT', $target, $link;
