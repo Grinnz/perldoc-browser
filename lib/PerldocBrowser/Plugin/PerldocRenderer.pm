@@ -77,8 +77,13 @@ sub _find_module($c, $module) {
   return $meta;
 }
 
-sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $variable = undef) {
+sub _prepare_html ($c, $src) {
+  my $url_perl_version = $c->stash('url_perl_version');
   my $dom = Mojo::DOM->new($c->pod_to_html($src, $url_perl_version));
+
+  my $module = $c->stash('module');
+  my $function = $c->stash('function');
+  my $variable = $c->stash('variable');
 
   # Rewrite code blocks for syntax highlighting and correct indentation
   for my $e ($dom->find('pre > code')->each) {
@@ -162,9 +167,7 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
   return $dom;
 }
 
-sub _render_html ($c, $src) {
-  my $dom = $c->prepare_perldoc_html($src, $c->stash('url_perl_version'), $c->stash('module'), $c->stash('function'), $c->stash('variable'));
-
+sub _render_html ($c, $dom) {
   # Try to find a title
   my $title = $c->stash('page_name') // $c->stash('module');
   $dom->find('h1')->first(sub {
@@ -224,7 +227,7 @@ sub _perldoc ($c) {
         $c->stash(alt_page_type => 'function', alt_page_name => $function) if defined $function;
       }
 
-      $c->render_perldoc_html(path($path)->slurp);
+      $c->render_perldoc_html($c->prepare_perldoc_html(path($path)->slurp));
     },
   );
 }
@@ -256,7 +259,7 @@ sub _function ($c) {
         $c->stash(alt_page_type => 'module', alt_page_name => $pod) if defined $pod;
       }
 
-      $c->render_perldoc_html($src);
+      $c->render_perldoc_html($c->prepare_perldoc_html($src));
     },
   );
 }
@@ -274,7 +277,7 @@ sub _variable ($c) {
 
   $c->respond_to(
     txt => {data => $src},
-    html => sub { $c->render_perldoc_html($src) },
+    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src)) },
   );
 }
 
@@ -287,7 +290,7 @@ sub _functions_index ($c) {
 
   $c->respond_to(
     txt => {data => $src},
-    html => sub { $c->render_perldoc_html($src) },
+    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src)) },
   );
 }
 
@@ -300,7 +303,7 @@ sub _modules_index ($c) {
 
   $c->respond_to(
     txt => {data => $src},
-    html => sub { $c->render_perldoc_html($src) },
+    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src)) },
   );
 }
 
