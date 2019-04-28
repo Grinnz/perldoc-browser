@@ -207,18 +207,22 @@ sub _perldoc ($c) {
 
   my $path = _find_pod($c, $module);
   return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
+  
+  $c->respond_to(
+    txt => sub { $c->render(data => path($path)->slurp) },
+    html => sub {
+      if (defined(my $module_meta = _find_module($c, $module))) {
+        $c->stash(module_version => $module_meta->version($module));
+      }
 
-  if (defined(my $module_meta = _find_module($c, $module))) {
-    $c->stash(module_version => $module_meta->version($module));
-  }
+      if (defined $c->app->search_backend) {
+        my $function = $h->function_name_match($c->stash('perl_version'), $module);
+        $c->stash(alt_page_type => 'function', alt_page_name => $function) if defined $function;
+      }
 
-  if (defined $c->app->search_backend) {
-    my $function = $h->function_name_match($c->stash('perl_version'), $module);
-    $c->stash(alt_page_type => 'function', alt_page_name => $function) if defined $function;
-  }
-
-  my $src = path($path)->slurp;
-  $c->respond_to(txt => {data => $src}, html => sub { $h->render_perldoc_html($src) });
+      $h->render_perldoc_html(path($path)->slurp);
+    },
+  );
 }
 
 sub _function ($c) {
@@ -230,23 +234,28 @@ sub _function ($c) {
   my $src = _get_function_pod($c, $function);
   return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
 
-  my $heading = first { m/^=item/ } split /\n\n+/, $src;
-  if (defined $heading) {
-    my $target = $h->pod_to_text_content(join "\n\n", '=over', $heading, '=back');
-    my $escaped = $h->escape_pod($target);
-    my $link = Mojo::DOM->new($h->pod_to_html(qq{=pod\n\nL<< /"$escaped" >>}))->at('a');
-    if (defined $link) {
-      my $fragment = Mojo::URL->new($link->attr('href'))->fragment;
-      $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlfunc')->fragment($fragment));
-    }
-  }
+  $c->respond_to(
+    txt => {data => $src},
+    html => sub {
+      my $heading = first { m/^=item/ } split /\n\n+/, $src;
+      if (defined $heading) {
+        my $target = $h->pod_to_text_content(join "\n\n", '=over', $heading, '=back');
+        my $escaped = $h->escape_pod($target);
+        my $link = Mojo::DOM->new($h->pod_to_html(qq{=pod\n\nL<< /"$escaped" >>}))->at('a');
+        if (defined $link) {
+          my $fragment = Mojo::URL->new($link->attr('href'))->fragment;
+          $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlfunc')->fragment($fragment));
+        }
+      }
 
-  if (defined $c->app->search_backend) {
-    my $pod = $h->pod_name_match($c->stash('perl_version'), $function);
-    $c->stash(alt_page_type => 'module', alt_page_name => $pod) if defined $pod;
-  }
+      if (defined $c->app->search_backend) {
+        my $pod = $h->pod_name_match($c->stash('perl_version'), $function);
+        $c->stash(alt_page_type => 'module', alt_page_name => $pod) if defined $pod;
+      }
 
-  $c->respond_to(txt => {data => $src}, html => sub { $h->render_perldoc_html($src) });
+      $h->render_perldoc_html($src);
+    },
+  );
 }
 
 sub _variable ($c) {
@@ -261,7 +270,10 @@ sub _variable ($c) {
   my $src = _get_variable_pod($c, $variable);
   return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
 
-  $c->respond_to(txt => {data => $src}, html => sub { $h->render_perldoc_html($src) });
+  $c->respond_to(
+    txt => {data => $src},
+    html => sub { $h->render_perldoc_html($src) },
+  );
 }
 
 sub _functions_index ($c) {
@@ -271,7 +283,10 @@ sub _functions_index ($c) {
   my $src = _get_function_categories($c);
   return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
 
-  $c->respond_to(txt => {data => $src}, html => sub { $c->helpers->render_perldoc_html($src) });
+  $c->respond_to(
+    txt => {data => $src},
+    html => sub { $c->helpers->render_perldoc_html($src) },
+  );
 }
 
 sub _modules_index ($c) {
@@ -281,7 +296,10 @@ sub _modules_index ($c) {
   my $src = _get_module_list($c);
   return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
 
-  $c->respond_to(txt => {data => $src}, html => sub { $c->helpers->render_perldoc_html($src) });
+  $c->respond_to(
+    txt => {data => $src},
+    html => sub { $c->helpers->render_perldoc_html($src) },
+  );
 }
 
 sub _get_function_pod ($c, $function) {

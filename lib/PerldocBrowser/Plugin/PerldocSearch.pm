@@ -186,7 +186,7 @@ sub _search ($c) {
   }
   my $src = join "\n\n", @paras;
 
-  $c->respond_to(txt => {data => $src}, html => sub { $h->render_perldoc_html($src) });
+  $h->render_perldoc_html($src);
 }
 
 sub _prepare_index_pod ($c, $name, $src) {
