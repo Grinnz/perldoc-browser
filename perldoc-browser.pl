@@ -98,8 +98,7 @@ any '/#url_perl_version/contact' => {module => 'contact', perl_version => $lates
   $c->stash(cpan => 'https://metacpan.org');
   $c->stash(perl_version => $c->stash('url_perl_version')) if $c->stash('url_perl_version');
   my $src = join "\n\n", @{$c->app->config->{contact_pod} // []};
-  my $h = $c->helpers;
-  $h->content_for(perldoc => $h->pod_to_html($src));
+  $c->content_for(perldoc => $c->pod_to_html($src));
   $c->render('perldoc', title => 'contact');
 };
 
