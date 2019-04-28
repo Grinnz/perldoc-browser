@@ -92,7 +92,7 @@ sub _html ($c, $src) {
   my $url_perl_version = $c->stash('url_perl_version');
   my $url_prefix = $url_perl_version ? $h->append_url_path('/', $url_perl_version) : '';
 
-  if ($c->param('module') eq 'functions') {
+  if ($c->stash('module') eq 'functions') {
     # Rewrite links on function pages
     for my $e ($dom->find('a[href]')->each) {
       my $link = Mojo::URL->new($e->attr('href'));
@@ -103,7 +103,7 @@ sub _html ($c, $src) {
     }
 
     # Insert links on functions index
-    if (!defined $c->param('function')) {
+    if (!defined $c->stash('function')) {
       for my $e ($dom->find(':not(a) > code')->each) {
         my $text = $e->all_text;
         $e->wrap($c->link_to('' => $c->url_for($h->append_url_path("$url_prefix/functions/", "$1"))))
@@ -113,7 +113,7 @@ sub _html ($c, $src) {
   }
 
   # Rewrite links on variable pages
-  if (defined $c->param('variable')) {
+  if (defined $c->stash('variable')) {
     for my $e ($dom->find('a[href]')->each) {
       my $link = Mojo::URL->new($e->attr('href'));
       next if length $link->path;
@@ -127,7 +127,7 @@ sub _html ($c, $src) {
   }
 
   # Insert links on modules list
-  if ($c->param('module') eq 'modules') {
+  if ($c->stash('module') eq 'modules') {
     for my $e ($dom->find('dt')->each) {
       my $module = $e->all_text;
       $e->child_nodes->last->wrap($c->link_to('' => $c->url_for($h->append_url_path("$url_prefix/", $module))));
@@ -135,7 +135,7 @@ sub _html ($c, $src) {
   }
 
   # Insert links on perldoc perl
-  if ($c->param('module') eq 'perl') {
+  if ($c->stash('module') eq 'perl') {
     for my $e ($dom->find('pre > code')->each) {
       my $str = $e->content;
       $e->content($str) if $str =~ s/^\s*\K(perl\S+)/$c->link_to("$1" => $c->url_for($h->append_url_path("$url_prefix\/", "$1")))/mge;
@@ -151,7 +151,7 @@ sub _html ($c, $src) {
     }
   }
 
-  if ($c->param('module') eq 'search') {
+  if ($c->stash('module') eq 'search') {
     # Rewrite links to function pages
     for my $e ($dom->find('a[href]')->each) {
       next unless $e->attr('href') =~ /^[^#]+perlfunc#(.[^-]*)/;
@@ -161,7 +161,7 @@ sub _html ($c, $src) {
   }
 
   # Try to find a title
-  my $title = $c->stash('page_name') // $c->param('module');
+  my $title = $c->stash('page_name') // $c->stash('module');
   $dom->find('h1')->first(sub {
     return unless $_->all_text eq 'NAME';
     my $p = $_->next;
@@ -172,7 +172,7 @@ sub _html ($c, $src) {
   # Rewrite headers
   my %level = (h1 => 1, h2 => 2, h3 => 3, h4 => 4);
   my $linkable = 'h1, h2, h3, h4';
-  $linkable .= ', dt' unless $c->param('module') eq 'search';
+  $linkable .= ', dt' unless $c->stash('module') eq 'search';
   my (@toc, $parent);
   for my $e ($dom->find($linkable)->each) {
     my $link = Mojo::URL->new->fragment($e->{id});
@@ -201,7 +201,7 @@ sub _html ($c, $src) {
 sub _perldoc ($c) {
   my $h = $c->helpers;
   # Find module or redirect to CPAN
-  my $module = $c->param('module');
+  my $module = $c->stash('module');
   $c->stash(page_name => $module);
   $c->stash(cpan => $h->append_url_path('https://metacpan.org/pod', $module));
 
@@ -223,7 +223,7 @@ sub _perldoc ($c) {
 
 sub _function ($c) {
   my $h = $c->helpers;
-  my $function = $c->param('function');
+  my $function = $c->stash('function');
   $c->stash(page_name => $function);
   $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlfunc')->fragment($function));
 
@@ -251,7 +251,7 @@ sub _function ($c) {
 
 sub _variable ($c) {
   my $h = $c->helpers;
-  my $variable = $c->param('variable');
+  my $variable = $c->stash('variable');
   $c->stash(page_name => $variable);
   my $escaped = $h->escape_pod($variable);
   my $link = Mojo::DOM->new($h->pod_to_html(qq{=pod\n\nL<< /"$escaped" >>}))->at('a');
