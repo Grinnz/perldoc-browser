@@ -11,6 +11,7 @@ use File::Basename;
 use File::Spec;
 use File::Temp;
 use IPC::Run3;
+use Pod::Simple::Search;
 use version;
 use experimental 'signatures';
 
@@ -18,6 +19,7 @@ has description => 'Install Perls for Perldoc Browser';
 has usage => "Usage: $0 install <version> [<version> ...]\n";
 
 sub run ($self, @versions) {
+  die $self->usage unless @versions;
   $self->app->perls_dir->make_path;
   $self->app->home->child('log')->make_path;
   foreach my $version (@versions) {
@@ -83,6 +85,12 @@ sub run ($self, @versions) {
       run3 ['perl-build', @args, $version, $target], undef, $logfh, $logfh;
       die "Failed to install Perl $version to $target\n" if $?;
       print "Installed Perl $version to $target\n";
+    }
+
+    if (defined $self->app->search_backend) {
+      my $inc_dirs = $self->app->warmup_inc_dirs($version);
+      my %pod_paths = %{Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@$inc_dirs)};
+      $self->app->index_perl_version($version, \%pod_paths, 1);
     }
   }
 }

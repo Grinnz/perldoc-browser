@@ -42,6 +42,19 @@ my (@perl_versions, @dev_versions);
 my $latest_version = app->config->{latest_perl_version};
 
 my %inc_dirs;
+helper warmup_inc_dirs => sub ($c, $perl_version) {
+  my $bin = $c->perls_dir->child($perl_version, 'bin', 'perl');
+  local $ENV{PERLLIB} = '';
+  local $ENV{PERL5LIB} = '';
+  local $ENV{PERL5OPT} = '';
+  run3 [$bin, '-MConfig', '-e', 'print "$_\n" for @INC; print "$Config{scriptdir}\n"'], undef, \my @output;
+  my $exit = $? >> 8;
+  die "Failed to retrieve include directories for $bin (exit $exit)\n" if $exit;
+  chomp @output;
+  return $inc_dirs{$perl_version} = [grep { length $_ && $_ ne '.' } @output];
+};
+helper inc_dirs => sub ($c, $perl_version) { $inc_dirs{$perl_version} // [] };
+
 if (@$all_versions) {
   foreach my $perl_version (@$all_versions) {
     my $v = eval { version->parse($perl_version =~ s/^perl-//r) };
@@ -55,7 +68,7 @@ if (@$all_versions) {
       push @perl_versions, $perl_version;
       $latest_version //= $perl_version if defined $v;
     }
-    $inc_dirs{$perl_version} = _inc_dirs_for_perl($perls_dir->child($perl_version, 'bin', 'perl'));
+    app->warmup_inc_dirs($perl_version);
   }
   $latest_version //= $all_versions->first;
 } else {
@@ -72,8 +85,6 @@ helper perl_versions => sub ($c) { [@perl_versions] };
 helper dev_versions => sub ($c) { [@dev_versions] };
 
 helper latest_perl_version => sub ($c) { $latest_version };
-
-helper inc_dirs => sub ($c, $perl_version) { $inc_dirs{$perl_version} // [] };
 
 my $csp = join '; ',
   q{default-src 'self'},
@@ -108,14 +119,3 @@ plugin 'PerldocSearch';
 plugin 'PerldocRenderer';
 
 app->start;
-
-sub _inc_dirs_for_perl ($bin) {
-  local $ENV{PERLLIB} = '';
-  local $ENV{PERL5LIB} = '';
-  local $ENV{PERL5OPT} = '';
-  run3 [$bin, '-MConfig', '-e', 'print "$_\n" for @INC; print "$Config{scriptdir}\n"'], undef, \my @output;
-  my $exit = $? >> 8;
-  die "Failed to retrieve include directories for $bin (exit $exit)\n" if $exit;
-  chomp @output;
-  return [grep { length $_ && $_ ne '.' } @output];
-}

@@ -32,6 +32,7 @@ sub register ($self, $app, $conf) {
   $app->helper(perldelta_search => \&_perldelta_search);
 
   $app->helper(index_perl_version => \&_index_perl_version);
+  $app->helper(unindex_perl_version => \&_unindex_perl_version);
 }
 
 sub _pod_name_match ($c, $perl_version, $query) {
@@ -290,6 +291,17 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
     ]});
     $es->indices->delete(index => $existing_indexes) if @$existing_indexes;
   }
+}
+
+sub _unindex_perl_version ($c, $perl_version) {
+  my $es = $c->es;
+  my @indexes;
+  foreach my $type (qw(pods functions variables faqs perldeltas)) {
+    my $alias = "${type}_\L$perl_version";
+    next unless $es->indices->exists(index => $alias);
+    push @indexes, keys %{$es->indices->get(index => $alias)};
+  }
+  $es->indices->delete(index => \@indexes) if @indexes;
 }
 
 my %index_properties = (

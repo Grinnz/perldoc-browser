@@ -27,6 +27,7 @@ sub register ($self, $app, $conf) {
   $app->helper(perldelta_search => \&_perldelta_search);
 
   $app->helper(index_perl_version => \&_index_perl_version);
+  $app->helper(unindex_perl_version => \&_unindex_perl_version);
 }
 
 sub _pod_name_match ($c, $perl_version, $query) {
@@ -130,6 +131,13 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
       _index_perldelta($db, $perl_version, $pod, $c->prepare_index_perldelta($src));
     }
   }
+  $tx->commit;
+}
+
+sub _unindex_perl_version($c, $perl_version) {
+  my $db = $c->pg->db;
+  my $tx = $db->begin;
+  $db->delete($_, {perl_version => $perl_version}) for qw(pods functions variables faqs perldeltas);
   $tx->commit;
 }
 
