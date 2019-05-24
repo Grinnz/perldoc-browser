@@ -51,13 +51,15 @@ sub run ($self, @versions) {
       }
       $logfh->print("Downloaded $url to $tarpath\n");
       
-      my ($output, $exit) = capture_merged { system 'tar', 'xzf', $tarpath };
+      my $output;
+      run3 ['tar', 'xzf', $tarpath], undef, \$output, \$output;
+      my $exit = $? >> 8;
       die "Failed to extract Perl $version to $tempdir (exit $exit): $output\n" if $exit;
       
       my $build = File::Spec->catdir($tempdir, $tarball =~ s/\.tar\.gz$//r);
       die "Build directory was not extracted\n" unless -d $build;
       
-      system 'chmod', 'u+w', File::Spec->catfile($build, 'makedepend.SH');
+      run3 ['chmod', 'u+w', File::Spec->catfile($build, 'makedepend.SH')], undef, \undef, \undef;
       $output = capture_merged { Devel::PatchPerl->patch_source($version =~ s/^perl-//r, $build) };
       $logfh->print($output);
       
