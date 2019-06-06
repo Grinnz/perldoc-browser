@@ -64,7 +64,7 @@
       </li>
 % }
       <li class="nav-item">
-        <a class="nav-link" href="https://github.com/Grinnz/perldoc-browser">Source</a>
+        <a class="nav-link" href="https://github.com/Grinnz/perldoc-browser">GitHub</a>
       </li>
     <ul>
 % if (defined app->search_backend) {
