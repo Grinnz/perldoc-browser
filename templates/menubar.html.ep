@@ -5,30 +5,36 @@
   <a class="navbar-brand" href="/">Perldoc Browser</a>
   <div class="collapse navbar-collapse" id="navbarNav">
     <ul class="navbar-nav mr-auto">
+% my $current_path = defined stash('function') ? append_url_path('/functions/', stash('function')) : defined stash('variable') ? append_url_path('/variables/', stash('variable')) : append_url_path('/', $module);
+% if (@{perl_versions()} + @{dev_versions()} <= 1) {
+      <li class="nav-item">
+        <a class="nav-link" href="<%= url_with("$current_path") %>"><%= $perl_version %></a>
+      </li>
+% } else {
       <li class="nav-item dropdown" style="white-space: nowrap">
         <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-stable" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><%= $perl_version %></a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-stable">
-% my $current_path = defined stash('function') ? append_url_path('/functions/', stash('function')) : defined stash('variable') ? append_url_path('/variables/', stash('variable')) : append_url_path('/', $module);
           <a class="dropdown-item" href="<%= url_with("$current_path") %>">Latest</a>
-% if (@{perl_versions()}) {
+%   if (@{perl_versions()}) {
           <div class="dropdown-divider"></div>
-%   foreach my $perl_option (@{perl_versions()}) {
-%     my $prefix = append_url_path('/', $perl_option);
+%     foreach my $perl_option (@{perl_versions()}) {
+%       my $prefix = append_url_path('/', $perl_option);
           <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with("$prefix$current_path") %>"><%= $perl_option %></a>
+%     }
 %   }
-% }
         </div>
       </li>
-% if (@{dev_versions()}) {
+%   if (@{dev_versions()}) {
       <li class="nav-item dropdown" style="white-space: nowrap">
         <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-dev" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Dev</a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-dev">
-%   foreach my $perl_option (@{dev_versions()}) {
+%     foreach my $perl_option (@{dev_versions()}) {
 %     my $prefix = append_url_path('/', $perl_option);
           <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with("$prefix$current_path") %>"><%= $perl_option %></a>
-%   }
+%     }
         </div>
       </li>
+%   }
 % }
 % my $current_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
       <li class="nav-item">
