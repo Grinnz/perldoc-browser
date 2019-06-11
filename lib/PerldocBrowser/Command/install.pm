@@ -7,6 +7,7 @@ package PerldocBrowser::Command::install;
 use 5.020;
 use Mojo::Base 'Mojolicious::Command';
 use Capture::Tiny 'capture_merged';
+use File::pushd;
 use File::Spec;
 use File::Temp;
 use IPC::Run3;
@@ -31,7 +32,6 @@ sub run ($self, @versions) {
     my $v = eval { version->parse($version =~ s/^perl-//r) };
     if (defined $v and $v < version->parse('v5.6.0')) { # ancient perls
       require Devel::PatchPerl;
-      require File::pushd;
       
       my $tempdir = File::Temp->newdir;
       my $build = $self->app->download_perl_extracted($version, $tempdir);
@@ -42,7 +42,7 @@ sub run ($self, @versions) {
       $logfh->print($output);
       
       {      
-        my $in_build = File::pushd::pushd($build);
+        my $in_build = pushd $build;
         
         my @args = ('-de', "-Dprefix=$target", '-Dman1dir=none', '-Dman3dir=none');
         run3 ['sh', 'Configure', @args], undef, $logfh, $logfh;
