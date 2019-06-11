@@ -10,10 +10,13 @@ use Pod::Simple::Search;
 use experimental 'signatures';
 
 has description => 'Copy missing platform-specific module files from Perl source tree';
-has usage => "Usage: $0 copy_missing <version> [<version> ...]\n";
+has usage => "Usage: $0 copy_missing [all | <version> ...]\n";
 
 sub run ($self, @versions) {
   die $self->usage unless @versions;
+  if ($versions[0] eq 'all') {
+    @versions = @{$self->app->all_perl_versions};
+  }
   foreach my $version (@versions) {
     my $inc_dirs = $self->app->inc_dirs($version);
     my $missing = $self->app->missing_core_modules($inc_dirs);
