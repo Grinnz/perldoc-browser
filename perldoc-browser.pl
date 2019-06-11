@@ -203,6 +203,7 @@ helper copy_modules_from_source => sub ($c, $perl_version, @modules) {
     make_path(File::Spec->catdir($privlib, @parts)) if @parts;
     copy($source_path, File::Spec->catfile($privlib, @parts, $pm))
       or die "Failed to copy $source_path to $privlib: $!";
+    print "Copied $module ($source_path) to $privlib\n";
   }
 };
 
