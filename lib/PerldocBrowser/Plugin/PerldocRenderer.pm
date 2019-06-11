@@ -31,8 +31,9 @@ sub register ($self, $app, $conf) {
   $app->helper(prepare_perldoc_html => \&_prepare_html);
   $app->helper(render_perldoc_html => \&_render_html);
 
+  my $homepage = $app->config('homepage') // 'perl';
   my %defaults = (
-    module => 'perl',
+    module => $homepage,
     perl_version => $app->latest_perl_version,
     url_perl_version => '',
   );
