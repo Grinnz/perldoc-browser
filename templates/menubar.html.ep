@@ -74,7 +74,9 @@
       </li>
     <ul>
 % if (defined app->search_backend) {
-    <form class="form-inline" method="get" action="<%= url_for("$current_prefix/search") %>">
+%   my $search_url = url_for("$current_prefix/search");
+%   $search_url->query(config('search_params')) if defined config('search_params');
+    <form class="form-inline" method="get" action="<%= $search_url %>">
       <input class="form-control mr-3" type="search" name="q" placeholder="Search" aria-label="Search">
     </form>
 % }
