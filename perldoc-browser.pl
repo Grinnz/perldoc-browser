@@ -114,13 +114,19 @@ helper download_perl_extracted => sub ($c, $perl_version, $dir) {
   require CPAN::Perl::Releases;
   require HTTP::Tiny;
 
-  my $releases = CPAN::Perl::Releases::perl_tarballs($perl_version =~ s/^perl-//r);
-  die "Could not find release of Perl version $perl_version\n"
-    unless defined $releases and defined $releases->{'tar.gz'};
+  my ($url, $tarball);
+  if ($perl_version eq 'blead') {
+    $tarball = 'blead.tar.gz';
+    $url = 'https://perl5.git.perl.org/perl.git/snapshot/blead.tar.gz';
+  } else {
+    my $releases = CPAN::Perl::Releases::perl_tarballs($perl_version =~ s/^perl-//r);
+    die "Could not find release of Perl version $perl_version\n"
+      unless defined $releases and defined $releases->{'tar.gz'};
 
-  my $tarball = $releases->{'tar.gz'} =~ s!.*/!!r;
+    $tarball = $releases->{'tar.gz'} =~ s!.*/!!r;
+    $url = "https://cpan.metacpan.org/authors/id/$releases->{'tar.gz'}";
+  }
   my $tarpath = File::Spec->catfile($dir, $tarball);
-  my $url = "https://cpan.metacpan.org/authors/id/$releases->{'tar.gz'}";
   my $http = HTTP::Tiny->new(verify_SSL => 1);
   my $response = $http->mirror($url, $tarpath);
   unless ($response->{success}) {
@@ -135,8 +141,14 @@ helper download_perl_extracted => sub ($c, $perl_version, $dir) {
   die "Failed to extract Perl $perl_version to $dir (exit $exit): $output\n" if $exit;
 
   my $tarname = fileparse $tarpath, qr/\.tar\.[^.]+/;
-  my $build = File::Spec->catdir($dir, $tarname);
-  die "Build directory was not extracted\n" unless -d $build;
+  my $build;
+  if ($perl_version eq 'blead') {
+    opendir my $dh, $dir or die "opendir $dir failed: $!";
+    $build = File::Spec->catdir($dir, first { !m/^\./ and $_ ne $tarball } readdir $dh);
+  } else {
+    $build = File::Spec->catdir($dir, $tarname);
+  }
+  die "Build directory was not extracted\n" unless defined $build and -d $build;
 
   return $build;
 };
