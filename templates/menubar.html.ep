@@ -38,14 +38,17 @@
 % }
 % my $current_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
       <li class="nav-item">
-        <a class="nav-link" href="<%= url_for("$current_prefix/perl") %>">perl</a>
+% my $homepage = config('homepage') // 'perl';
+        <a class="nav-link" href="<%= url_for("$current_prefix/$homepage") %>"><%= $homepage %></a>
       </li>
+% unless (config('hide_core_nav')) {
       <li class="nav-item">
         <a class="nav-link" href="<%= url_for("$current_prefix/functions") %>">functions</a>
       </li>
       <li class="nav-item">
         <a class="nav-link" href="<%= url_for("$current_prefix/modules") %>">modules</a>
       </li>
+% }
     </ul>
     <ul class="navbar-nav">
       <script>
