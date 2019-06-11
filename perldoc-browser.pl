@@ -156,6 +156,13 @@ helper download_perl_extracted => sub ($c, $perl_version, $dir) {
 my %dist_name_override = (
   'Sys::Syslog::Win32' => 'Sys-Syslog',
   'Sys::Syslog::win32::Win32' => 'Sys-Syslog',
+  'Test::Harness::Beyond' => 'Test-Harness',
+);
+
+my %dist_path_extra = (
+  'Sys::Syslog::Win32' => ['win32'],
+  'Sys::Syslog::win32::Win32' => ['win32'],
+  'Test::Harness::Beyond' => [qw(lib TAP Harness)],
 );
 
 helper copy_modules_from_source => sub ($c, $perl_version, @modules) {
@@ -177,33 +184,29 @@ helper copy_modules_from_source => sub ($c, $perl_version, @modules) {
     next unless @parts;
     my $dist_name = join '-', @parts;
     $dist_name = $dist_name_override{$module} if defined $dist_name_override{$module};
-    my $pm = pop(@parts) . '.pm';
-    next if -e File::Spec->catfile($privlib, @parts, $pm);
+    my $basename = pop @parts;
+    my $pm = "$basename.pm";
+    my $pod = "$basename.pod";
+    next if -e File::Spec->catfile($privlib, @parts, $pod) or -e File::Spec->catfile($privlib, @parts, $pm);
     my $distdir = first { -d } (map { File::Spec->catdir($build, $_, $dist_name) } qw(ext cpan dist)),
       File::Spec->catdir($build, 'ext', split /-/, $dist_name);
-    my $source_path;
-    if (defined $distdir) {
-      $source_path = first { -e } File::Spec->catfile($distdir, $pm),
-        File::Spec->catfile($distdir, 'lib', @parts, $pm);
-      if (!defined $source_path) {
-        my $lib_path;
-        if ($module eq 'Sys::Syslog::Win32' or $module eq 'Sys::Syslog::win32::Win32') {
-          $lib_path = File::Spec->catfile($distdir, 'win32', $pm);
-        }
-        $source_path = $lib_path if -e $lib_path;
-      }
-    } else {
-      my $lib_path = File::Spec->catfile($build, 'lib', @parts, $pm);
-      $source_path = $lib_path if -e $lib_path;
-    }
+    my @attempts;
+    push @attempts, File::Spec->catfile($distdir, $pod), File::Spec->catfile($distdir, $pm),
+      File::Spec->catfile($distdir, 'lib', @parts, $pod), File::Spec->catfile($distdir, 'lib', @parts, $pm)
+      if defined $distdir;
+    my $extra = $dist_path_extra{$module};
+    push @attempts, File::Spec->catfile($distdir, @$extra, $pod), File::Spec->catfile($distdir, @$extra, $pm)
+      if defined $distdir and defined $extra;
+    push @attempts, File::Spec->catfile($build, 'lib', @parts, $pod), File::Spec->catfile($build, 'lib', @parts, $pm);
+    my $source_path = first { -e } @attempts;
     unless (defined $source_path) {
-      warn "File $pm not found for module $module\n";
+      warn "Documentation for module $module not found\n";
       next;
     }
-    make_path(File::Spec->catdir($privlib, @parts)) if @parts;
-    copy($source_path, File::Spec->catfile($privlib, @parts, $pm))
-      or die "Failed to copy $source_path to $privlib: $!";
-    print "Copied $module ($source_path) to $privlib\n";
+    my $target = File::Spec->catdir($privlib, @parts);
+    make_path $target if @parts;
+    copy($source_path, $target) or die "Failed to copy $source_path to $target: $!";
+    print "Copied $module ($source_path) to $target\n";
   }
 };
 
