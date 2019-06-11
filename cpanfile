@@ -1,4 +1,9 @@
 requires 'perl' => '5.020';
+requires 'File::Basename';
+requires 'File::Copy';
+requires 'File::Path';
+requires 'File::Spec';
+requires 'File::Temp';
 requires 'IPC::Run3';
 requires 'List::Util' => '1.50';
 requires 'MetaCPAN::Pod::XHTML';
@@ -16,6 +21,9 @@ requires 'version';
 
 feature 'install', 'Perl installation support', sub {
   requires 'Capture::Tiny';
+  requires 'CPAN::Perl::Releases';
+  requires 'Devel::PatchPerl';
+  requires 'File::pushd';
   requires 'Perl::Build';
   requires 'HTTP::Tiny';
   requires 'IO::Socket::SSL' => '1.56';

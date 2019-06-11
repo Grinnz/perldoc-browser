@@ -7,11 +7,11 @@ package PerldocBrowser::Command::install;
 use 5.020;
 use Mojo::Base 'Mojolicious::Command';
 use Capture::Tiny 'capture_merged';
-use File::Basename;
 use File::Spec;
 use File::Temp;
 use IPC::Run3;
 use Pod::Simple::Search;
+use Syntax::Keyword::Try;
 use version;
 use experimental 'signatures';
 
@@ -30,39 +30,15 @@ sub run ($self, @versions) {
     print "Installing Perl $version to $target (logfile can be found at $logfile) ...\n";
     my $v = eval { version->parse($version =~ s/^perl-//r) };
     if (defined $v and $v < version->parse('v5.6.0')) { # ancient perls
-      require CPAN::Perl::Releases;
       require Devel::PatchPerl;
       require File::pushd;
-      require HTTP::Tiny;
       
-      my $releases = CPAN::Perl::Releases::perl_tarballs($version =~ s/^perl-//r);
-      die "Could not find release of Perl version $version\n"
-        unless defined $releases and defined $releases->{'tar.gz'};
-      
-      my $tempdir = File::pushd::tempd();
-      
-      my $tarball = $releases->{'tar.gz'} =~ s!.*/!!r;
-      my $tarpath = File::Spec->catfile($tempdir, $tarball);
-      my $url = "https://cpan.metacpan.org/authors/id/$releases->{'tar.gz'}";
-      my $http = HTTP::Tiny->new(verify_SSL => 1);
-      my $response = $http->mirror($url, $tarpath);
-      unless ($response->{success}) {
-        my $msg = $response->{status} == 599 ? ", $response->{content}" : "";
-        chomp $msg;
-        die "Failed to download $url: $response->{status} $response->{reason}$msg\n";
-      }
-      $logfh->print("Downloaded $url to $tarpath\n");
-      
-      my $output;
-      run3 ['tar', 'xzf', $tarpath], undef, \$output, \$output;
-      my $exit = $? >> 8;
-      die "Failed to extract Perl $version to $tempdir (exit $exit): $output\n" if $exit;
-      
-      my $build = File::Spec->catdir($tempdir, $tarball =~ s/\.tar\.gz$//r);
-      die "Build directory was not extracted\n" unless -d $build;
+      my $tempdir = File::Temp->newdir;
+      my $build = $self->app->download_perl_extracted($version, $tempdir);
+      $logfh->print("Downloaded Perl $version to $build\n");
       
       run3 ['chmod', 'u+w', File::Spec->catfile($build, 'makedepend.SH')], undef, \undef, \undef;
-      $output = capture_merged { Devel::PatchPerl->patch_source($version =~ s/^perl-//r, $build) };
+      my $output = capture_merged { try { Devel::PatchPerl->patch_source($version =~ s/^perl-//r, $build) } catch { warn $@ } };
       $logfh->print($output);
       
       {      
@@ -87,8 +63,11 @@ sub run ($self, @versions) {
       print "Installed Perl $version to $target\n";
     }
 
+    my $inc_dirs = $self->app->warmup_inc_dirs($version);
+    my $missing = $self->app->missing_core_modules($inc_dirs);
+    $self->app->copy_modules_from_source($version, @$missing) if @$missing;
+
     if (defined $self->app->search_backend) {
-      my $inc_dirs = $self->app->warmup_inc_dirs($version);
       my %pod_paths = %{Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@$inc_dirs)};
       $self->app->index_perl_version($version, \%pod_paths, 1);
     }
