@@ -15,7 +15,7 @@ use experimental 'signatures';
 has description => 'Refresh Blead Perl for Perldoc Browser';
 has usage => "Usage: $0 refresh_blead\n";
 
-sub run ($self, @versions) {
+sub run ($self) {
   $self->app->perls_dir->child('bleads')->make_path;
   $self->app->home->child('log')->make_path;
   my $date = time;
@@ -33,6 +33,15 @@ sub run ($self, @versions) {
   print "Reassigned Perl blead symlink to $target\n";
   my @bleads = $self->app->perls_dir->child('bleads')->list({dir => 1})->sort(sub { $a->basename <=> $b->basename })->each;
   do { $_->remove_tree; print "Removed old Perl blead $_\n" } for head -2, @bleads;
+
+  my $inc_dirs = $self->app->warmup_inc_dirs('blead');
+  my $missing = $self->app->missing_core_modules($inc_dirs);
+  $self->app->copy_modules_from_source('blead', @$missing) if @$missing;
+
+  if (defined $self->app->search_backend) {
+    my %pod_paths = %{Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@$inc_dirs)};
+    $self->app->index_perl_version('blead', \%pod_paths, 1);
+  }
 }
 
 1;
