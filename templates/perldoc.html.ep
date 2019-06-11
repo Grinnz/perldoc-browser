@@ -6,8 +6,8 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><% if (title) { %><%= title %> - <% } %>Perldoc Browser</title>
-    <link rel="search" href="/opensearch.xml" type="application/opensearchdescription+xml" title="Perldoc Browser">
+    <title><% if (title) { %><%= title %> - <% } %><%= config('brand') // 'Perldoc Browser' %></title>
+    <link rel="search" href="/opensearch.xml" type="application/opensearchdescription+xml" title="<%= config('brand') // 'Perldoc Browser' %>">
     % if (length $url_perl_version) {
       % my $url = $c->req->url->clone;
       % shift @{$url->path};

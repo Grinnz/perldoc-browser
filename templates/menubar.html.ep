@@ -2,7 +2,7 @@
   <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
     <span class="navbar-toggler-icon"></span>
   </button>
-  <a class="navbar-brand" href="/">Perldoc Browser</a>
+  <a class="navbar-brand" href="/"><%= config('brand') // 'Perldoc Browser' %></a>
   <div class="collapse navbar-collapse" id="navbarNav">
     <ul class="navbar-nav mr-auto">
 % my $current_path = defined stash('function') ? append_url_path('/functions/', stash('function')) : defined stash('variable') ? append_url_path('/variables/', stash('variable')) : append_url_path('/', $module);
