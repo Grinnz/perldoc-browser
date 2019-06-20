@@ -9,6 +9,7 @@ requires 'IPC::Run3';
 requires 'List::Util' => '1.50';
 requires 'MetaCPAN::Pod::XHTML';
 requires 'Module::Metadata';
+requires 'Module::Runtime';
 requires 'Mojolicious' => '8.04';
 requires 'Mojo::Log::Role::Clearable';
 requires 'Perl::Build';
@@ -23,6 +24,7 @@ requires 'version';
 feature 'install', 'Perl installation support', sub {
   requires 'Capture::Tiny';
   requires 'CPAN::Perl::Releases';
+  requires 'CPAN::Perl::Releases::MetaCPAN';
   requires 'Devel::PatchPerl';
   requires 'Perl::Build';
   requires 'HTTP::Tiny';

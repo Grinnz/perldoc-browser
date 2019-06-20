@@ -14,6 +14,7 @@ use File::Spec;
 use File::Temp;
 use IPC::Run3;
 use List::Util 'first';
+use Module::Runtime 'require_module';
 use Mojo::File 'path';
 use Mojo::Util 'trim';
 use Pod::Simple::Search;
@@ -44,7 +45,6 @@ sub _missing_core_modules ($c, $inc_dirs) {
 }
 
 sub _download_perl_extracted ($c, $perl_version, $dir) {
-  require CPAN::Perl::Releases;
   require HTTP::Tiny;
 
   my ($url, $tarball);
@@ -52,12 +52,17 @@ sub _download_perl_extracted ($c, $perl_version, $dir) {
     $tarball = 'blead.tar.gz';
     $url = 'https://perl5.git.perl.org/perl.git/snapshot/blead.tar.gz';
   } else {
-    my $releases = CPAN::Perl::Releases::perl_tarballs($perl_version =~ s/^perl-//r);
-    die "Could not find release of Perl version $perl_version\n"
-      unless defined $releases and defined $releases->{'tar.gz'};
+    my $tarball_path;
+    foreach my $module (qw(CPAN::Perl::Releases CPAN::Perl::Releases::MetaCPAN)) {
+      require_module $module;
+      my $releases = $module->can('perl_tarballs')->($perl_version =~ s/^perl-//r);
+      $tarball_path = $releases->{'tar.gz'};
+      last if defined $tarball_path;
+    }
+    die "Could not find release of Perl version $perl_version\n" unless defined $tarball_path;
 
-    $tarball = $releases->{'tar.gz'} =~ s!.*/!!r;
-    $url = "https://cpan.metacpan.org/authors/id/$releases->{'tar.gz'}";
+    $tarball = $tarball_path =~ s!.*/!!r;
+    $url = "https://cpan.metacpan.org/authors/id/$tarball_path";
   }
   my $tarpath = File::Spec->catfile($dir, $tarball);
   my $http = HTTP::Tiny->new(verify_SSL => 1);
