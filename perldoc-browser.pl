@@ -55,14 +55,24 @@ helper warmup_inc_dirs => sub ($c, $perl_version) {
 };
 helper inc_dirs => sub ($c, $perl_version) { $inc_dirs{$perl_version} // [] };
 
+my %version_objects;
+helper warmup_version_object => sub ($c, $perl_version) {
+  my $bin = $c->perls_dir->child($perl_version, 'bin', 'perl');
+  local $ENV{PERL5OPT} = '';
+  run3 [$bin, '-e', 'print "$]\n"'], undef, \my $output;
+  chomp $output;
+  return $version_objects{$perl_version} = version->parse($output);
+};
+helper perl_version_object => sub ($c, $perl_version) { $version_objects{$perl_version} };
+
 if (@$all_versions) {
   foreach my $perl_version (@$all_versions) {
-    my $v = eval { version->parse($perl_version =~ s/^perl-//r) };
-    if (defined $v and $v < version->parse('v5.6.0') and ($v->{version}[2] // 0) >= 500) {
+    my $v = app->warmup_version_object($perl_version);
+    if ($perl_version eq 'blead' or $perl_version =~ m/-RC[0-9]+$/) {
       push @dev_versions, $perl_version;
-    } elsif (defined $v and $v >= version->parse('v5.6.0') and ($v->{version}[1] // 0) % 2) {
+    } elsif ($v < version->parse('v5.6.0') and ($v->{version}[2] // 0) >= 500) {
       push @dev_versions, $perl_version;
-    } elsif ($perl_version eq 'blead' or $perl_version =~ m/-RC\d+$/) {
+    } elsif ($v >= version->parse('v5.6.0') and ($v->{version}[1] // 0) % 2) {
       push @dev_versions, $perl_version;
     } else {
       push @perl_versions, $perl_version;
