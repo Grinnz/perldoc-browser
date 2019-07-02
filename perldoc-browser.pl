@@ -10,6 +10,7 @@ BEGIN { @current_inc = grep { !ref and $_ ne '.' } @INC }
 
 use Mojolicious::Lite;
 use Config;
+use File::Spec;
 use IPC::Run3;
 use Mojo::File 'path';
 use Mojo::Util 'dumper';
@@ -47,7 +48,11 @@ helper warmup_inc_dirs => sub ($c, $perl_version) {
   local $ENV{PERLLIB} = '';
   local $ENV{PERL5LIB} = '';
   local $ENV{PERL5OPT} = '';
-  run3 [$bin, '-MConfig', '-e', 'print "$_\n" for @INC; print "$Config{scriptdir}\n"'], undef, \my @output;
+  # Regular @INC dirs, $installprivlib/pod will be included by Pod::Simple::Search
+  # $installprivlib/pods is used on some architectures
+  # scriptdir is not automatically included when specifying dirs
+  run3 [$bin, '-MConfig', '-MFile::Spec', '-e',
+    'print "$_\n" for @INC, File::Spec->catdir($Config{installprivlib}, "pods"), $Config{scriptdir}'], undef, \my @output;
   my $exit = $? >> 8;
   die "Failed to retrieve include directories for $bin (exit $exit)\n" if $exit;
   chomp @output;
@@ -86,7 +91,7 @@ if (@$all_versions) {
   ($Config{PERL_VERSION} % 2) ? (push @dev_versions, $current_version) : (push @perl_versions, $current_version);
   push @$all_versions, $current_version;
   $latest_version //= $current_version;
-  $inc_dirs{$current_version} = [@current_inc, $Config{scriptdir}];
+  $inc_dirs{$current_version} = [@current_inc, File::Spec->catdir($Config{installprivlib}, 'pods'), $Config{scriptdir}];
 }
 
 helper all_perl_versions => sub ($c) { [@$all_versions] };
