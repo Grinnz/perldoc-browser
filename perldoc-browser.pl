@@ -70,6 +70,16 @@ helper warmup_version_object => sub ($c, $perl_version) {
 };
 helper perl_version_object => sub ($c, $perl_version) { $version_objects{$perl_version} };
 
+my %function_descriptions;
+helper warmup_function_descs => sub ($c, $perl_version) {
+  my $bin = $c->perls_dir->child($perl_version, 'bin', 'perl');
+  local $ENV{PERL5OPT} = '';
+  run3 [$bin, '-MPod::Functions', '-e', 'print "$_ $Flavor{$_}\n" for sort keys %Flavor'], undef, \my @output;
+  chomp @output;
+  return $function_descriptions{$perl_version} = [map { [split ' ', $_, 2] } @output];
+};
+helper function_descriptions => sub ($c, $perl_version) { $function_descriptions{$perl_version} };
+
 if (@$all_versions) {
   foreach my $perl_version (@$all_versions) {
     my $v = app->warmup_version_object($perl_version);
@@ -84,6 +94,7 @@ if (@$all_versions) {
       $latest_version //= $perl_version if defined $v;
     }
     app->warmup_inc_dirs($perl_version);
+    app->warmup_function_descs($perl_version);
   }
   $latest_version //= $all_versions->first;
 } else {
@@ -92,6 +103,9 @@ if (@$all_versions) {
   push @$all_versions, $current_version;
   $latest_version //= $current_version;
   $inc_dirs{$current_version} = [@current_inc, File::Spec->catdir($Config{installprivlib}, 'pods'), $Config{scriptdir}];
+  if (eval { require Pod::Functions; 1 }) {
+    $function_descriptions{$current_version} = [map { [$_ => $Pod::Functions::Flavor{$_}] } sort keys %Pod::Functions::Flavor];
+  }
 }
 
 helper all_perl_versions => sub ($c) { [@$all_versions] };

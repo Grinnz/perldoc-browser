@@ -286,8 +286,13 @@ sub _functions_index ($c) {
   $c->stash(page_name => 'functions');
   $c->stash(cpan => 'https://metacpan.org/pod/perlfunc#Perl-Functions-by-Category');
 
-  my $src = _get_function_categories($c);
-  return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
+  my $categories = _get_function_categories($c);
+  my $descriptions = _get_function_list($c);
+
+  return $c->res->code(301) && $c->redirect_to($c->stash('cpan'))
+    unless defined $categories or defined $descriptions;
+
+  my $src = join "\n\n", '=pod', grep { defined } $categories, $descriptions;
 
   $c->respond_to(
     txt => {data => $src},
@@ -335,16 +340,29 @@ sub _get_function_categories ($c) {
 
   my ($started, @result);
   foreach my $para (split /\n\n+/, $src) {
-    if (!$started and $para =~ m/^=head\d Perl Functions by Category/) {
+    if (!$started and $para =~ m/^=head2 Perl Functions by Category/) {
       $started = 1;
-      push @result, '=pod';
+      push @result, $para;
     } elsif ($started) {
       last if $para =~ m/^=head/;
       push @result, $para;
     }
   }
 
-  return undef unless @result;
+  return undef unless $started;
+  return join "\n\n", @result;
+}
+
+sub _get_function_list ($c) {
+  my $functions = $c->function_descriptions($c->stash('perl_version'));
+  return undef unless @$functions;
+  my @result = ('=head2 Alphabetical Listing of Perl Functions', '=over');
+  foreach my $function (@$functions) {
+    my ($name, $desc) = @$function;
+    $name = _escape_pod($name);
+    push @result, '=item *', "C<$name> - $desc";
+  }
+  push @result, '=back';
   return join "\n\n", @result;
 }
 
