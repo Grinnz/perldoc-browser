@@ -90,6 +90,7 @@ sub _prepare_html ($c, $src) {
   for my $e ($dom->find('pre > code')->each) {
     next if (my $str = $e->all_text) =~ /^\s*(?:\$|Usage:)\s+/m;
     next unless $str =~ /[\$\@\%]\w|->\w|[;{]\s*(?:#|$)/m;
+    next if length $str > 5000;
     my $attrs = $e->attr;
     my $class = $attrs->{class};
     $attrs->{class} = defined $class ? "$class prettyprint" : 'prettyprint';
