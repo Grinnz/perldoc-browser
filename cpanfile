@@ -13,6 +13,7 @@ requires 'Module::Runtime';
 requires 'Mojolicious' => '8.04';
 requires 'Mojo::Log::Role::Clearable';
 requires 'Perl::Build';
+requires 'Pod::Simple' => '3.40';
 requires 'Pod::Simple::Search';
 requires 'Pod::Simple::TextContent';
 requires 'Sort::Versions';

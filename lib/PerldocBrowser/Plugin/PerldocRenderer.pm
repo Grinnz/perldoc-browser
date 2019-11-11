@@ -636,6 +636,7 @@ sub _pod_to_html ($pod, $url_perl_version = '', $with_errata = 1) {
   $parser->$_('') for qw(html_header html_footer);
   $parser->anchor_items(1);
   $parser->no_errata_section(1) unless $with_errata;
+  $parser->expand_verbatim_tabs(0);
   $parser->output_string(\(my $output));
   $parser->parse_string_document("$pod");
   return $output;
