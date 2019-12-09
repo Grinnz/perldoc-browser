@@ -50,7 +50,7 @@ sub _download_perl_extracted ($c, $perl_version, $dir) {
   my ($url, $tarball);
   if ($perl_version eq 'blead') {
     $tarball = 'blead.tar.gz';
-    $url = 'https://perl5.git.perl.org/perl.git/snapshot/blead.tar.gz';
+    $url = 'https://github.com/Perl/perl5/archive/blead.tar.gz';
   } else {
     my $tarball_path;
     foreach my $module (qw(CPAN::Perl::Releases CPAN::Perl::Releases::MetaCPAN)) {
