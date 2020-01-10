@@ -55,9 +55,6 @@ the search. The C<index> command will index or reindex the contents and names
 of one or more Perls.
 
   ./perldoc-browser.pl index 5.10.1 5.28.0
-  ./perldoc-browser.pl index --functions 5.10.1 # only reindex function names/content
-  ./perldoc-browser.pl index --variables 5.10.1 # only reindex variable names
-  ./perldoc-browser.pl index --faqs 5.10.1 # only reindex faq content
   ./perldoc-browser.pl index all # reindexes all Perls found in perls_dir
 
 =head1 AUTHOR
