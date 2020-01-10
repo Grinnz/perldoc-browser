@@ -6,7 +6,7 @@ package PerldocBrowser::Plugin::PerldocSearch::Elastic;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
-use List::Util 1.33 qw(all any);
+use List::Util 1.33 'any';
 use Mojo::File 'path';
 use Mojo::JSON 'true';
 use Mojo::Util 'dumper';
@@ -228,10 +228,12 @@ sub _perldelta_search ($c, $perl_version, $query, $limit = undef) {
   return \@results;
 }
 
-sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
+sub _index_perl_version ($c, $perl_version, $pods) {
   my $es = $c->es;
   my $time = time;
   my (%index_name, %index_alias);
+  $index_alias{pods} = "pods_\L$perl_version";
+  $index_name{pods} = "$index_alias{pods}_$time";
   if (exists $pods->{perlfunc}) {
     $index_alias{functions} = "functions_\L$perl_version";
     $index_name{functions} = "$index_alias{functions}_$time";
@@ -240,7 +242,7 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
     $index_alias{variables} = "variables_\L$perl_version";
     $index_name{variables} = "$index_alias{variables}_$time";
   }
-  if (all { exists $pods->{"perlfaq$_"} } 1..9) {
+  if (any { exists $pods->{"perlfaq$_"} } 1..9) {
     $index_alias{faqs} = "faqs_\L$perl_version";
     $index_name{faqs} = "$index_alias{faqs}_$time";
   }
@@ -248,21 +250,17 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
     $index_alias{perldeltas} = "perldeltas_\L$perl_version";
     $index_name{perldeltas} = "$index_alias{perldeltas}_$time";
   }
-  if ($index_pods) {
-    $index_alias{pods} = "pods_\L$perl_version";
-    $index_name{pods} = "$index_alias{pods}_$time";
-  }
   _create_index($es, $_, $index_name{$_}, $index_alias{$_}) for keys %index_name;
   try {
     my $bulk_pod = _bulk_helper($es, $index_name{pods}, $index_alias{pods});
     foreach my $pod (keys %$pods) {
       print "Indexing $pod for $perl_version ($pods->{$pod})\n";
       my $src = path($pods->{$pod})->slurp;
-      _index_pod($bulk_pod, $c->prepare_index_pod($pod, $src)) if $index_pods;
-      if ($pod eq 'perlfunc') {
+      _index_pod($bulk_pod, $c->prepare_index_pod($pod, $src));
+      if (defined $index_name{functions} and $pod eq 'perlfunc') {
         print "Indexing functions for $perl_version\n";
         _index_functions($es, $index_name{functions}, $index_alias{functions}, $c->prepare_index_functions($src));
-      } elsif ($pod eq 'perlvar') {
+      } elsif (defined $index_name{variables} and $pod eq 'perlvar') {
         print "Indexing variables for $perl_version\n";
         _index_variables($es, $index_name{variables}, $index_alias{variables}, $c->prepare_index_variables($src));
       } elsif (defined $index_name{faqs} and $pod =~ m/^perlfaq[1-9]$/) {
@@ -273,7 +271,7 @@ sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
         _index_perldelta($es, $index_name{perldeltas}, $index_alias{perldeltas}, $pod, $c->prepare_index_perldelta($src));
       }
     }
-    $bulk_pod->flush if $index_pods;
+    $bulk_pod->flush;
     $es->indices->forcemerge(index => [values %index_name]);
   } catch {
     $es->indices->delete(index => [values %index_name]);

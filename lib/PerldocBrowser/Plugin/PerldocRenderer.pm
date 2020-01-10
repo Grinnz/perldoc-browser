@@ -63,12 +63,12 @@ sub register ($self, $app, $conf) {
   $app->routes->any("/:module" => {%defaults} => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
 }
 
-sub _find_pod($c, $module) {
+sub _find_pod ($c, $module) {
   my $inc_dirs = $c->inc_dirs($c->stash('perl_version'));
   return Pod::Simple::Search->new->inc(0)->find($module, @$inc_dirs);
 }
 
-sub _find_module($c, $module) {
+sub _find_module ($c, $module) {
   my $inc_dirs = $c->inc_dirs($c->stash('perl_version'));
   my $meta;
   { local $@;

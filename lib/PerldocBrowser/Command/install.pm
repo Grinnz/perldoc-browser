@@ -69,7 +69,7 @@ sub run ($self, @versions) {
 
     if (defined $self->app->search_backend) {
       my %pod_paths = %{Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@$inc_dirs)};
-      $self->app->index_perl_version($version, \%pod_paths, 1);
+      $self->app->index_perl_version($version, \%pod_paths);
     }
   }
 }

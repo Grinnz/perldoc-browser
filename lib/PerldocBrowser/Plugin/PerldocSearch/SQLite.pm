@@ -6,7 +6,7 @@ package PerldocBrowser::Plugin::PerldocSearch::SQLite;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
-use List::Util 1.33 qw(all any);
+use List::Util 1.33 'any';
 use Mojo::File 'path';
 use Mojo::SQLite;
 use experimental 'signatures';
@@ -107,18 +107,18 @@ sub _perldelta_search ($c, $perl_version, $query, $limit = undef) {
     $perl_version, $query, @limit_param)->hashes;
 }
 
-sub _index_perl_version ($c, $perl_version, $pods, $index_pods = 1) {
+sub _index_perl_version ($c, $perl_version, $pods) {
   my $db = $c->sqlite->db;
   my $tx = $db->begin;
+  $db->delete('pods', {perl_version => $perl_version});
   $db->delete('functions', {perl_version => $perl_version}) if exists $pods->{perlfunc};
   $db->delete('variables', {perl_version => $perl_version}) if exists $pods->{perlvar};
-  $db->delete('faqs', {perl_version => $perl_version}) if all { exists $pods->{"perlfaq$_"} } 1..9;
+  $db->delete('faqs', {perl_version => $perl_version}) if any { exists $pods->{"perlfaq$_"} } 1..9;
   $db->delete('perldeltas', {perl_version => $perl_version}) if any { m/^perl[0-9]+delta$/ } keys %$pods;
-  $db->delete('pods', {perl_version => $perl_version}) if $index_pods;
   foreach my $pod (keys %$pods) {
     print "Indexing $pod for $perl_version ($pods->{$pod})\n";
     my $src = path($pods->{$pod})->slurp;
-    _index_pod($db, $perl_version, $c->prepare_index_pod($pod, $src)) if $index_pods;
+    _index_pod($db, $perl_version, $c->prepare_index_pod($pod, $src));
     if ($pod eq 'perlfunc') {
       print "Indexing functions for $perl_version\n";
       _index_functions($db, $perl_version, $c->prepare_index_functions($src));
