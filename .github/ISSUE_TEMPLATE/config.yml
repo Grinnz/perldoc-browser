@@ -1,8 +1,8 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
-  - name: Documentation Issues
+  - name: Report a core documentation issue
     url: https://github.com/Perl/perl5/issues
-    about: Please report issues with the contents of documentation to the official Perl issue tracker.
-  - name: CPAN Modules
+    about: Please report issues with the contents of core documentation to the official Perl issue tracker.
+  - name: Report a CPAN module issue
     url: https://metacpan.org
     about: Please report issues with CPAN modules in their preferred bugtracker as indicated on their MetaCPAN page.
