@@ -32,35 +32,23 @@ sub register ($self, $app, $conf) {
   $app->helper(render_perldoc_html => \&_render_html);
 
   my $homepage = $app->config('homepage') // 'perl';
-  my %defaults = (
-    module => $homepage,
-    perl_version => $app->latest_perl_version,
-    url_perl_version => '',
-  );
+  my $latest_perl_version = $app->latest_perl_version;
 
-  foreach my $perl_version (@{$app->all_perl_versions}) {
-    $app->routes->any("/$perl_version/functions/:function"
-      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'functions'}
+  foreach my $perl_version (@{$app->all_perl_versions}, '') {
+    my $prefix = length $perl_version ? "/$perl_version" : '';
+    my %stash = (
+      module => $homepage,
+      perl_version => length $perl_version ? $perl_version : $latest_perl_version,
+      url_perl_version => $perl_version,
+    );
+    $app->routes->any("$prefix/functions/:function" => {%stash, module => 'functions'}
       => [function => qr/[^.]+/] => \&_function);
-    $app->routes->any("/$perl_version/variables/:variable"
-      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'perlvar'}
+    $app->routes->any("$prefix/variables/:variable" => {%stash, module => 'perlvar'}
       => [variable => qr/[^.]+(?:\.{3}[^.]+|\.)?/] => \&_variable);
-    $app->routes->any("/$perl_version/functions"
-      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'functions'}
-      => \&_functions_index);
-    $app->routes->any("/$perl_version/modules"
-      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version, module => 'modules'}
-      => \&_modules_index);
-    $app->routes->any("/$perl_version/:module"
-      => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version}
-      => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
+    $app->routes->any("$prefix/functions" => {%stash, module => 'functions'} => \&_functions_index);
+    $app->routes->any("$prefix/modules" => {%stash, module => 'modules'} => \&_modules_index);
+    $app->routes->any("$prefix/:module" => {%stash} => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
   }
-
-  $app->routes->any("/functions/:function" => {%defaults, module => 'functions'} => [function => qr/[^.]+/] => \&_function);
-  $app->routes->any("/variables/:variable" => {%defaults, module => 'perlvar'} => [variable => qr/[^.]+(?:\.{3}[^.]+|\.)?/] => \&_variable);
-  $app->routes->any("/functions" => {%defaults, module => 'functions'} => \&_functions_index);
-  $app->routes->any("/modules" => {%defaults, module => 'modules'} => \&_modules_index);
-  $app->routes->any("/:module" => {%defaults} => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
 }
 
 sub _find_pod ($c, $module) {
