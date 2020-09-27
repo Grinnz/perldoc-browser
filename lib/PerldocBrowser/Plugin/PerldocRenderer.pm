@@ -213,7 +213,7 @@ my %index_redirects = (
   'index-licence' => 'perlartistic',
   'index-overview' => 'perl#Overview',
   'index-platforms' => 'perl#Platform-Specific',
-  'index-pragmas' => 'functions#Pragmatic-Modules',
+  'index-pragmas' => 'modules#Pragmatic-Modules',
   'index-tutorials' => 'perl#Tutorials',
   'index-utilities' => 'perlutil',
 );
