@@ -41,12 +41,18 @@ sub register ($self, $app, $conf) {
       perl_version => length $perl_version ? $perl_version : $latest_perl_version,
       url_perl_version => $perl_version,
     );
+
+    # individual function and variable pages
     $app->routes->any("$prefix/functions/:function" => {%stash, module => 'functions'}
       => [function => qr/[^.]+/] => \&_function);
     $app->routes->any("$prefix/variables/:variable" => {%stash, module => 'perlvar'}
       => [variable => qr/[^.]+(?:\.{3}[^.]+|\.)?/] => \&_variable);
+
+    # function and module index pages
     $app->routes->any("$prefix/functions" => {%stash, module => 'functions'} => \&_functions_index);
     $app->routes->any("$prefix/modules" => {%stash, module => 'modules'} => \&_modules_index);
+
+    # all other docs
     $app->routes->any("$prefix/:module" => {%stash} => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
   }
 }
@@ -196,9 +202,35 @@ sub _render_html ($c, $dom) {
   $c->render('perldoc', title => $title, toc => \@toc);
 }
 
+my %index_redirects = (
+  'index' => 'perl#GETTING-HELP',
+  'index-faq' => 'perlfaq',
+  'index-functions' => 'functions#Alphabetical-Listing-of-Perl-Functions',
+  'index-functions-by-cat' => 'functions#Perl-Functions-by-Category',
+  'index-history' => 'perl#Miscellaneous',
+  'index-internals' => 'perl#Internals-and-C-Language-Interface',
+  'index-language' => 'perl#Reference-Manual',
+  'index-licence' => 'perlartistic',
+  'index-overview' => 'perl#Overview',
+  'index-platforms' => 'perl#Platform-Specific',
+  'index-pragmas' => 'functions#Pragmatic-Modules',
+  'index-tutorials' => 'perl#Tutorials',
+  'index-utilities' => 'perlutil',
+);
+$index_redirects{"index-modules-$_"} = 'modules#Standard-Modules' for 'A'..'Z';
+
 sub _perldoc ($c) {
-  # Find module or redirect to CPAN
   my $module = $c->stash('module');
+
+  # Legacy index page redirects
+  if (exists $index_redirects{$module}) {
+    my $url_perl_version = $c->stash('url_perl_version');
+    my $current_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
+    $c->res->code(301);
+    return $c->redirect_to($c->url_for("$current_prefix/$index_redirects{$module}"));
+  }
+
+  # Find module or redirect to CPAN
   $c->stash(page_name => $module);
   $c->stash(cpan => $c->append_url_path('https://metacpan.org/pod', $module));
 
