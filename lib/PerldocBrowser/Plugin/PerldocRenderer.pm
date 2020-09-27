@@ -72,13 +72,8 @@ sub _find_module ($c, $module) {
   return $meta;
 }
 
-sub _prepare_html ($c, $src) {
-  my $url_perl_version = $c->stash('url_perl_version');
+sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $variable = undef) {
   my $dom = Mojo::DOM->new($c->pod_to_html($src, $url_perl_version));
-
-  my $module = $c->stash('module');
-  my $function = $c->stash('function');
-  my $variable = $c->stash('variable');
 
   # Rewrite code blocks for syntax highlighting and correct indentation
   for my $e ($dom->find('pre > code')->each) {
@@ -98,8 +93,8 @@ sub _prepare_html ($c, $src) {
       my $link = Mojo::URL->new($e->attr('href'));
       next if length $link->path;
       next unless length(my $fragment = $link->fragment);
-      my ($function) = $fragment =~ m/^(.[^-]*)/;
-      $e->attr(href => $c->url_for($c->append_url_path("$url_prefix/functions/", $function)));
+      my ($function_name) = $fragment =~ m/^(.[^-]*)/;
+      $e->attr(href => $c->url_for($c->append_url_path("$url_prefix/functions/", $function_name)));
     }
 
     # Insert links on functions index
@@ -155,8 +150,8 @@ sub _prepare_html ($c, $src) {
     # Rewrite links to function pages
     for my $e ($dom->find('a[href]')->each) {
       next unless $e->attr('href') =~ /^[^#]+perlfunc#(.[^-]*)/;
-      my $function = url_unescape "$1";
-      $e->attr(href => $c->url_for($c->append_url_path("$url_prefix/functions/", $function)))->content($function);
+      my $function_name = url_unescape "$1";
+      $e->attr(href => $c->url_for($c->append_url_path("$url_prefix/functions/", $function_name)))->content($function_name);
     }
   }
 
@@ -221,10 +216,10 @@ $index_redirects{"index-modules-$_"} = 'modules#Standard-Modules' for 'A'..'Z';
 
 sub _perldoc ($c) {
   my $module = $c->stash('module');
+  my $url_perl_version = $c->stash('url_perl_version');
 
   # Legacy index page redirects
   if (exists $index_redirects{$module}) {
-    my $url_perl_version = $c->stash('url_perl_version');
     my $current_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
     $c->res->code(301);
     return $c->redirect_to($c->url_for("$current_prefix/$index_redirects{$module}"));
@@ -249,7 +244,7 @@ sub _perldoc ($c) {
         $c->stash(alt_page_type => 'function', alt_page_name => $function) if defined $function;
       }
 
-      $c->render_perldoc_html($c->prepare_perldoc_html(path($path)->slurp));
+      $c->render_perldoc_html($c->prepare_perldoc_html(path($path)->slurp, $url_perl_version, $module));
     },
   );
 }
@@ -281,7 +276,7 @@ sub _function ($c) {
         $c->stash(alt_page_type => 'module', alt_page_name => $pod) if defined $pod;
       }
 
-      $c->render_perldoc_html($c->prepare_perldoc_html($src));
+      $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'functions', $function));
     },
   );
 }
@@ -299,7 +294,7 @@ sub _variable ($c) {
 
   $c->respond_to(
     txt => {data => $src},
-    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src)) },
+    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'perlvar', undef, $variable)) },
   );
 }
 
@@ -317,7 +312,7 @@ sub _functions_index ($c) {
 
   $c->respond_to(
     txt => {data => $src},
-    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src)) },
+    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'functions')) },
   );
 }
 
@@ -330,7 +325,7 @@ sub _modules_index ($c) {
 
   $c->respond_to(
     txt => {data => $src},
-    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src)) },
+    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'modules')) },
   );
 }
 

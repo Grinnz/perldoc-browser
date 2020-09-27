@@ -185,7 +185,7 @@ sub _search ($c) {
   }
   my $src = join "\n\n", @paras;
 
-  $c->render_perldoc_html($c->prepare_perldoc_html($src));
+  $c->render_perldoc_html($c->prepare_perldoc_html($src, $url_perl_version, 'search'));
 }
 
 sub _prepare_index_pod ($c, $name, $src) {
