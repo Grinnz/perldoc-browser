@@ -39,6 +39,7 @@ feature 'pg', 'PostgreSQL search backend', sub {
 
 feature 'es', 'Elasticsearch search backend', sub {
   requires 'Search::Elasticsearch' => '6.00';
+  requires 'Search::Elasticsearch::Client::6_0';
   requires 'Log::Any::Adapter::MojoLog';
 };
 
