@@ -66,7 +66,8 @@ sub _find_pod ($c, $module) {
 
 sub _find_html ($c, $module) {
   my $url_perl_version = $c->stash('url_perl_version');
-  my $version = length $url_perl_version ? $url_perl_version : 'latest';
+  my $perl_version = $c->stash('perl_version');
+  my $version = length $url_perl_version ? $url_perl_version : "latest-$perl_version";
   my $filename = sha1_sum(encode 'UTF-8', $module) . '.html';
   my $path = $c->app->home->child('html', $version, $filename);
   return -r $path ? $path : undef;
