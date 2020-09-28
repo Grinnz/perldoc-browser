@@ -67,6 +67,8 @@ sub run ($self, @versions) {
     my $missing = $self->app->missing_core_modules($inc_dirs);
     $self->app->copy_modules_from_source($version, @$missing) if @$missing;
 
+    $self->app->cache_perl_to_html($version);
+
     if (defined $self->app->search_backend) {
       my %pod_paths = %{Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@$inc_dirs)};
       $self->app->index_perl_version($version, \%pod_paths);

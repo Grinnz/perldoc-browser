@@ -16,7 +16,7 @@ use IPC::Run3;
 use List::Util 'first';
 use Module::Runtime 'require_module';
 use Mojo::File 'path';
-use Mojo::Util 'trim';
+use Mojo::Util qw(encode sha1_sum trim);
 use Pod::Simple::Search;
 use experimental 'signatures';
 
@@ -24,6 +24,7 @@ sub register ($self, $app, $conf) {
   $app->helper(missing_core_modules => \&_missing_core_modules);
   $app->helper(download_perl_extracted => \&_download_perl_extracted);
   $app->helper(copy_modules_from_source => \&_copy_modules_from_source);
+  $app->helper(cache_perl_to_html => \&_cache_perl_to_html);
 }
 
 sub _missing_core_modules ($c, $inc_dirs) {
@@ -148,6 +149,21 @@ sub _copy_modules_from_source ($c, $perl_version, @modules) {
     make_path $target if @parts;
     copy($source_path, $target) or die "Failed to copy $source_path to $target: $!";
     print "Copied $module ($source_path) to $target\n";
+  }
+}
+
+sub _cache_perl_to_html ($c, $perl_version) {
+  my $url_version = $perl_version eq 'latest' ? '' : $perl_version;
+  my $real_version = $perl_version eq 'latest' ? $c->app->latest_perl_version : $perl_version;
+  my $inc_dirs = $c->app->inc_dirs($real_version) // [];
+  my %pod_paths = %{Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@$inc_dirs)};
+  return unless keys %pod_paths;
+  my $version_dir = $c->app->home->child('html', $perl_version)->remove_tree({keep_root => 1})->make_path;
+  foreach my $pod (keys %pod_paths) {
+    my $dom = $c->app->prepare_perldoc_html(path($pod_paths{$pod})->slurp, $url_version, $pod);
+    my $filename = sha1_sum(encode 'UTF-8', $pod) . '.html';
+    $version_dir->child($filename)->spurt(encode 'UTF-8', $dom->to_string);
+    print "Rendered $pod for $perl_version to $filename\n";
   }
 }
 
