@@ -18,7 +18,7 @@ has usage => "Usage: $0 render [all | latest | <version> ...]\n";
 sub run ($self, @versions) {
   die $self->usage unless @versions;
   if ($versions[0] eq 'all') {
-    @versions = ('latest', @{$self->app->all_perl_versions});
+    @versions = grep { $_ ne 'blead' } ('latest', @{$self->app->all_perl_versions});
   }
   my $html_dir = $self->app->home->child('html');
   foreach my $version (@versions) {
