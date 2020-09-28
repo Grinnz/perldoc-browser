@@ -1,6 +1,8 @@
 log/*
 perls
 perls/*
+html
+html/*
 perldoc-browser.conf
 perldoc-browser.sqlite*
 hypnotoad.pid
