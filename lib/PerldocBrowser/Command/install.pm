@@ -69,7 +69,7 @@ sub run ($self, @versions) {
     my $missing = $self->app->missing_core_modules($inc_dirs);
     $self->app->copy_modules_from_source($version, @$missing) if @$missing;
 
-    $self->app->cache_perl_to_html($version);
+    $self->app->cache_perl_to_html($version) unless $version eq 'blead';
     $self->app->cache_perl_to_html('latest') if $version eq $self->app->latest_perl_version;
 
     if (defined $self->app->search_backend) {
