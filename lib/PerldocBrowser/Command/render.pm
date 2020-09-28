@@ -7,8 +7,7 @@ package PerldocBrowser::Command::render;
 use 5.020;
 use Mojo::Base 'Mojolicious::Command';
 use Mojo::File 'path';
-use Mojo::Util 'encode';
-use Digest::SHA 'sha1_hex';
+use Mojo::Util qw(encode sha1_sum);
 use Pod::Simple::Search;
 use experimental 'signatures';
 
@@ -30,7 +29,7 @@ sub run ($self, @versions) {
     my $version_dir = $html_dir->child($version)->remove_tree({keep_root => 1})->make_path;
     foreach my $pod (keys %pod_paths) {
       my $dom = $self->app->prepare_perldoc_html(path($pod_paths{$pod})->slurp, $url_version, $pod);
-      my $filename = sha1_hex(encode 'UTF-8', $pod) . '.html';
+      my $filename = sha1_sum(encode 'UTF-8', $pod) . '.html';
       $version_dir->child($filename)->spurt(encode 'UTF-8', $dom->to_string);
       print "Rendered $pod for $version to $filename\n";
     }

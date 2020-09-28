@@ -6,7 +6,6 @@ package PerldocBrowser::Plugin::PerldocRenderer;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
-use Digest::SHA 'sha1_hex';
 use List::Util 'first';
 use MetaCPAN::Pod::XHTML;
 use Module::Metadata;
@@ -14,7 +13,7 @@ use Mojo::ByteStream;
 use Mojo::DOM;
 use Mojo::File 'path';
 use Mojo::URL;
-use Mojo::Util qw(decode encode trim url_unescape);
+use Mojo::Util qw(decode encode sha1_sum trim url_unescape);
 use Pod::Simple::Search;
 use Pod::Simple::TextContent;
 use Scalar::Util 'weaken';
@@ -68,7 +67,7 @@ sub _find_pod ($c, $module) {
 sub _find_html ($c, $module) {
   my $url_perl_version = $c->stash('url_perl_version');
   my $version = length $url_perl_version ? $url_perl_version : 'latest';
-  my $filename = sha1_hex(encode 'UTF-8', $module) . '.html';
+  my $filename = sha1_sum(encode 'UTF-8', $module) . '.html';
   my $path = $c->app->home->child('html', $version, $filename);
   return -r $path ? $path : undef;
 }
