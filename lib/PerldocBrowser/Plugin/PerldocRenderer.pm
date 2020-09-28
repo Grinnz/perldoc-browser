@@ -6,6 +6,7 @@ package PerldocBrowser::Plugin::PerldocRenderer;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
+use Digest::SHA 'sha1_hex';
 use List::Util 'first';
 use MetaCPAN::Pod::XHTML;
 use Module::Metadata;
@@ -13,7 +14,7 @@ use Mojo::ByteStream;
 use Mojo::DOM;
 use Mojo::File 'path';
 use Mojo::URL;
-use Mojo::Util qw(trim url_unescape);
+use Mojo::Util qw(decode encode trim url_unescape);
 use Pod::Simple::Search;
 use Pod::Simple::TextContent;
 use Scalar::Util 'weaken';
@@ -59,7 +60,17 @@ sub register ($self, $app, $conf) {
 
 sub _find_pod ($c, $module) {
   my $inc_dirs = $c->inc_dirs($c->stash('perl_version'));
-  return Pod::Simple::Search->new->inc(0)->find($module, @$inc_dirs);
+  my $path = Pod::Simple::Search->new->inc(0)->find($module, @$inc_dirs);
+  return undef unless defined $path and -r $path;
+  return $path;
+}
+
+sub _find_html ($c, $module) {
+  my $url_perl_version = $c->stash('url_perl_version');
+  my $version = length $url_perl_version ? $url_perl_version : 'latest';
+  my $filename = sha1_hex(encode 'UTF-8', $module) . '.html';
+  my $path = $c->app->home->child('html', $version, $filename);
+  return -r $path ? $path : undef;
 }
 
 sub _find_module ($c, $module) {
@@ -229,12 +240,23 @@ sub _perldoc ($c) {
   $c->stash(page_name => $module);
   $c->stash(cpan => $c->append_url_path('https://metacpan.org/pod', $module));
 
-  my $path = _find_pod($c, $module);
-  return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless $path && -r $path;
-  
   $c->respond_to(
-    txt => sub { $c->render(data => path($path)->slurp) },
+    txt => sub {
+      my $path = _find_pod($c, $module);
+      return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $path;
+      $c->render(data => path($path)->slurp);
+    },
     html => sub {
+      my $dom;
+      if (defined(my $html_path = _find_html($c, $module))) {
+        $dom = Mojo::DOM->new(decode 'UTF-8', path($html_path)->slurp);
+      } elsif (defined(my $pod_path = _find_pod($c, $module))) {
+        $dom = $c->prepare_perldoc_html(path($pod_path)->slurp, $url_perl_version, $module);
+      } else {
+        $c->res->code(301);
+        return $c->redirect_to($c->stash('cpan'));
+      }
+
       if (defined(my $module_meta = _find_module($c, $module))) {
         $c->stash(module_version => $module_meta->version($module));
       }
@@ -244,7 +266,7 @@ sub _perldoc ($c) {
         $c->stash(alt_page_type => 'function', alt_page_name => $function) if defined $function;
       }
 
-      $c->render_perldoc_html($c->prepare_perldoc_html(path($path)->slurp, $url_perl_version, $module));
+      $c->render_perldoc_html($dom);
     },
   );
 }
@@ -330,8 +352,7 @@ sub _modules_index ($c) {
 }
 
 sub _get_function_pod ($c, $function) {
-  my $path = _find_pod($c, 'perlfunc');
-  return undef unless $path && -r $path;
+  my $path = _find_pod($c, 'perlfunc') // return undef;
   my $src = path($path)->slurp;
 
   my $result = $c->split_functions($src, $function);
@@ -340,8 +361,7 @@ sub _get_function_pod ($c, $function) {
 }
 
 sub _get_variable_pod ($c, $variable) {
-  my $path = _find_pod($c, 'perlvar');
-  return undef unless $path && -r $path;
+  my $path = _find_pod($c, 'perlvar') // return undef;
   my $src = path($path)->slurp;
 
   my $result = $c->split_variables($src, $variable);
@@ -350,8 +370,7 @@ sub _get_variable_pod ($c, $variable) {
 }
 
 sub _get_function_categories ($c) {
-  my $path = _find_pod($c, 'perlfunc');
-  return undef unless $path && -r $path;
+  my $path = _find_pod($c, 'perlfunc') // return undef;
   my $src = path($path)->slurp;
 
   my ($started, @result);
@@ -383,8 +402,7 @@ sub _get_function_list ($c) {
 }
 
 sub _get_module_list ($c) {
-  my $path = _find_pod($c, 'perlmodlib');
-  return undef unless $path && -r $path;
+  my $path = _find_pod($c, 'perlmodlib') // return undef;
   my $src = path($path)->slurp;
 
   my ($started, $standard, @result);

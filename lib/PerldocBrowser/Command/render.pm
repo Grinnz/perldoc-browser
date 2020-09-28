@@ -29,9 +29,9 @@ sub run ($self, @versions) {
     next unless keys %pod_paths;
     my $version_dir = $html_dir->child($version)->make_path;
     foreach my $pod (keys %pod_paths) {
-      my $html = $self->app->prepare_perldoc_html(path($pod_paths{$pod})->slurp, $url_version, $pod);
+      my $dom = $self->app->prepare_perldoc_html(path($pod_paths{$pod})->slurp, $url_version, $pod);
       my $filename = sha1_hex(encode 'UTF-8', $pod) . '.html';
-      $version_dir->child($filename)->spurt(encode 'UTF-8', $html);
+      $version_dir->child($filename)->spurt(encode 'UTF-8', $dom->to_string);
       print "Rendered $pod for $version to $filename\n";
     }
   }
