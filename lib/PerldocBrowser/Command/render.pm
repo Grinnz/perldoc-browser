@@ -27,7 +27,7 @@ sub run ($self, @versions) {
     my $inc_dirs = $self->app->inc_dirs($real_version) // [];
     my %pod_paths = %{Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@$inc_dirs)};
     next unless keys %pod_paths;
-    my $version_dir = $html_dir->child($version)->make_path;
+    my $version_dir = $html_dir->child($version)->remove_tree({keep_root => 1})->make_path;
     foreach my $pod (keys %pod_paths) {
       my $dom = $self->app->prepare_perldoc_html(path($pod_paths{$pod})->slurp, $url_version, $pod);
       my $filename = sha1_hex(encode 'UTF-8', $pod) . '.html';
