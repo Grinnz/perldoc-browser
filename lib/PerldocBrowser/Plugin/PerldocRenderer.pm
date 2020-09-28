@@ -236,6 +236,14 @@ sub _perldoc ($c) {
     return $c->redirect_to($c->url_for("$current_prefix/$index_redirects{$module}"));
   }
 
+  # Legacy separator redirects
+  if ($module =~ m!/!) {
+    $module =~ s!/+!::!g;
+    my $current_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
+    $c->res->code(301);
+    return $c->redirect_to($c->url_for("$current_prefix/$module"));
+  }
+
   # Find module or redirect to CPAN
   $c->stash(page_name => $module);
   $c->stash(cpan => $c->append_url_path('https://metacpan.org/pod', $module));
