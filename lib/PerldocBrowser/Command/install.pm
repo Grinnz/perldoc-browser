@@ -63,11 +63,14 @@ sub run ($self, @versions) {
       print "Installed Perl $version to $target\n";
     }
 
-    my $inc_dirs = $self->app->warmup_inc_dirs($version);
+    $self->app->warmup_perl_versions; # cache inc dirs and latest perl version
+
+    my $inc_dirs = $self->app->inc_dirs($version);
     my $missing = $self->app->missing_core_modules($inc_dirs);
     $self->app->copy_modules_from_source($version, @$missing) if @$missing;
 
     $self->app->cache_perl_to_html($version);
+    $self->app->cache_perl_to_html('latest') if $version eq $self->app->latest_perl_version;
 
     if (defined $self->app->search_backend) {
       my %pod_paths = %{Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@$inc_dirs)};
