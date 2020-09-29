@@ -17,11 +17,18 @@
     %= stylesheet '/prettify-mojo-light.css'
     <style>
       body {
-        background: url(<%= url_for '/pinstripe-light.png' %>);
+        background: #f4f4f5;
         color: #445555;
       }
-      .navbar-dark .navbar-nav .nav-link { color: #ccc }
-      .navbar-dark .navbar-nav .nav-link:hover { color: #fff }
+      .navbar-dark {
+        background-image: -webkit-linear-gradient(top, #0073a1 0, #003555 100%);
+        background-image: -o-linear-gradient(top, #0073a1 0, #003555 100%);
+        background-image: linear-gradient(to bottom, #0073a1 0, #003555 100%);
+        filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff0073a1', endColorstr='#ff003555', GradientType=0);
+        background-repeat: repeat-x;
+      }
+      .navbar-dark .navbar-nav .nav-link { color: #fff }
+      .navbar-dark .navbar-nav .nav-link:hover { color: #ffef68 }
       #wrapperlicious {
         margin: 0 auto;
         font: 0.9em 'Helvetica Neue', Helvetica, sans-serif;
