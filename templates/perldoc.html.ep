@@ -21,10 +21,10 @@
         color: #445555;
       }
       .navbar-dark {
-        background-image: -webkit-linear-gradient(top, #0073a1 0, #003555 100%);
-        background-image: -o-linear-gradient(top, #0073a1 0, #003555 100%);
-        background-image: linear-gradient(to bottom, #0073a1 0, #003555 100%);
-        filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff0073a1', endColorstr='#ff003555', GradientType=0);
+        background-image: -webkit-linear-gradient(top, #005f85 0, #002e49 100%);
+        background-image: -o-linear-gradient(top, #005f85 0, #002e49 100%);
+        background-image: linear-gradient(to bottom, #005f85 0, #002e49 100%);
+        filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff005f85', endColorstr='#ff002e49', GradientType=0);
         background-repeat: repeat-x;
       }
       .navbar-dark .navbar-nav .nav-link { color: #fff }
