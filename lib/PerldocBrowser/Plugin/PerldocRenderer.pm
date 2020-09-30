@@ -72,7 +72,7 @@ sub register ($self, $app, $conf) {
     $versioned->any('/modules' => {module => 'modules'} => \&_modules_index);
 
     # all other docs
-    $versioned->any('/:module' => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
+    $versioned->any('/:module' => {module => $homepage} => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
   }
 }
 
