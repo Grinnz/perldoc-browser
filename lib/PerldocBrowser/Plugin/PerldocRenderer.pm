@@ -31,29 +31,48 @@ sub register ($self, $app, $conf) {
   $app->helper(prepare_perldoc_html => \&_prepare_html);
   $app->helper(render_perldoc_html => \&_render_html);
 
+  # canonicalize without .html
+  my $r = $app->routes->under(sub ($c) {
+    if ($c->req->url->path =~ m/\.html\z/i) {
+      my $url = $c->url_with->to_abs;
+      $url->path->[-1] =~ s/\.html\z//i if @{$url->path};
+      $c->res->code(301);
+      $c->redirect_to($url);
+      return 0;
+    }
+    return 1;
+  });
+
   my $homepage = $app->config('homepage') // 'perl';
   my $latest_perl_version = $app->latest_perl_version;
 
   foreach my $perl_version (@{$app->all_perl_versions}, '') {
-    my $prefix = length $perl_version ? "/$perl_version" : '';
-    my %stash = (
+    my $versioned = $r->any("/$perl_version")->to(
       module => $homepage,
       perl_version => length $perl_version ? $perl_version : $latest_perl_version,
       url_perl_version => $perl_version,
     );
 
+    $versioned->any('/contact' => {module => 'contact'}, sub ($c) {
+      $c->stash(page_name => 'contact');
+      $c->stash(cpan => 'https://metacpan.org');
+      my $src = join "\n\n", @{$c->app->config->{contact_pod} // []};
+      $c->content_for(perldoc => $c->pod_to_html($src));
+      $c->render('perldoc', title => 'contact');
+    });
+
     # individual function and variable pages
-    $app->routes->any("$prefix/functions/:function" => {%stash, module => 'functions'}
+    $versioned->any('/functions/:function' => {module => 'functions'}
       => [function => qr/[^.]+/] => \&_function);
-    $app->routes->any("$prefix/variables/:variable" => {%stash, module => 'perlvar'}
+    $versioned->any('/variables/:variable' => {module => 'perlvar'}
       => [variable => qr/[^.]+(?:\.{3}[^.]+|\.)?/] => \&_variable);
 
     # function and module index pages
-    $app->routes->any("$prefix/functions" => {%stash, module => 'functions'} => \&_functions_index);
-    $app->routes->any("$prefix/modules" => {%stash, module => 'modules'} => \&_modules_index);
+    $versioned->any('/functions' => {module => 'functions'} => \&_functions_index);
+    $versioned->any('/modules' => {module => 'modules'} => \&_modules_index);
 
     # all other docs
-    $app->routes->any("$prefix/:module" => {%stash} => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
+    $versioned->any('/:module' => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
   }
 }
 
@@ -233,7 +252,7 @@ sub _perldoc ($c) {
   if (exists $index_redirects{$module}) {
     my $current_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
     $c->res->code(301);
-    return $c->redirect_to($c->url_for("$current_prefix/$index_redirects{$module}"));
+    return $c->redirect_to($c->url_for("$current_prefix/$index_redirects{$module}")->to_abs);
   }
 
   # Legacy separator redirects
@@ -241,7 +260,7 @@ sub _perldoc ($c) {
     $module =~ s!/+!::!g;
     my $current_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
     $c->res->code(301);
-    return $c->redirect_to($c->url_for("$current_prefix/$module"));
+    return $c->redirect_to($c->url_with("$current_prefix/$module")->to_abs);
   }
 
   # Find module or redirect to CPAN

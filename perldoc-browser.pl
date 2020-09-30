@@ -136,16 +136,6 @@ post '/csp-reports' => sub ($c) {
   $c->render(data => '');
 };
 
-any '/#url_perl_version/contact' => {module => 'contact', url_perl_version => ''}, sub ($c) {
-  $c->stash(page_name => 'contact');
-  $c->stash(cpan => 'https://metacpan.org');
-  my $url_perl_version = $c->stash('url_perl_version');
-  $c->stash(perl_version => $url_perl_version ? $url_perl_version : $c->latest_perl_version);
-  my $src = join "\n\n", @{$c->app->config->{contact_pod} // []};
-  $c->content_for(perldoc => $c->pod_to_html($src));
-  $c->render('perldoc', title => 'contact');
-};
-
 any '/opensearch';
 
 plugin 'PerldocSearch';

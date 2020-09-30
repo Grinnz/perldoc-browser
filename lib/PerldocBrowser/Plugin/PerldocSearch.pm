@@ -35,20 +35,26 @@ sub register ($self, $app, $conf) {
   $app->helper(prepare_index_faqs => \&_prepare_index_faqs);
   $app->helper(prepare_index_perldelta => \&_prepare_index_perldelta);
 
-  my %defaults = (
-    module => 'search',
-    perl_version => $app->latest_perl_version,
-    url_perl_version => '',
-  );
+  my $latest_perl_version = $app->latest_perl_version;
 
-  foreach my $perl_version (@{$app->all_perl_versions}) {
-    $app->routes->any("/$perl_version/search" => {%defaults, perl_version => $perl_version, url_perl_version => $perl_version} => \&_search);
+  foreach my $perl_version (@{$app->all_perl_versions}, '') {
+    my $versioned = $app->routes->any("/$perl_version")->to(
+      module => 'search',
+      perl_version => length $perl_version ? $perl_version : $latest_perl_version,
+      url_perl_version => $perl_version,
+    );
+    $versioned->any('/search' => \&_search);
   }
-
-  $app->routes->any('/search' => {%defaults} => \&_search);
 }
 
 sub _search ($c) {
+  if ($c->req->url->path =~ m/\.html\z/i) {
+    my $url = $c->url_with->to_abs;
+    $url->path->[-1] =~ s/\.html\z//i if @{$url->path};
+    $c->res->code(301);
+    return $c->redirect_to($url);
+  }
+
   $c->stash(page_name => 'search');
   my $query = trim($c->param('q') // '');
   $c->stash(cpan => Mojo::URL->new('https://metacpan.org/search')->query(q => $query));

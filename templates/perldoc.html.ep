@@ -10,7 +10,6 @@
     <link rel="search" href="/opensearch.xml" type="application/opensearchdescription+xml" title="<%= config('brand') // 'Perldoc Browser' %>">
     % my $canonical = $c->req->url->clone;
     % shift @{$canonical->path} if length $url_perl_version;
-    % $canonical->path->[-1] =~ s/\.html\z// if @{$canonical->path};
     <link rel="canonical" href="<%= $canonical->to_abs->to_string %>">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prettify/r298/prettify.min.css" integrity="sha256-IPtNBA1od/cGBfXTxYDxuT5+Y2BKy14o6j0FaIXDmYk=" crossorigin="anonymous" />
