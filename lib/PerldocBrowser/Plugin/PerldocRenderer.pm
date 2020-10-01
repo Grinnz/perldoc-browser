@@ -143,14 +143,6 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
     }
   }
 
-  # Insert links on modules list
-  if ($module eq 'modules') {
-    for my $e ($dom->find('dt')->each) {
-      my $module = $e->all_text;
-      $e->child_nodes->last->wrap($c->link_to('' => $c->url_for($c->append_url_path("$url_prefix/", $module))));
-    }
-  }
-
   # Insert links on perldoc perl
   if ($module eq 'perl') {
     for my $e ($dom->find('pre > code')->each) {
@@ -424,14 +416,22 @@ sub _get_module_list ($c) {
   my $path = _find_pod($c, 'perlmodlib') // return undef;
   my $src = path($path)->slurp;
 
-  my ($started, $standard, @result);
+  my ($started, $standard, $name, @result);
   foreach my $para (split /\n\n+/, $src) {
     if (!$started and $para =~ m/^=head\d Pragmatic Modules/) {
       $started = 1;
       push @result, $para;
     } elsif ($started) {
       $standard = 1 if $para =~ m/^=head\d Standard Modules/;
-      push @result, $para;
+      if ($para =~ m/^=item\s+(.*)/) {
+        $name = $1;
+        push @result, '=item *';
+      } elsif ($para !~ m/^=/ and defined $name) {
+        push @result, "B<<< L<< $name >> >>> - $para";
+        undef $name;
+      } else {
+        push @result, $para;
+      }
       last if $standard and $para =~ m/^=back/;
     }
   }
