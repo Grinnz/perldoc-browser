@@ -143,15 +143,18 @@
         display: block;
       }
     </style>
-% if (defined config->{google_analytics_tracking_id}) {
+% if (defined(my $gtags = config->{google_analytics_tracking_id})) {
+    % $gtags = [$gtags] unless ref $gtags eq 'ARRAY';
     <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=<%= config->{google_analytics_tracking_id} %>"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=<%= $gtags->[0] %>"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
 
-      gtag('config', '<%= config->{google_analytics_tracking_id} %>');
+    % foreach my $gtag (@$gtags) {
+      gtag('config', '<%= $gtag %>');
+    % }
     </script>
 % }
   </head>
