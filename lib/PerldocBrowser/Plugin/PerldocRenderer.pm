@@ -53,14 +53,6 @@ sub register ($self, $app, $conf) {
       url_perl_version => $perl_version,
     );
 
-    $versioned->any('/contact' => {module => 'contact'}, sub ($c) {
-      $c->stash(page_name => 'contact');
-      $c->stash(cpan => 'https://metacpan.org');
-      my $src = join "\n\n", @{$c->app->config->{contact_pod} // []};
-      $c->content_for(perldoc => $c->pod_to_html($src));
-      $c->render('perldoc', title => 'contact');
-    });
-
     # individual function and variable pages
     $versioned->any('/functions/:function' => {module => 'functions'}
       => [function => qr/[^.]+/] => \&_function);

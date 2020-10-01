@@ -142,4 +142,9 @@ plugin 'PerldocSearch';
 plugin 'PerldocRenderer';
 plugin 'PerldocInstall';
 
+# needs renderer helpers available
+my $footer_src = join "\n\n", '=encoding utf8', @{app->config->{footer_pod} // app->config->{contact_pod} // []};
+my $footer_html = app->pod_to_html($footer_src);
+helper footer_html => sub ($c) { $footer_html };
+
 app->start;

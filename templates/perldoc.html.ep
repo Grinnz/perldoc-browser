@@ -103,6 +103,7 @@
         margin-top: 0px;
       }
       #footer {
+        font-size: 0.8em;
         padding-top: 0.5em;
         text-align: center;
       }
@@ -215,6 +216,9 @@
         %= $render_contents->(stash 'toc')
         % }
         %= content 'perldoc'
+      </div>
+      <div id="footer">
+        %== footer_html
       </div>
     </div>
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha256-3edrmyuQ0w65f8gfBsqowzjJe2iM6n0nKciPUp8y+7E=" crossorigin="anonymous"></script>
