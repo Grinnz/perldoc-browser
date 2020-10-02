@@ -6,6 +6,7 @@ package PerldocBrowser::Plugin::PerldocRenderer;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
+use Lingua::EN::Sentence 'get_sentences';
 use List::Util 'first';
 use MetaCPAN::Pod::XHTML;
 use Module::Metadata;
@@ -445,8 +446,14 @@ sub _get_variable_list ($c) {
     if ($level == 1 and $para =~ m/^=item\s+(.*)/) {
       push @names, $1;
     } elsif ($level == 1 and $para !~ m/^=/ and @names) {
-      my ($desc) = $para =~ m/(.*?)\.(?!\S)/s; # first sentence
-      my $name = $names[0] eq '$a' ? join(', ', map { "B<< $_ >>" } @names) : "B<< $names[-1] >>";
+      @names = $names[-1] unless $names[0] eq '$a' or $names[0] eq '$b';
+      my $name = join ', ', map { "B<< $_ >>" } @names;
+      # extract first sentence as description
+      next if $para =~ m/^(?:See\b|WARNING:|This variable is no longer supported)/;
+      $para =~ s/.*?(?=Perl)//is if $names[-1] eq '$^M';
+      my $sentences = get_sentences $para;
+      my $desc = shift @$sentences;
+      $desc =~ s/\.$//;
       push @section, '=item *', "$name - $desc";
       @names = ();
     } elsif ($para =~ m/^=over/) {
@@ -461,6 +468,7 @@ sub _get_variable_list ($c) {
       $heading = $para;
     }
   }
+  push @result, $heading, @section if @section;
 
   return undef unless @result;
   return join "\n\n", @result;
