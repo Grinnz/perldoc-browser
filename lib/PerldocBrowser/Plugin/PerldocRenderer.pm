@@ -352,7 +352,7 @@ sub _functions_index ($c) {
   return $c->res->code(301) && $c->redirect_to($c->stash('cpan'))
     unless defined $categories or defined $descriptions;
 
-  my $src = join "\n\n", '=pod', 'I<Full documentation of builtin functions at: L<perlfunc>>',
+  my $src = join "\n\n", '=pod', 'I<Full documentation of builtin functions: L<perlfunc>>',
     grep { defined } $categories, $descriptions;
 
   $c->respond_to(
@@ -369,7 +369,7 @@ sub _variables_index ($c) {
 
   return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
 
-  $src = join "\n\n", '=pod', 'I<Full documentation of predefined variables at: L<perlvar>>', $src;
+  $src = join "\n\n", '=pod', 'I<Full documentation of predefined variables: L<perlvar>>', $src;
 
   $c->respond_to(
     txt => {data => $src},
