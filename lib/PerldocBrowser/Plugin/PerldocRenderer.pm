@@ -56,11 +56,12 @@ sub register ($self, $app, $conf) {
     # individual function and variable pages
     $versioned->any('/functions/:function' => {module => 'functions'}
       => [function => qr/[^.]+/] => \&_function);
-    $versioned->any('/variables/:variable' => {module => 'perlvar'}
+    $versioned->any('/variables/:variable' => {module => 'variables'}
       => [variable => qr/[^.]+(?:\.{3}[^.]+|\.)?/] => \&_variable);
 
-    # function and module index pages
+    # index pages
     $versioned->any('/functions' => {module => 'functions'} => \&_functions_index);
+    $versioned->any('/variables' => {module => 'variables'} => \&_variables_index);
     $versioned->any('/modules' => {module => 'modules'} => \&_modules_index);
 
     # all other docs
@@ -130,7 +131,7 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
   }
 
   # Rewrite links on variable pages
-  if (defined $variable) {
+  if ($module eq 'variables') {
     for my $e ($dom->find('a[href]')->each) {
       my $link = Mojo::URL->new($e->attr('href'));
       next if length $link->path;
@@ -139,6 +140,15 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
         $e->attr(href => $c->url_for($c->append_url_path("$url_prefix/variables/", $fragment)));
       } else {
         $e->attr(href => $c->url_for(Mojo::URL->new("$url_prefix/perlvar")->fragment($fragment)));
+      }
+    }
+
+    # Insert links on variables index
+    if (!defined $variable) {
+      for my $e ($dom->find('li > p:first-of-type > b')->each) {
+        my $text = $e->all_text;
+        $e->wrap($c->link_to('' => $c->url_for($c->append_url_path("$url_prefix/variables/", $text))))
+          if $text =~ m/^[\$\@%]/ or $text =~ m/^[a-zA-Z]+$/;
       }
     }
   }
@@ -327,7 +337,7 @@ sub _variable ($c) {
 
   $c->respond_to(
     txt => {data => $src},
-    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'perlvar', undef, $variable)) },
+    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'variables', undef, $variable)) },
   );
 }
 
@@ -346,6 +356,20 @@ sub _functions_index ($c) {
   $c->respond_to(
     txt => {data => $src},
     html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'functions')) },
+  );
+}
+
+sub _variables_index ($c) {
+  $c->stash(page_name => 'variables');
+  $c->stash(cpan => 'https://metacpan.org/pod/perlvar#SPECIAL-VARIABLES');
+
+  my $src = _get_variable_list($c);
+
+  return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
+
+  $c->respond_to(
+    txt => {data => $src},
+    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'variables')) },
   );
 }
 
@@ -409,6 +433,36 @@ sub _get_function_list ($c) {
     push @result, '=item *', "C<$name> - $desc";
   }
   push @result, '=back';
+  return join "\n\n", @result;
+}
+
+sub _get_variable_list ($c) {
+  my $path = _find_pod($c, 'perlvar') // return undef;
+  my $src = path($path)->slurp;
+
+  my ($level, @names, $heading, @section, @result);
+  foreach my $para (split /\n\n+/, $src) {
+    if ($level == 1 and $para =~ m/^=item\s+(.*)/) {
+      push @names, $1;
+    } elsif ($level == 1 and $para !~ m/^=/ and @names) {
+      my ($desc) = $para =~ m/(.*?)\.(?!\S)/s; # first sentence
+      my $name = $names[0] eq '$a' ? join(', ', map { "B<< $_ >>" } @names) : "B<< $names[-1] >>";
+      push @section, '=item *', "$name - $desc";
+      @names = ();
+    } elsif ($para =~ m/^=over/) {
+      push @section, $para unless $level;
+      $level++;
+    } elsif ($para =~ m/^=back/) {
+      $level--;
+      push @section, $para unless $level;
+    } elsif ($para =~ m/^=head[23]/ and $para !~ m/^=head\d Performance issues/) {
+      push @result, $heading, @section if @section;
+      @section = ();
+      $heading = $para;
+    }
+  }
+
+  return undef unless @result;
   return join "\n\n", @result;
 }
 

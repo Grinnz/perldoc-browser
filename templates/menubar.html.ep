@@ -58,6 +58,9 @@
         <a class="nav-link" href="<%= url_for("$current_prefix/functions") %>">functions</a>
       </li>
       <li class="nav-item">
+        <a class="nav-link" href="<%= url_for("$current_prefix/variables") %>">variables</a>
+      </li>
+      <li class="nav-item">
         <a class="nav-link" href="<%= url_for("$current_prefix/modules") %>">modules</a>
       </li>
 % }
