@@ -344,7 +344,7 @@ sub _variable ($c) {
 
 sub _functions_index ($c) {
   $c->stash(page_name => 'functions');
-  $c->stash(cpan => 'https://metacpan.org/pod/perlfunc#Perl-Functions-by-Category');
+  $c->stash(cpan => 'https://metacpan.org/pod/perlfunc');
 
   my $categories = _get_function_categories($c);
   my $descriptions = _get_function_list($c);
@@ -352,7 +352,8 @@ sub _functions_index ($c) {
   return $c->res->code(301) && $c->redirect_to($c->stash('cpan'))
     unless defined $categories or defined $descriptions;
 
-  my $src = join "\n\n", '=pod', grep { defined } $categories, $descriptions;
+  my $src = join "\n\n", '=pod', 'I<Full documentation of builtin functions at: L<perlfunc>>',
+    grep { defined } $categories, $descriptions;
 
   $c->respond_to(
     txt => {data => $src},
@@ -362,11 +363,13 @@ sub _functions_index ($c) {
 
 sub _variables_index ($c) {
   $c->stash(page_name => 'variables');
-  $c->stash(cpan => 'https://metacpan.org/pod/perlvar#SPECIAL-VARIABLES');
+  $c->stash(cpan => 'https://metacpan.org/pod/perlvar');
 
   my $src = _get_variable_list($c);
 
   return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
+
+  $src = join "\n\n", '=pod', 'I<Full documentation of predefined variables at: L<perlvar>>', $src;
 
   $c->respond_to(
     txt => {data => $src},
