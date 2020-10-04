@@ -44,7 +44,7 @@ sub register ($self, $app, $conf) {
     return 1;
   });
 
-  my $homepage = $app->config('homepage') // 'perl';
+  my $homepage = $app->config('homepage') // 'index';
   my $latest_perl_version = $app->latest_perl_version;
 
   foreach my $perl_version (@{$app->all_perl_versions}, '') {
@@ -61,6 +61,8 @@ sub register ($self, $app, $conf) {
       => [variable => qr/[^.]+(?:\.{3}[^.]+|\.)?/] => \&_variable);
 
     # index pages
+    $versioned->any('/' => {module => 'index'} => \&_main_index) if $homepage eq 'index';
+    $versioned->any('/index' => {module => 'index'} => \&_main_index);
     $versioned->any('/functions' => {module => 'functions'} => \&_functions_index);
     $versioned->any('/variables' => {module => 'variables'} => \&_variables_index);
     $versioned->any('/modules' => {module => 'modules'} => \&_modules_index);
@@ -155,7 +157,7 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
   }
 
   # Insert links on perldoc perl
-  if ($module eq 'perl') {
+  if ($module eq 'perl' or $module eq 'index') {
     for my $e ($dom->find('pre > code')->each) {
       my $str = $e->content;
       $e->content($str) if $str =~ s/^\s*\K(perl\S+)/$c->link_to("$1" => $c->url_for($c->append_url_path("$url_prefix\/", "$1")))/mge;
@@ -184,8 +186,9 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
 }
 
 sub _render_html ($c, $dom) {
+  my $module = $c->stash('module');
   # Try to find a title
-  my $title = $c->stash('page_name') // $c->stash('module');
+  my $title = $c->stash('page_name') // $module;
   $dom->find('h1')->first(sub {
     return unless trim($_->all_text) eq 'NAME';
     my $p = $_->next;
@@ -201,7 +204,8 @@ sub _render_html ($c, $dom) {
   for my $e ($dom->find($linkable)->each) {
     my $link = Mojo::URL->new->fragment($e->{id});
     my $text = $e->all_text;
-    unless ($e->tag eq 'dt') {
+    unless ($module eq 'index' or $e->tag eq 'dt') {
+      # Add to table of contents
       my $entry = {tag => $e->tag, text => $text, link => $link};
       $parent = $parent->{parent} until !defined $parent
         or $level{$e->tag} > $level{$parent->{tag}};
@@ -223,7 +227,6 @@ sub _render_html ($c, $dom) {
 }
 
 my %index_redirects = (
-  'index' => 'perl#GETTING-HELP',
   'index-faq' => 'perlfaq',
   'index-functions' => 'functions#Alphabetical-Listing-of-Perl-Functions',
   'index-functions-by-cat' => 'functions#Perl-Functions-by-Category',
@@ -342,6 +345,20 @@ sub _variable ($c) {
   );
 }
 
+sub _main_index ($c) {
+  $c->stash(page_name => 'Perl Documentation');
+  $c->stash(cpan => 'https://metacpan.org/pod/perl');
+
+  my $src = _get_index_page($c);
+
+  return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
+
+  $c->respond_to(
+    txt => {data => $src},
+    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'index')) },
+  );
+}
+
 sub _functions_index ($c) {
   $c->stash(page_name => 'Perl builtin functions');
   $c->stash(cpan => 'https://metacpan.org/pod/perlfunc');
@@ -406,6 +423,57 @@ sub _get_variable_pod ($c, $variable) {
   my $result = $c->split_variables($src, $variable);
   return undef unless @$result;
   return join "\n\n", '=over', @$result, '=back';
+}
+
+sub _get_index_page ($c) {
+  my $path = _find_pod($c, 'perl') // return undef;
+  my $src = path($path)->slurp;
+
+  my ($in_intro, $in_desc, @intro, @sections, @description);
+  foreach my $para (split /\n\n+/, $src) {
+    if ($para =~ m/^=head/) {
+      $in_intro = $in_desc = 0;
+    }
+    if ($para =~ m/^=head1\s+(?:SYNOPSIS|GETTING HELP)/i) {
+      $in_intro = 1;
+      @intro = ();
+    } elsif ($in_intro and $para !~ m/^B<perl>/) {
+      push @intro, $para;
+    } elsif ($para =~ m/^=head1\s+DESCRIPTION/i) {
+      $in_desc = 1;
+    } elsif ($in_desc) {
+      push @description, $para;
+    } elsif ($para =~ m/^=head2\s+(.*)/) {
+      push @sections, $1;
+    }
+  }
+
+  my @result;
+  my $perl_version = $c->stash('perl_version');
+
+  push @result, "=head1 Perl $perl_version Documentation", @intro;
+
+  if (@sections) {
+    push @result, '=over';
+    foreach my $section (@sections) {
+      my $name = $c->pod_to_text_content("=pod\n\n$section");
+      push @result, '=item *', "L<< $name|perl/$section >>";
+    }
+    push @result, '=back';
+  }
+
+  push @result, 'I<Full perl(1) documentation: L<perl>>';
+
+  push @result, '=head2 Reference Lists', '=over';
+  push @result, '=item *', 'L<Operators|perlop>';
+  push @result, '=item *', "L<< \u$_|$_ >>" for qw(functions variables modules);
+  push @result, '=item *', 'L<Utilities|perlutil>';
+  push @result, '=back';
+
+  push @result, '=head2 About Perl', @description;
+
+  return undef unless @result;
+  return join "\n\n", @result;
 }
 
 sub _get_function_categories ($c) {
