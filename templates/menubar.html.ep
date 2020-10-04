@@ -51,14 +51,13 @@
 % my $current_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
 % unless (config('hide_core_nav')) {
       <li class="nav-item dropdown" style="white-space: nowrap">
-        <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-nav" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Nav</a>
+        <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-nav" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Reference</a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-nav">
-% my $homepage = config('homepage') // 'perl';
-          <a class="dropdown-item" href="<%= url_for("$current_prefix/$homepage") %>"><%= $homepage %></a>
-          <a class="dropdown-item" href="<%= url_for("$current_prefix/functions") %>">functions</a>
-          <a class="dropdown-item" href="<%= url_for("$current_prefix/perlop") %>">operators</a>
-          <a class="dropdown-item" href="<%= url_for("$current_prefix/variables") %>">variables</a>
-          <a class="dropdown-item" href="<%= url_for("$current_prefix/modules") %>">modules</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perl") %>">Perl</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/functions") %>">Functions</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perlop") %>">Operators</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/variables") %>">Variables</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/modules") %>">Modules</a>
         </div>
       </li>
 % }
