@@ -51,13 +51,22 @@
 % my $current_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
 % unless (config('hide_core_nav')) {
       <li class="nav-item dropdown" style="white-space: nowrap">
-        <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-nav" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Reference</a>
+        <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-nav" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Documentation</a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-nav">
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perl") %>">Perl</a>
-          <a class="dropdown-item" href="<%= url_for("$current_prefix/functions") %>">Functions</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perlintro") %>">Intro</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perl#Tutorials") %>">Tutorials</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perlfaq") %>">FAQs</a>
+          <div class="dropdown-divider"></div>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perl#Reference-Manual") %>">Reference</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perlop") %>">Operators</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/functions") %>">Functions</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/variables") %>">Variables</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/modules") %>">Modules</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perlutil") %>">Utilities</a>
+          <div class="dropdown-divider"></div>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perlcommunity") %>">Community</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perlhist") %>">History</a>
         </div>
       </li>
 % }
