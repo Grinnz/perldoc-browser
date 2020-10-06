@@ -57,8 +57,8 @@
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perlintro") %>">Intro</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perl#Tutorials") %>">Tutorials</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perlfaq") %>">FAQs</a>
-          <div class="dropdown-divider"></div>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perl#Reference-Manual") %>">Reference</a>
+          <div class="dropdown-divider"></div>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perlop") %>">Operators</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/functions") %>">Functions</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/variables") %>">Variables</a>
