@@ -187,7 +187,7 @@ sub _render_html ($c, $dom) {
   # Try to find a title
   my $title = $c->stash('page_name') // $c->stash('module');
   $dom->find('h1')->first(sub {
-    return unless $_->all_text eq 'NAME';
+    return unless trim($_->all_text) eq 'NAME';
     my $p = $_->next;
     return unless $p->tag eq 'p';
     $title = $p->all_text;
