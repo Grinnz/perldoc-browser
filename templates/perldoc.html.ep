@@ -124,7 +124,7 @@
         padding-top: 1em;
         max-width: <%= $expand ? 'none' : '960px' %>;
       }
-      #perldocdiv > ul:first-of-type a { text-decoration: none }
+      #perldocdiv a.toc-link { text-decoration: none }
       #moduleversion { float: right }
       #disambiguation {
         font-style: italic;
@@ -210,7 +210,7 @@
           <ul>
             % for my $entry (@{$_[0]}) {
               <li>
-                %= link_to @$entry{'text','link'}
+                %= link_to @$entry{'text','link'}, class => 'toc-link'
                 % if (defined $entry->{contents}) {
                   %= $render_contents->($entry->{contents})
                 % }
