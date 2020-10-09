@@ -62,7 +62,7 @@ of one or more Perls.
 Dan Book <dbook@cpan.org>
 
 PerldocBrowser::Plugin::PerldocRenderer is a fork of the L<Mojolicious|https://mojolicious.org>
-team's L<Mojolicious::Plugin::PODRenderer> and its associated template.
+team's L<https://search.cpan.org/perldoc?Mojolicious::Plugin::PODRenderer> and its associated template.
 
 =head1 COPYRIGHT AND LICENSE
 
