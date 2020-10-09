@@ -343,7 +343,7 @@ sub _variable ($c) {
 }
 
 sub _functions_index ($c) {
-  $c->stash(page_name => 'functions');
+  $c->stash(page_name => 'Perl builtin functions');
   $c->stash(cpan => 'https://metacpan.org/pod/perlfunc');
 
   my $categories = _get_function_categories($c);
@@ -362,7 +362,7 @@ sub _functions_index ($c) {
 }
 
 sub _variables_index ($c) {
-  $c->stash(page_name => 'variables');
+  $c->stash(page_name => 'Perl predefined variables');
   $c->stash(cpan => 'https://metacpan.org/pod/perlvar');
 
   my $src = _get_variable_list($c);
@@ -378,7 +378,7 @@ sub _variables_index ($c) {
 }
 
 sub _modules_index ($c) {
-  $c->stash(page_name => 'modules');
+  $c->stash(page_name => 'Perl core modules');
   $c->stash(cpan => 'https://metacpan.org');
 
   my $src = _get_module_list($c);
