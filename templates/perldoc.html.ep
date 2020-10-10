@@ -163,51 +163,49 @@
     %= include 'menubar', expand => $expand
     <div id="wrapperlicious" class="container-fluid">
       <div id="perldocdiv">
-        % if ($module ne 'contact') {
         <div id="links">
-          % my $url_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
-          % if ($module eq 'search') {
+        % my $url_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
+        % if ($module eq 'search') {
           "<%= Mojo::Util::trim param('q') %>"
-          % } else {
+        % } else {
           %= link_to $module => url_for(append_url_path("$url_prefix/", $module));
-          % }
-          % my $source;
-          % if (defined stash('function')) {
-            % my $function = stash('function');
-            % $source = url_for(append_url_path("$url_prefix/functions/", "$function.txt"));
+        % }
+        % my $source;
+        % if (defined stash('function')) {
+          % my $function = stash('function');
+          % $source = url_for(append_url_path("$url_prefix/functions/", "$function.txt"));
             / <%= link_to stash('function') => url_for(append_url_path("$url_prefix/functions/", $function)) %>
-          % } elsif (defined stash('variable')) {
-            % my $variable = stash('variable');
-            % $source = url_for(append_url_path("$url_prefix/variables/", "$variable.txt"));
+        % } elsif (defined stash('variable')) {
+          % my $variable = stash('variable');
+          % $source = url_for(append_url_path("$url_prefix/variables/", "$variable.txt"));
             / <%= link_to stash('variable') => url_for(append_url_path("$url_prefix/variables/", $variable)) %>
-          % } else {
-            % $source = url_for(append_url_path("$url_prefix/", "$module.txt"));
-          % }
+        % } else {
+          % $source = url_for(append_url_path("$url_prefix/", "$module.txt"));
+        % }
           <div id="more">
-            % if ($module eq 'search') {
+          % if ($module eq 'search') {
             (<%= link_to 'Search CPAN' => $cpan %>)
-            % } else {
+          % } else {
             (<%= link_to 'source' => $source %>,
             <%= link_to 'CPAN' => $cpan %>)
-            % }
-          </div>
-          % if (defined(my $ver = stash('module_version'))) {
-            <div id="moduleversion"><%= $ver =~ m/^v/ ? '' : 'version ' %><%= $ver %></div>
           % }
+          </div>
+        % if (defined(my $ver = stash('module_version'))) {
+            <div id="moduleversion"><%= $ver =~ m/^v/ ? '' : 'version ' %><%= $ver %></div>
+        % }
         </div>
-          % if (length $url_perl_version) {
-            % my $current_path = defined stash('function') ? append_url_path('/functions/', stash('function')) : defined stash('variable') ? append_url_path('/variables/', stash('variable')) : append_url_path('/', $module);
+        % if (length $url_perl_version) {
+          % my $current_path = defined stash('function') ? append_url_path('/functions/', stash('function')) : defined stash('variable') ? append_url_path('/variables/', stash('variable')) : append_url_path('/', $module);
         <div class="leading-notice">
           You are viewing the version of this documentation from Perl <%= $url_perl_version %>. <%= link_to 'View the latest version' => url_with("$current_path") %>
         </div>
-          % }
-          % if (defined(my $alt_type = stash 'alt_page_type')) {
-            % my $alt_prefix = $alt_type eq 'function' ? "$url_prefix/functions/" : "$url_prefix/";
-            % my $alt_url = url_for(append_url_path($alt_prefix, my $alt_name = stash('alt_page_name')));
+        % }
+        % if (defined(my $alt_type = stash 'alt_page_type')) {
+          % my $alt_prefix = $alt_type eq 'function' ? "$url_prefix/functions/" : "$url_prefix/";
+          % my $alt_url = url_for(append_url_path($alt_prefix, my $alt_name = stash('alt_page_name')));
         <div class="leading-notice">
           <strong><%= stash('page_name') %></strong> may also refer to the <%= $alt_type %>: <%= link_to $alt_name => $alt_url %>
         </div>
-          % }
         % }
         % if (@{stash('toc') // []}) {
         <h1><a id="toc"><%= stash('module') eq 'search' ? 'SEARCH RESULTS' : 'CONTENTS' %></a></h1>
