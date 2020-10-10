@@ -124,11 +124,14 @@ sub _search ($c) {
       }
       foreach my $function (@$function_results) {
         my ($name, $headline) = map { $c->escape_pod($_) } @$function{'name','headline'};
+        my $desc = $c->function_description($perl_version, $name);
         $headline =~ s/__HEADLINE_START__/I<<< B<< /g;
         $headline =~ s/__HEADLINE_STOP__/ >> >>>/g;
         $headline =~ s/\n+/ /g;
         $headline = trim $headline;
-        push @paras, qq{=item L<perlfunc/"$name">\n\n$headline};
+        my $item = qq{L<perlfunc/"$name">};
+        $item .= " - $desc" if defined $desc;
+        push @paras, "=item $item\n\n$headline";
       }
     } else {
       push @paras, '=item I<No results>';

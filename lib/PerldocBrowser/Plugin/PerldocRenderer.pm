@@ -496,13 +496,17 @@ sub _get_function_categories ($c) {
 }
 
 sub _get_function_list ($c) {
-  my $functions = $c->function_descriptions($c->stash('perl_version'));
-  return undef unless @$functions;
+  my $perl_version = $c->stash('perl_version');
+  my $names = $c->function_names($perl_version);
+  return undef unless @$names;
+  my $descriptions = $c->function_descriptions($perl_version);
   my @result = ('=head2 Alphabetical Listing of Perl Functions', '=over');
-  foreach my $function (@$functions) {
-    my ($name, $desc) = @$function;
-    $name = _escape_pod($name);
-    push @result, '=item *', "C<$name> - $desc";
+  foreach my $name (@$names) {
+    my $desc = $descriptions->{$name};
+    my $escaped = _escape_pod($name);
+    my $item = "C<$escaped>";
+    $item .= " - $desc" if defined $desc;
+    push @result, '=item *', $item;
   }
   push @result, '=back';
   return join "\n\n", @result;

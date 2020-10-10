@@ -64,9 +64,17 @@ helper warmup_function_descs => sub ($c, $perl_version) {
   local $ENV{PERL5OPT} = '';
   run3 [$bin, '-MPod::Functions', '-e', 'print "$_ $Flavor{$_}\n" for sort keys %Flavor'], undef, \my @output;
   chomp @output;
-  return $function_descriptions{$perl_version} = [map { [split ' ', $_, 2] } @output];
+  my (@function_names, %descriptions);
+  foreach my $line (@output) {
+    my ($name, $desc) = split ' ', $line, 2;
+    push @function_names, $name;
+    $descriptions{$name} = $desc;
+  }
+  return $function_descriptions{$perl_version} = {names => \@function_names, descriptions => \%descriptions};
 };
-helper function_descriptions => sub ($c, $perl_version) { $function_descriptions{$perl_version} };
+helper function_names => sub ($c, $perl_version) { $function_descriptions{$perl_version}{names} };
+helper function_descriptions => sub ($c, $perl_version) { $function_descriptions{$perl_version}{descriptions} };
+helper function_description => sub ($c, $perl_version, $name) { $function_descriptions{$perl_version}{descriptions}{$name} };
 
 my $perls_dir = path(app->config->{perls_dir} // app->home->child('perls'));
 helper perls_dir => sub ($c) { $perls_dir };
@@ -104,7 +112,9 @@ helper warmup_perl_versions => sub ($c) {
     $latest_version //= $current_version;
     $inc_dirs{$current_version} = [@current_inc, File::Spec->catdir($Config{installprivlib}, 'pods'), $Config{scriptdir}];
     if (eval { require Pod::Functions; 1 }) {
-      $function_descriptions{$current_version} = [map { [$_ => $Pod::Functions::Flavor{$_}] } sort keys %Pod::Functions::Flavor];
+      my @function_names = sort keys %Pod::Functions::Flavor;
+      my %descriptions = map { ($_ => $Pod::Functions::Flavor{$_}) } @function_names;
+      $function_descriptions{$current_version} = {names => \@function_names, descriptions => \%descriptions};
     }
   }
 };
