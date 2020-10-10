@@ -125,7 +125,7 @@
         max-width: <%= $expand ? 'none' : '960px' %>;
       }
       #moduleversion { float: right }
-      #disambiguation {
+      #wrapperlicious .leading-notice {
         font-style: italic;
         padding-left: 1em;
         margin-top: 1em;
@@ -195,10 +195,16 @@
             <div id="moduleversion"><%= $ver =~ m/^v/ ? '' : 'version ' %><%= $ver %></div>
           % }
         </div>
+          % if (length $url_perl_version) {
+            % my $current_path = defined stash('function') ? append_url_path('/functions/', stash('function')) : defined stash('variable') ? append_url_path('/variables/', stash('variable')) : append_url_path('/', $module);
+        <div class="leading-notice">
+          You are viewing the version of this documentation from Perl <%= $url_perl_version %>. <%= link_to 'View the latest version' => url_with("$current_path") %>
+        </div>
+          % }
           % if (defined(my $alt_type = stash 'alt_page_type')) {
             % my $alt_prefix = $alt_type eq 'function' ? "$url_prefix/functions/" : "$url_prefix/";
             % my $alt_url = url_for(append_url_path($alt_prefix, my $alt_name = stash('alt_page_name')));
-        <div id="disambiguation">
+        <div class="leading-notice">
           <strong><%= stash('page_name') %></strong> may also refer to the <%= $alt_type %>: <%= link_to $alt_name => $alt_url %>
         </div>
           % }
