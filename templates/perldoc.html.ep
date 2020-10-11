@@ -187,7 +187,7 @@
         % }
         </div>
       % }
-      % if (length $url_perl_version) {
+      % if (length $url_perl_version and $module ne 'search') {
         <div class="leading-notice">
           You are viewing the version of this documentation from Perl <%= $url_perl_version %>. <%= link_to 'View the latest version' => url_with(current_doc_path) %>
         </div>
