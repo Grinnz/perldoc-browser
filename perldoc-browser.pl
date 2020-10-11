@@ -79,26 +79,26 @@ helper function_description => sub ($c, $perl_version, $name) { $function_descri
 my $perls_dir = path(app->config->{perls_dir} // app->home->child('perls'));
 helper perls_dir => sub ($c) { $perls_dir };
 
-my (@all_versions, @perl_versions, @dev_versions, $latest_version);
+my (@all_versions, @perl_versions, @dev_versions, %version_is_dev, $latest_version);
 helper warmup_perl_versions => sub ($c) {
   @all_versions = -d $c->perls_dir ? $c->perls_dir->list({dir => 1})
     ->grep(sub { -d && -x path($_)->child('bin', 'perl') })
     ->map(sub { $_->basename })
     ->sort(sub { versioncmp($b, $a) })->each : ();
 
-  (@perl_versions, @dev_versions) = ();
+  (@perl_versions, @dev_versions, %version_is_dev) = ();
   $latest_version = app->config->{latest_perl_version};
   if (@all_versions) {
     foreach my $perl_version (@all_versions) {
       my $v = app->warmup_version_object($perl_version);
-      if ($perl_version eq 'blead' or $perl_version =~ m/-RC[0-9]+$/) {
+      if ($perl_version eq 'blead' or $perl_version =~ m/-RC[0-9]+$/
+          or ($v < version->parse('v5.6.0') and ($v->{version}[2] // 0) >= 500)
+          or ($v >= version->parse('v5.6.0') and ($v->{version}[1] // 0) % 2)) {
         push @dev_versions, $perl_version;
-      } elsif ($v < version->parse('v5.6.0') and ($v->{version}[2] // 0) >= 500) {
-        push @dev_versions, $perl_version;
-      } elsif ($v >= version->parse('v5.6.0') and ($v->{version}[1] // 0) % 2) {
-        push @dev_versions, $perl_version;
+        $version_is_dev{$perl_version} = 1;
       } else {
         push @perl_versions, $perl_version;
+        $version_is_dev{$perl_version} = 0;
         $latest_version //= $perl_version if defined $v;
       }
       app->warmup_inc_dirs($perl_version);
@@ -107,7 +107,13 @@ helper warmup_perl_versions => sub ($c) {
     $latest_version //= $all_versions[0];
   } else {
     my $current_version = $Config{version};
-    ($Config{PERL_VERSION} % 2) ? (push @dev_versions, $current_version) : (push @perl_versions, $current_version);
+    if ($Config{PERL_VERSION} % 2) {
+      push @dev_versions, $current_version;
+      $version_is_dev{$current_version} = 1;
+    } else {
+      push @perl_versions, $current_version;
+      $version_is_dev{$current_version} = 0;
+    }
     @all_versions = $current_version;
     $latest_version //= $current_version;
     $inc_dirs{$current_version} = [@current_inc, File::Spec->catdir($Config{installprivlib}, 'pods'), $Config{scriptdir}];
@@ -125,6 +131,8 @@ helper perl_versions => sub ($c) { [@perl_versions] };
 helper dev_versions => sub ($c) { [@dev_versions] };
 
 helper latest_perl_version => sub ($c) { $latest_version };
+
+helper perl_version_is_dev => sub ($c, $perl_version) { $version_is_dev{$perl_version} };
 
 app->warmup_perl_versions;
 
