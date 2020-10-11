@@ -162,8 +162,9 @@
     %= include 'menubar', expand => $expand
     <div id="wrapperlicious" class="container-fluid">
       <div id="perldocdiv">
+      % my $url_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
+      % if ($module ne 'index') {
         <div id="links">
-        % my $url_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
         % if ($module eq 'search') {
           "<%= Mojo::Util::trim param('q') %>"
         % } else {
@@ -174,30 +175,31 @@
             / <%= link_to $subtarget => url_for($url_prefix . current_doc_path) %>
         % }
           <div id="more">
-          % if ($module eq 'search') {
+        % if ($module eq 'search') {
             (<%= link_to 'Search CPAN' => $cpan %>)
-          % } else {
+        % } else {
             (<%= link_to 'source' => url_for($url_prefix . current_doc_path() . '.txt') %>,
             <%= link_to 'CPAN' => $cpan %>)
-          % }
+        % }
           </div>
         % if (defined(my $ver = stash('module_version'))) {
             <div id="moduleversion"><%= $ver =~ m/^v/ ? '' : 'version ' %><%= $ver %></div>
         % }
         </div>
-        % if (length $url_perl_version) {
+      % }
+      % if (length $url_perl_version) {
         <div class="leading-notice">
           You are viewing the version of this documentation from Perl <%= $url_perl_version %>. <%= link_to 'View the latest version' => url_with(current_doc_path) %>
         </div>
-        % }
-        % if (defined(my $alt_type = stash 'alt_page_type')) {
-          % my $alt_prefix = $alt_type eq 'function' ? "$url_prefix/functions/" : "$url_prefix/";
-          % my $alt_url = url_for(append_url_path($alt_prefix, my $alt_name = stash('alt_page_name')));
+      % }
+      % if (defined(my $alt_type = stash 'alt_page_type')) {
+        % my $alt_prefix = $alt_type eq 'function' ? "$url_prefix/functions/" : "$url_prefix/";
+        % my $alt_url = url_for(append_url_path($alt_prefix, my $alt_name = stash('alt_page_name')));
         <div class="leading-notice">
           <strong><%= stash('page_name') %></strong> may also refer to the <%= $alt_type %>: <%= link_to $alt_name => $alt_url %>
         </div>
-        % }
-        % if (@{stash('toc') // []}) {
+      % }
+      % if (@{stash('toc') // []}) {
         <h1><a id="toc"><%= stash('module') eq 'search' ? 'SEARCH RESULTS' : 'CONTENTS' %></a></h1>
         % my $render_contents; $render_contents = begin
           <ul>
@@ -212,8 +214,8 @@
           </ul>
         % end
         %= $render_contents->(stash 'toc')
-        % }
-        %= content 'perldoc'
+      % }
+      %= content 'perldoc'
       </div>
       <div id="footer">
         %== footer_html
