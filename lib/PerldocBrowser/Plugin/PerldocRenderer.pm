@@ -194,8 +194,19 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
     }
   }
 
+  # Insert permalinks
+  my $linkable = 'h1, h2, h3, h4';
+  $linkable .= ', dt' unless $module eq 'search';
+  for my $e ($dom->find($linkable)->each) {
+    my $link = Mojo::URL->new->fragment($e->{id});
+    my $permalink = $c->link_to('#' => $link, class => 'permalink');
+    $e->content($permalink . $e->content);
+  }
+
   return $dom;
 }
+
+my %toc_level = (h1 => 1, h2 => 2, h3 => 3, h4 => 4);
 
 sub _render_html ($c, $dom) {
   my $module = $c->stash('module');
@@ -208,19 +219,16 @@ sub _render_html ($c, $dom) {
     $title = $p->all_text;
   });
 
-  # Rewrite headers
-  my %level = (h1 => 1, h2 => 2, h3 => 3, h4 => 4);
-  my $linkable = 'h1, h2, h3, h4';
-  $linkable .= ', dt' unless $c->stash('module') eq 'search';
-  my (@toc, $parent);
-  for my $e ($dom->find($linkable)->each) {
-    my $link = Mojo::URL->new->fragment($e->{id});
-    my $text = $e->all_text;
-    unless ($module eq 'index' or $e->tag eq 'dt') {
-      # Add to table of contents
+  # Assemble table of contents
+  my @toc;
+  unless ($module eq 'index') {
+    my $parent;
+    for my $e ($dom->find('h1, h2, h3, h4')->each) {
+      my $link = Mojo::URL->new->fragment($e->{id});
+      my $text = $e->all_text =~ s/^#//r;
       my $entry = {tag => $e->tag, text => $text, link => $link};
       $parent = $parent->{parent} until !defined $parent
-        or $level{$e->tag} > $level{$parent->{tag}};
+        or $toc_level{$e->tag} > $toc_level{$parent->{tag}};
       if (defined $parent) {
         weaken($entry->{parent} = $parent);
         push @{$parent->{contents}}, $entry;
@@ -229,8 +237,6 @@ sub _render_html ($c, $dom) {
       }
       $parent = $entry;
     }
-    my $permalink = $c->link_to('#' => $link, class => 'permalink');
-    $e->content($permalink . $e->content);
   }
 
   # Combine everything to a proper response
