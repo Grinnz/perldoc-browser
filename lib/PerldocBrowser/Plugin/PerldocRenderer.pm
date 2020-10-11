@@ -29,6 +29,7 @@ sub register ($self, $app, $conf) {
   $app->helper(pod_to_text_content => sub ($c, @args) { _pod_to_text_content(@args) });
   $app->helper(escape_pod => sub ($c, @args) { _escape_pod(@args) });
   $app->helper(append_url_path => sub ($c, @args) { _append_url_path(@args) });
+  $app->helper(current_doc_path => \&_current_doc_path);
   $app->helper(prepare_perldoc_html => \&_prepare_html);
   $app->helper(render_perldoc_html => \&_render_html);
 
@@ -70,6 +71,18 @@ sub register ($self, $app, $conf) {
     # all other docs
     $versioned->any('/:module' => {module => $homepage} => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
   }
+}
+
+sub _current_doc_path ($c) {
+  my $path = $c->stash('current_doc_path');
+  unless (defined $path) {
+    $path = $c->append_url_path('/', $c->stash('module'));
+    my $subtarget = $c->stash('function') // $c->stash('variable');
+    $path = $c->append_url_path($path, $subtarget) if defined $subtarget;
+    $path = $path->to_string;
+    $c->stash(current_doc_path => $path);
+  }
+  return $path;
 }
 
 sub _find_pod ($c, $module) {

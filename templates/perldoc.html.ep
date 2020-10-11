@@ -8,8 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><% if (title) { %><%= title %> - <% } %><%= config('brand') // 'Perldoc Browser' %></title>
     <link rel="search" href="/opensearch.xml" type="application/opensearchdescription+xml" title="<%= config('brand') // 'Perldoc Browser' %>">
-    % my $canonical = $c->url_with->to_abs;
-    % shift @{$canonical->path} if length $url_perl_version;
+    % my $canonical = $c->url_with(current_doc_path)->to_abs;
     % $canonical->host(config('canonical_host')) if defined config('canonical_host');
     <link rel="canonical" href="<%= $canonical->to_string %>">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
@@ -170,23 +169,15 @@
         % } else {
           %= link_to $module => url_for(append_url_path("$url_prefix/", $module));
         % }
-        % my $source;
-        % if (defined stash('function')) {
-          % my $function = stash('function');
-          % $source = url_for(append_url_path("$url_prefix/functions/", "$function.txt"));
-            / <%= link_to stash('function') => url_for(append_url_path("$url_prefix/functions/", $function)) %>
-        % } elsif (defined stash('variable')) {
-          % my $variable = stash('variable');
-          % $source = url_for(append_url_path("$url_prefix/variables/", "$variable.txt"));
-            / <%= link_to stash('variable') => url_for(append_url_path("$url_prefix/variables/", $variable)) %>
-        % } else {
-          % $source = url_for(append_url_path("$url_prefix/", "$module.txt"));
+        % my $subtarget = stash('function') // stash('variable');
+        % if (defined $subtarget) {
+            / <%= link_to $subtarget => url_for($url_prefix . current_doc_path) %>
         % }
           <div id="more">
           % if ($module eq 'search') {
             (<%= link_to 'Search CPAN' => $cpan %>)
           % } else {
-            (<%= link_to 'source' => $source %>,
+            (<%= link_to 'source' => url_for($url_prefix . current_doc_path() . '.txt') %>,
             <%= link_to 'CPAN' => $cpan %>)
           % }
           </div>
@@ -195,9 +186,8 @@
         % }
         </div>
         % if (length $url_perl_version) {
-          % my $current_path = defined stash('function') ? append_url_path('/functions/', stash('function')) : defined stash('variable') ? append_url_path('/variables/', stash('variable')) : append_url_path('/', $module);
         <div class="leading-notice">
-          You are viewing the version of this documentation from Perl <%= $url_perl_version %>. <%= link_to 'View the latest version' => url_with("$current_path") %>
+          You are viewing the version of this documentation from Perl <%= $url_perl_version %>. <%= link_to 'View the latest version' => url_with(current_doc_path) %>
         </div>
         % }
         % if (defined(my $alt_type = stash 'alt_page_type')) {
