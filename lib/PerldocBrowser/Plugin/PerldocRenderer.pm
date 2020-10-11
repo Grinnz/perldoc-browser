@@ -62,14 +62,14 @@ sub register ($self, $app, $conf) {
       => [variable => qr/[^.]+(?:\.{3}[^.]+|\.)?/] => \&_variable);
 
     # index pages
-    $versioned->any('/' => {module => 'index'} => \&_main_index) if $homepage eq 'index';
+    $versioned->any('/' => {module => $homepage, current_doc_path => '/'} => ($homepage eq 'index' ? \&_main_index : \&_perldoc));
     $versioned->any('/index' => {module => 'index'} => \&_main_index);
     $versioned->any('/functions' => {module => 'functions'} => \&_functions_index);
     $versioned->any('/variables' => {module => 'variables'} => \&_variables_index);
     $versioned->any('/modules' => {module => 'modules'} => \&_modules_index);
 
     # all other docs
-    $versioned->any('/:module' => {module => $homepage} => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
+    $versioned->any('/:module' => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
   }
 }
 
@@ -79,8 +79,7 @@ sub _current_doc_path ($c) {
     $path = $c->append_url_path('/', $c->stash('module'));
     my $subtarget = $c->stash('function') // $c->stash('variable');
     $path = $c->append_url_path($path, $subtarget) if defined $subtarget;
-    $path = $path->to_string;
-    $c->stash(current_doc_path => $path);
+    $c->stash(current_doc_path => $path = $path->to_string);
   }
   return $path;
 }
