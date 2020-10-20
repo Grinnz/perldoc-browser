@@ -213,10 +213,10 @@ sub _render_html ($c, $dom) {
   # Try to find a title
   my $title = $c->stash('page_name') // $module;
   $dom->find('h1')->first(sub {
-    return unless trim($_->all_text) eq 'NAME';
+    return unless $_->all_text =~ m/^\s*#?\s*NAME\s*$/i;
     my $p = $_->next;
     return unless $p->tag eq 'p';
-    $title = $p->all_text;
+    $title = trim($p->all_text);
   });
 
   # Assemble table of contents
