@@ -6,3 +6,14 @@ html/*
 perldoc-browser.conf
 perldoc-browser.sqlite*
 hypnotoad.pid
+
+#Project Files
+.gitignore
+.project
+
+#Container Runtime Content
+.bash_history
+.cpanm
+.cpanm/*
+perl5
+perl5/*
