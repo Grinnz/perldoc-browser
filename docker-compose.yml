@@ -1,0 +1,12 @@
+version: '3'
+services:
+  web:
+    container_name: 'perldoc_web'
+    image: perldoc_web
+    build: .
+    ports:
+     - "3000:3000"
+    volumes:
+     - /absolute/path/to/project:/home/perldoc-browser:Z
+    environment:
+     - COMPONENT=perldoc_web
