@@ -19,4 +19,4 @@ perl5
 perl5/*
 
 #Local Docker-Compose Configuration
-docker-compose_*.yml
+docker-compose.yml

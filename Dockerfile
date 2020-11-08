@@ -6,12 +6,15 @@ RUN apt-get update &&\
     libsyntax-keyword-try-perl libcapture-tiny-perl libhttp-tinyish-perl libnet-ssleay-perl\
     liburl-encode-perl libextutils-config-perl libextutils-helpers-perl libextutils-installpaths-perl\
     libclone-choose-perl libhash-merge-perl libtest-deep-perl liburi-nested-perl\
-    libsql-abstract-perl liburi-db-perl libdbd-sqlite3-perl 
+    libsql-abstract-perl liburi-db-perl libdbd-sqlite3-perl
+COPY etc/docker/entrypoint.sh /usr/local/bin/
+RUN chmod u+x,g+x /usr/local/bin/entrypoint.sh\
+  && ln -s /usr/local/bin/entrypoint.sh /entrypoint.sh # backwards compat
 RUN groupadd web &&\
   useradd per1_web -g web -md /home/perldoc-browser -s /sbin/nologin &&\
   chmod a+rx /home/perldoc-browser
-VOLUME /sys/fs/cgroup\
-  /home/perldoc-browser
-#USER per1_web
+VOLUME /home/perldoc-browser
+USER per1_web
 WORKDIR /home/perldoc-browser
-CMD ["bash"]
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["perldoc-browser.pl", "prefork"]
