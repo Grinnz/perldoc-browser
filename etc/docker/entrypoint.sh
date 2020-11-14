@@ -66,7 +66,12 @@ if [ "$1" = "perldoc-browser.pl" ]; then
 
 
   echo "Service '$1': Launching ..."
+
+  #Executing the Mojolicious Application
+  exec ./$@
+
 fi  #if [ "$1" = "perldoc-browser.pl" ]; then
 
 
-exec ./$@
+#Launching any other Command
+exec $@
