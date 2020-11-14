@@ -1,11 +1,5 @@
 #!/bin/sh
 
-# @author Bodo (Hugo) Barwich
-# @version 2020-11-08
-# @package Docker Deployment
-# @subpackage entrypoint.sh
-#
-
 
 
 set -e
@@ -26,20 +20,26 @@ if [ "$1" = "perldoc-browser.pl" ]; then
 
   echo -n "Mojolicious Version: "
 
-  mojolicious=`perl -MMojolicious -e 'print Mojolicious::VERSION . "\n"; ' 2>/dev/null`
+  perl -MMojolicious -e 'print Mojolicious::VERSION . "\n"; ' 2>/dev/null 1>log/perl_mojolicious.log ||\
+    iresult=$?
+
+  mojolicious=`cat log/perl_mojolicious.log`
 
   if [ -n "$mojolicious" ]; then
-    echo "$mojolicious"
+    echo "$mojolicious [Code: '$iresult']"
   else
-    echo "NONE"
+    echo "NONE [Code: '$iresult']"
   fi
 
   echo -n "Search Backend: "
 
-  backend=`cat perldoc-browser.conf | grep -i search_backend | cut -d"'" -f2`
+  cat perldoc-browser.conf 2>/dev/null | grep -i search_backend | cut -d"'" -f2 >log/web_backend.log ||\
+    iresult=$?
+
+  backend=`cat log/web_backend.log`
 
   if [ -z "$backend" ]; then
-    echo "not recognized!"
+    echo "not recognized [Code: '$iresult']!"
     echo "Falling back to SQLite Backend ..."
     backend="sqlite"
   else
@@ -49,6 +49,10 @@ if [ "$1" = "perldoc-browser.pl" ]; then
   if [ -z "$mojolicious" ]; then
     #Run cpanm Installation
     echo "Installing Dependencies with cpanm ..."
+
+    echo "Configuring Local Installation ..."
+    perl -Mlocal::lib ;
+    eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib) ;
 
     date +"%s" > log/cpanm_install_$(date +"%F").log
     cpanm -vn --installdeps --with-feature=$backend . 2>&1 >> log/cpanm_install_$(date +"%F").log
