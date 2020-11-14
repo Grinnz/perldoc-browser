@@ -18,10 +18,18 @@ echo `cat -A /etc/hosts`
 if [ "$1" = "perldoc-browser.pl" ]; then
   echo "Command: '$@'"
 
+  echo "Configuring Local Installation ..."
+  perl -Mlocal::lib ;
+  eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib) ;
+
   echo -n "Mojolicious Version: "
 
-  perl -MMojolicious -e 'print Mojolicious::VERSION . "\n"; ' 2>/dev/null 1>log/perl_mojolicious.log ||\
+  perl -MMojolicious -e 'print $Mojolicious::VERSION; ' 2>/dev/null 1>log/perl_mojolicious.log ||\
     iresult=$?
+
+  if [ -z "$iresult" ]; then
+    iresult=0
+  fi
 
   mojolicious=`cat log/perl_mojolicious.log`
 
@@ -50,18 +58,12 @@ if [ "$1" = "perldoc-browser.pl" ]; then
     #Run cpanm Installation
     echo "Installing Dependencies with cpanm ..."
 
-    echo "Configuring Local Installation ..."
-    perl -Mlocal::lib ;
-    eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib) ;
-
     date +"%s" > log/cpanm_install_$(date +"%F").log
     cpanm -vn --installdeps --with-feature=$backend . 2>&1 >> log/cpanm_install_$(date +"%F").log
     cpanmrs=$?
     date +"%s" >> log/cpanm_install_$(date +"%F").log
 
     echo "Installation finished with [$cpanmrs]"
-  else
-    echo "$mojolicious"
   fi  #if [ -z "$mojolicious" ]; then
 
 
