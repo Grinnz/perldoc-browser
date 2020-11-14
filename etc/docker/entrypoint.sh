@@ -41,7 +41,7 @@ if [ "$1" = "perldoc-browser.pl" ]; then
 
   echo -n "Search Backend: "
 
-  cat perldoc-browser.conf 2>/dev/null | grep -i search_backend | cut -d"'" -f2 >log/web_backend.log ||\
+  cat perldoc-browser.conf 2>/dev/null | grep -i search_backend | cut -d"=" -f2 | cut -d"'" -f2 >log/web_backend.log ||\
     iresult=$?
 
   backend=`cat log/web_backend.log`
