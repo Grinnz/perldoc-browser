@@ -67,10 +67,10 @@ The new built Container Image contains an empty C<perldoc-browser.pl> Installati
 To run correctly the Search Backend need to be populated.
 So the command to populate the Search Backend is:
 
-   docker run -it -v /absolute/path/to/perldoc_web:/home/perldoc-browser:Z perldoc_web perldoc-browser.pl index all
+   docker run -it -v /absolute/path/to/project:/home/perldoc-browser:Z perldoc_web perldoc-browser.pl index all
 
-This will execute C<perldoc-browser.pl index all> in the project directory.
-The results are stored persistently in the project directory for further container launches.
+This will execute command C<perldoc-browser.pl index all> in the project directory.
+The results will be stored persistently in the project directory for further container launches.
 
 
 
