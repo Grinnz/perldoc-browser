@@ -16,9 +16,53 @@ of the Docker Container.
 
 =head1 INSTALLATION
 
+=item docker-compose
+
 To run the Docker Container with the C<docker-compose> Command the C<docker-compose> Package should
 be installed first. The C<docker-compose> Package is provided by most Linux Distributions.
 
+=item Docker Engine
+
 Next the C<Docker> Service is installed locally.
+if you want to use C<docker-compose> it is recommended to do this step first because
+the C<docker-compose> installation can break your Docker Engine installation.
 To install the Docker Engine it is recommended to follow the guides of the Official Documentation
 L<Docker Engine Installation|https://docs.docker.com/engine/install/>
+
+=head1 CONTAINER BUILD
+
+=item preconditions
+
+* The Docker Service must be running
+* Build User must have access to the Docker Service (perhaps C<root> access is required)
+* Current Working Directory must be the Project Root Directory
+* The C<docker-compose> Build requires a C<docker-compose.yml> file which can be created
+  from the C<docker-compose.yml.example> file
+
+=item Build with Docker
+
+The Container Image for the C<Mojolicious> Web Service was called "I<perldoc_web>" to difference it
+from the Backend Container Image.
+So the command to build the docker image is:
+
+    docker build -t perldoc_web .
+
+=item Build with C<docker-compose>
+
+To build the Container Image with C<docker-compose> a C<docker-compose.yml> file is required.
+It can be created from the C<docker-compose.yml.example> file by copying it.
+Within the C<docker-compose.yml> file the entry C<services.web.volumes> must be configured to
+contain the absolute path to the Project Root Directory on the system.
+The C<docker-compose.yml> file contains instructions to expose the C<Mojolicious> Web Service
+on Port C<3000> which seems to be the default behaviour for the Application.
+If the Application was configured to listen on a different port the file entry C<services.web.ports>
+must be adjusted accordingly.
+So the command to build the docker image and launch it is:
+
+    docker-compose up --build
+
+
+
+
+
+
