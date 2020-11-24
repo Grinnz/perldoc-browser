@@ -29,7 +29,7 @@ the C<docker-compose> installation can break your Docker Engine installation.
 To install the Docker Engine it is recommended to follow the guides of the Official Documentation
 L<Docker Engine Installation|https://docs.docker.com/engine/install/>
 
-=head1 CONTAINER BUILD
+=head1 IMAGE BUILD
 
 =item preconditions
 
@@ -61,7 +61,16 @@ So the command to build the docker image and launch it is:
 
     docker-compose up --build
 
+=head1 IMAGE INITIALISATION
 
+The new built Container Image contains an empty C<perldoc-browser.pl> Installation
+To run correctly the Search Backend need to be populated.
+So the command to populate the Search Backend is:
+
+   docker run -it -v /absolute/path/to/perldoc_web:/home/perldoc-browser:Z perldoc_web perldoc-browser.pl index all
+
+This will execute C<perldoc-browser.pl index all> in the project directory.
+The results are stored persistently in the project directory for further container launches.
 
 
 

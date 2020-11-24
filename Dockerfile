@@ -1,7 +1,7 @@
 FROM debian:buster
 RUN apt-get update &&\
   apt-get -y install apt-utils gcc make openssl &&\
-  apt-get -y install cpanminus perl-modules liblocal-lib-perl &&\
+  apt-get -y install cpanminus perl-modules perl-doc liblocal-lib-perl &&\
   apt-get -y install libdbi-perl libfile-pushd-perl libipc-run3-perl libmodule-runtime-perl libsort-versions-perl libdevel-patchperl-perl libmodule-build-tiny-perl libmodule-pluggable-perl\
     libsyntax-keyword-try-perl libcapture-tiny-perl libhttp-tinyish-perl libnet-ssleay-perl\
     liburl-encode-perl libextutils-config-perl libextutils-helpers-perl libextutils-installpaths-perl\
