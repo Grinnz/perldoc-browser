@@ -64,6 +64,7 @@ sub _pod_search ($c, $perl_version, $query, $limit = undef) {
   my @limit_param = defined $limit ? $limit : ();
   $query =~ s/"/""/g;
   $query = join ' ', map { qq{"$_"} } split ' ', $query;
+  return [] unless length $query;
   return $c->sqlite->db->query(q{SELECT "name", "abstract",
     snippet("pods_index", 3, '__HEADLINE_START__', '__HEADLINE_STOP__', ' ... ', 36) AS "headline"
     FROM "pods_index" WHERE "rowid" IN (SELECT "id" FROM "pods" WHERE "perl_version" = ? AND "contents" != '')
@@ -76,6 +77,7 @@ sub _function_search ($c, $perl_version, $query, $limit = undef) {
   my @limit_param = defined $limit ? $limit : ();
   $query =~ s/"/""/g;
   $query = join ' ', map { qq{"$_"} } split ' ', $query;
+  return [] unless length $query;
   return $c->sqlite->db->query(q{SELECT "name",
     snippet("functions_index", 1, '__HEADLINE_START__', '__HEADLINE_STOP__', ' ... ', 36) AS "headline"
     FROM "functions_index" WHERE "rowid" IN (SELECT "id" FROM "functions" WHERE "perl_version" = ? AND "description" != '')
@@ -88,6 +90,7 @@ sub _faq_search ($c, $perl_version, $query, $limit = undef) {
   my @limit_param = defined $limit ? $limit : ();
   $query =~ s/"/""/g;
   $query = join ' ', map { qq{"$_"} } split ' ', $query;
+  return [] unless length $query;
   return $c->sqlite->db->query(q{SELECT "perlfaq", "question",
     snippet("faqs_index", 1, '__HEADLINE_START__', '__HEADLINE_STOP__', ' ... ', 36) AS "headline"
     FROM "faqs_index" WHERE "rowid" IN (SELECT "id" FROM "faqs" WHERE "perl_version" = ? AND "answer" != '')
@@ -100,6 +103,7 @@ sub _perldelta_search ($c, $perl_version, $query, $limit = undef) {
   my @limit_param = defined $limit ? $limit : ();
   $query =~ s/"/""/g;
   $query = join ' ', map { qq{"$_"} } split ' ', $query;
+  return [] unless length $query;
   return $c->sqlite->db->query(q{SELECT "perldelta", "heading",
     snippet("perldeltas_index", 1, '__HEADLINE_START__', '__HEADLINE_STOP__', ' ... ', 36) AS "headline"
     FROM "perldeltas_index" WHERE "rowid" IN (SELECT "id" FROM "perldeltas" WHERE "perl_version" = ? AND "contents" != '')
