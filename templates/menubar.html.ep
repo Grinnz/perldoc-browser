@@ -5,16 +5,15 @@
   <a class="navbar-brand" href="/"><%= config('brand') // 'Perldoc Browser' %></a>
   <div class="collapse navbar-collapse" id="navbarNav">
     <ul class="navbar-nav mr-auto">
-% my $current_path = defined stash('function') ? append_url_path('/functions/', stash('function')) : defined stash('variable') ? append_url_path('/variables/', stash('variable')) : append_url_path('/', $module);
 % if (@{perl_versions()} + @{dev_versions()} <= 1) {
       <li class="nav-item">
-        <a class="nav-link" href="<%= url_with("$current_path") %>"><%= $perl_version %></a>
+        <a class="nav-link" href="<%= url_with(current_doc_path) %>"><%= $perl_version %></a>
       </li>
 % } else {
-      <li class="nav-item dropdown" style="white-space: nowrap">
+      <li class="nav-item dropdown text-nowrap">
         <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-stable" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><%= $perl_version %></a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-stable">
-          <a class="dropdown-item" href="<%= url_with("$current_path") %>">Latest</a>
+          <a class="dropdown-item" href="<%= url_with(current_doc_path) %>">Latest</a>
 %   if (@{perl_versions()}) {
           <div class="dropdown-divider"></div>
 %     my $last_major;
@@ -24,14 +23,14 @@
           <div class="dropdown-divider"></div>
 %       }
 %       my $prefix = append_url_path('/', $perl_option);
-          <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with("$prefix$current_path") %>"><%= $perl_option %></a>
+          <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with($prefix . current_doc_path) %>"><%= $perl_option %></a>
 %       $last_major = $major;
 %     }
 %   }
         </div>
       </li>
 %   if (@{dev_versions()}) {
-      <li class="nav-item dropdown" style="white-space: nowrap">
+      <li class="nav-item dropdown text-nowrap">
         <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-dev" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Dev</a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-dev">
 %     my $last_major;
@@ -41,7 +40,7 @@
           <div class="dropdown-divider"></div>
 %       }
 %       my $prefix = append_url_path('/', $perl_option);
-          <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with("$prefix$current_path") %>"><%= $perl_option %></a>
+          <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with($prefix . current_doc_path) %>"><%= $perl_option %></a>
 %       $last_major = $major;
 %     }
         </div>
@@ -50,15 +49,24 @@
 % }
 % my $current_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
 % unless (config('hide_core_nav')) {
-      <li class="nav-item">
-% my $homepage = config('homepage') // 'perl';
-        <a class="nav-link" href="<%= url_for("$current_prefix/$homepage") %>"><%= $homepage %></a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="<%= url_for("$current_prefix/functions") %>">functions</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="<%= url_for("$current_prefix/modules") %>">modules</a>
+      <li class="nav-item dropdown text-nowrap">
+        <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-nav" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Documentation</a>
+        <div class="dropdown-menu" aria-labelledby="dropdownlink-nav">
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perl") %>">Perl</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perlintro") %>">Intro</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perl#Tutorials") %>">Tutorials</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perlfaq") %>">FAQs</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perl#Reference-Manual") %>">Reference</a>
+          <div class="dropdown-divider"></div>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perlop") %>">Operators</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/functions") %>">Functions</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/variables") %>">Variables</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/modules") %>">Modules</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perlutil") %>">Utilities</a>
+          <div class="dropdown-divider"></div>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perlcommunity") %>">Community</a>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perlhist") %>">History</a>
+        </div>
       </li>
 % }
     </ul>
@@ -79,14 +87,6 @@
         }
       </script>
       <button id="content-expand-button" type="button" class="btn <%= $expand ? 'btn-light' : 'btn-outline-light' %> d-none d-lg-inline-block mr-2" onclick="toggle_expand()">Expand</button>
-% if (defined config('contact_pod')) {
-      <li class="nav-item">
-        <a class="nav-link" href="<%= url_for("$current_prefix/contact") %>">Contact</a>
-      </li>
-% }
-      <li class="nav-item">
-        <a class="nav-link" href="https://github.com/Grinnz/perldoc-browser">GitHub</a>
-      </li>
     <ul>
 % if (defined app->search_backend) {
 %   my $search_params = config('search_params') // {};

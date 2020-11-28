@@ -6,6 +6,7 @@ requires 'File::pushd';
 requires 'File::Spec';
 requires 'File::Temp';
 requires 'IPC::Run3';
+requires 'Lingua::EN::Sentence';
 requires 'List::Util' => '1.50';
 requires 'MetaCPAN::Pod::XHTML';
 requires 'Module::Metadata';

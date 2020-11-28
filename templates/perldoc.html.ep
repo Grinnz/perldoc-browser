@@ -8,11 +8,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><% if (title) { %><%= title %> - <% } %><%= config('brand') // 'Perldoc Browser' %></title>
     <link rel="search" href="/opensearch.xml" type="application/opensearchdescription+xml" title="<%= config('brand') // 'Perldoc Browser' %>">
-    % my $canonical = $c->req->url->clone;
-    % shift @{$canonical->path} if length $url_perl_version;
-    % $canonical->path->[-1] =~ s/\.html\z// if @{$canonical->path};
-    <link rel="canonical" href="<%= $canonical->to_abs->to_string %>">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    % my $canonical = $c->url_with(current_doc_path)->to_abs;
+    % $canonical->host(config('canonical_host')) if defined config('canonical_host');
+    <link rel="canonical" href="<%= $canonical->to_string %>">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prettify/r298/prettify.min.css" integrity="sha256-IPtNBA1od/cGBfXTxYDxuT5+Y2BKy14o6j0FaIXDmYk=" crossorigin="anonymous" />
     %= stylesheet '/prettify-mojo-light.css'
     <style>
@@ -21,13 +20,14 @@
         color: #445555;
       }
       .navbar-dark {
-        background-image: -webkit-linear-gradient(top, #0073a1 0, #003555 100%);
-        background-image: -o-linear-gradient(top, #0073a1 0, #003555 100%);
-        background-image: linear-gradient(to bottom, #0073a1 0, #003555 100%);
-        filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff0073a1', endColorstr='#ff003555', GradientType=0);
+        background-image: -webkit-linear-gradient(top, #005f85 0, #002e49 100%);
+        background-image: -o-linear-gradient(top, #005f85 0, #002e49 100%);
+        background-image: linear-gradient(to bottom, #005f85 0, #002e49 100%);
+        filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff005f85', endColorstr='#ff002e49', GradientType=0);
         background-repeat: repeat-x;
       }
-      .navbar-dark .navbar-nav .nav-link { color: #fff }
+      .navbar-dark .navbar-nav .nav-link,
+      .navbar-dark .navbar-nav .nav-link:focus { color: #fff }
       .navbar-dark .navbar-nav .nav-link:hover { color: #ffef68 }
       #wrapperlicious {
         margin: 0 auto;
@@ -104,6 +104,7 @@
         margin-top: 0px;
       }
       #footer {
+        font-size: 0.8em;
         padding-top: 0.5em;
         text-align: center;
       }
@@ -122,9 +123,8 @@
         padding-top: 1em;
         max-width: <%= $expand ? 'none' : '960px' %>;
       }
-      #perldocdiv > ul:first-of-type a { text-decoration: none }
       #moduleversion { float: right }
-      #disambiguation {
+      #wrapperlicious .leading-notice {
         font-style: italic;
         padding-left: 1em;
         margin-top: 1em;
@@ -143,15 +143,18 @@
         display: block;
       }
     </style>
-% if (defined config->{google_analytics_tracking_id}) {
+% if (defined(my $gtags = config->{google_analytics_tracking_id})) {
+    % $gtags = [$gtags] unless ref $gtags eq 'ARRAY';
     <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=<%= config->{google_analytics_tracking_id} %>"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=<%= $gtags->[0] %>"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
 
-      gtag('config', '<%= config->{google_analytics_tracking_id} %>');
+    % foreach my $gtag (@$gtags) {
+      gtag('config', '<%= $gtag %>');
+    % }
     </script>
 % }
   </head>
@@ -159,53 +162,55 @@
     %= include 'menubar', expand => $expand
     <div id="wrapperlicious" class="container-fluid">
       <div id="perldocdiv">
-        % if ($module ne 'contact') {
+      % my $url_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
+      % if ($module ne 'index') {
         <div id="links">
-          % my $url_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
-          % if ($module eq 'search') {
+        % if ($module eq 'search') {
           "<%= Mojo::Util::trim param('q') %>"
-          % } else {
+        % } else {
           %= link_to $module => url_for(append_url_path("$url_prefix/", $module));
-          % }
-          % my $source;
-          % if (defined stash('function')) {
-            % my $function = stash('function');
-            % $source = url_for(append_url_path("$url_prefix/functions/", "$function.txt"));
-            / <%= link_to stash('function') => url_for(append_url_path("$url_prefix/functions/", $function)) %>
-          % } elsif (defined stash('variable')) {
-            % my $variable = stash('variable');
-            % $source = url_for(append_url_path("$url_prefix/variables/", "$variable.txt"));
-            / <%= link_to stash('variable') => url_for(append_url_path("$url_prefix/variables/", $variable)) %>
-          % } else {
-            % $source = url_for(append_url_path("$url_prefix/", "$module.txt"));
-          % }
+        % }
+        % my $subtarget = stash('function') // stash('variable');
+        % if (defined $subtarget) {
+            / <%= link_to $subtarget => url_for($url_prefix . current_doc_path) %>
+        % }
           <div id="more">
-            % if ($module eq 'search') {
+        % if ($module eq 'search') {
             (<%= link_to 'Search CPAN' => $cpan %>)
-            % } else {
-            (<%= link_to 'source' => $source %>,
+        % } else {
+            (<%= link_to 'source' => url_for($url_prefix . current_doc_path() . '.txt') %>,
             <%= link_to 'CPAN' => $cpan %>)
-            % }
+        % }
           </div>
-          % if (defined(my $ver = stash('module_version'))) {
+        % if (defined(my $ver = stash('module_version'))) {
             <div id="moduleversion"><%= $ver =~ m/^v/ ? '' : 'version ' %><%= $ver %></div>
+        % }
+        </div>
+      % }
+      % if (length $url_perl_version and $module ne 'search') {
+        <div class="leading-notice">
+          You are viewing the version of this documentation from Perl <%= $url_perl_version %>.
+          % if (perl_version_is_dev($perl_version)) {
+            This is a development release of Perl.
+          % } else {
+            <%= link_to 'View the latest version' => url_with(current_doc_path) %>
           % }
         </div>
-          % if (defined(my $alt_type = stash 'alt_page_type')) {
-            % my $alt_prefix = $alt_type eq 'function' ? "$url_prefix/functions/" : "$url_prefix/";
-            % my $alt_url = url_for(append_url_path($alt_prefix, my $alt_name = stash('alt_page_name')));
-        <div id="disambiguation">
+      % }
+      % if (defined(my $alt_type = stash 'alt_page_type')) {
+        % my $alt_prefix = $alt_type eq 'function' ? "$url_prefix/functions/" : "$url_prefix/";
+        % my $alt_url = url_for(append_url_path($alt_prefix, my $alt_name = stash('alt_page_name')));
+        <div class="leading-notice">
           <strong><%= stash('page_name') %></strong> may also refer to the <%= $alt_type %>: <%= link_to $alt_name => $alt_url %>
         </div>
-          % }
-        % }
-        % if (@{stash('toc') // []}) {
+      % }
+      % if (@{stash('toc') // []}) {
         <h1><a id="toc"><%= stash('module') eq 'search' ? 'SEARCH RESULTS' : 'CONTENTS' %></a></h1>
         % my $render_contents; $render_contents = begin
           <ul>
             % for my $entry (@{$_[0]}) {
               <li>
-                %= link_to @$entry{'text','link'}
+                %= link_to @$entry{'text','link'}, class => 'text-decoration-none'
                 % if (defined $entry->{contents}) {
                   %= $render_contents->($entry->{contents})
                 % }
@@ -214,13 +219,16 @@
           </ul>
         % end
         %= $render_contents->(stash 'toc')
-        % }
-        %= content 'perldoc'
+      % }
+      %= content 'perldoc'
+      </div>
+      <div id="footer">
+        %== footer_html
       </div>
     </div>
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha256-3edrmyuQ0w65f8gfBsqowzjJe2iM6n0nKciPUp8y+7E=" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js" integrity="sha256-EGs9T1xMHdvM1geM8jPpoo8EZ1V1VRsmcJz8OByENLA=" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.slim.min.js" integrity="sha512-/DXTXr6nQodMUiq+IUJYCt2PPOUjrHJ9wFrqpJ3XkgPNOZVfMok7cRw6CSxyCQxXn6ozlESsSh1/sMCTF1rL/g==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.1/umd/popper.min.js" integrity="sha512-ubuT8Z88WxezgSqf3RLuNi5lmjstiJcyezx34yIU2gAHonIi27Na7atqzUZCOoY4CExaoFumzOsFQ2Ch+I/HCw==" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prettify/r298/prettify.min.js" integrity="sha256-SHXnnZAbgSEf+OBhDLR7I2mx9vNZAIzPeCGhxRV+VQw=" crossorigin="anonymous"></script>
   </body>
 </html>
