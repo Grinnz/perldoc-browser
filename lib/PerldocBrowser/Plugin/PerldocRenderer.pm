@@ -6,6 +6,7 @@ package PerldocBrowser::Plugin::PerldocRenderer;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
+use Lingua::EN::Sentence 'get_sentences';
 use List::Util 'first';
 use MetaCPAN::Pod::XHTML;
 use Module::Metadata;
@@ -28,33 +29,59 @@ sub register ($self, $app, $conf) {
   $app->helper(pod_to_text_content => sub ($c, @args) { _pod_to_text_content(@args) });
   $app->helper(escape_pod => sub ($c, @args) { _escape_pod(@args) });
   $app->helper(append_url_path => sub ($c, @args) { _append_url_path(@args) });
+  $app->helper(current_doc_path => \&_current_doc_path);
   $app->helper(prepare_perldoc_html => \&_prepare_html);
   $app->helper(render_perldoc_html => \&_render_html);
 
-  my $homepage = $app->config('homepage') // 'perl';
+  # canonicalize without .html
+  my $r = $app->routes->under(sub ($c) {
+    if ($c->req->url->path =~ m/\.html\z/i) {
+      my $url = $c->url_with->to_abs;
+      $url->path->[-1] =~ s/\.html\z//i if @{$url->path};
+      $c->res->code(301);
+      $c->redirect_to($url);
+      return 0;
+    }
+    return 1;
+  });
+
+  my $homepage = $app->config('homepage') // 'index';
   my $latest_perl_version = $app->latest_perl_version;
 
   foreach my $perl_version (@{$app->all_perl_versions}, '') {
-    my $prefix = length $perl_version ? "/$perl_version" : '';
-    my %stash = (
+    my $versioned = $r->any("/$perl_version")->to(
       module => $homepage,
       perl_version => length $perl_version ? $perl_version : $latest_perl_version,
       url_perl_version => $perl_version,
     );
 
     # individual function and variable pages
-    $app->routes->any("$prefix/functions/:function" => {%stash, module => 'functions'}
+    $versioned->any('/functions/:function' => {module => 'functions'}
       => [function => qr/[^.]+/] => \&_function);
-    $app->routes->any("$prefix/variables/:variable" => {%stash, module => 'perlvar'}
+    $versioned->any('/variables/:variable' => {module => 'variables'}
       => [variable => qr/[^.]+(?:\.{3}[^.]+|\.)?/] => \&_variable);
 
-    # function and module index pages
-    $app->routes->any("$prefix/functions" => {%stash, module => 'functions'} => \&_functions_index);
-    $app->routes->any("$prefix/modules" => {%stash, module => 'modules'} => \&_modules_index);
+    # index pages
+    $versioned->any('/' => {module => $homepage, current_doc_path => '/'} => ($homepage eq 'index' ? \&_main_index : \&_perldoc));
+    $versioned->any('/index' => {module => 'index'} => \&_main_index);
+    $versioned->any('/functions' => {module => 'functions'} => \&_functions_index);
+    $versioned->any('/variables' => {module => 'variables'} => \&_variables_index);
+    $versioned->any('/modules' => {module => 'modules'} => \&_modules_index);
 
     # all other docs
-    $app->routes->any("$prefix/:module" => {%stash} => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
+    $versioned->any('/:module' => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
   }
+}
+
+sub _current_doc_path ($c) {
+  my $path = $c->stash('current_doc_path');
+  unless (defined $path) {
+    $path = $c->append_url_path('/', $c->stash('module'));
+    my $subtarget = $c->stash('function') // $c->stash('variable');
+    $path = $c->append_url_path($path, $subtarget) if defined $subtarget;
+    $c->stash(current_doc_path => $path = $path->to_string);
+  }
+  return $path;
 }
 
 sub _find_pod ($c, $module) {
@@ -119,7 +146,7 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
   }
 
   # Rewrite links on variable pages
-  if (defined $variable) {
+  if ($module eq 'variables') {
     for my $e ($dom->find('a[href]')->each) {
       my $link = Mojo::URL->new($e->attr('href'));
       next if length $link->path;
@@ -130,18 +157,19 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
         $e->attr(href => $c->url_for(Mojo::URL->new("$url_prefix/perlvar")->fragment($fragment)));
       }
     }
-  }
 
-  # Insert links on modules list
-  if ($module eq 'modules') {
-    for my $e ($dom->find('dt')->each) {
-      my $module = $e->all_text;
-      $e->child_nodes->last->wrap($c->link_to('' => $c->url_for($c->append_url_path("$url_prefix/", $module))));
+    # Insert links on variables index
+    if (!defined $variable) {
+      for my $e ($dom->find('li > p:first-of-type > b')->each) {
+        my $text = $e->all_text;
+        $e->wrap($c->link_to('' => $c->url_for($c->append_url_path("$url_prefix/variables/", $text))))
+          if $text =~ m/^[\$\@%]/ or $text =~ m/^[a-zA-Z]+$/;
+      }
     }
   }
 
   # Insert links on perldoc perl
-  if ($module eq 'perl') {
+  if ($module eq 'perl' or $module eq 'index') {
     for my $e ($dom->find('pre > code')->each) {
       my $str = $e->content;
       $e->content($str) if $str =~ s/^\s*\K(perl\S+)/$c->link_to("$1" => $c->url_for($c->append_url_path("$url_prefix\/", "$1")))/mge;
@@ -166,31 +194,41 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
     }
   }
 
+  # Insert permalinks
+  my $linkable = 'h1, h2, h3, h4';
+  $linkable .= ', dt' unless $module eq 'search';
+  for my $e ($dom->find($linkable)->each) {
+    my $link = Mojo::URL->new->fragment($e->{id});
+    my $permalink = $c->link_to('#' => $link, class => 'permalink');
+    $e->content($permalink . $e->content);
+  }
+
   return $dom;
 }
 
+my %toc_level = (h1 => 1, h2 => 2, h3 => 3, h4 => 4);
+
 sub _render_html ($c, $dom) {
+  my $module = $c->stash('module');
   # Try to find a title
-  my $title = $c->stash('page_name') // $c->stash('module');
+  my $title = $c->stash('page_name') // $module;
   $dom->find('h1')->first(sub {
-    return unless $_->all_text eq 'NAME';
+    return unless $_->all_text =~ m/^\s*#?\s*NAME\s*$/i;
     my $p = $_->next;
     return unless $p->tag eq 'p';
-    $title = $p->all_text;
+    $title = trim($p->all_text);
   });
 
-  # Rewrite headers
-  my %level = (h1 => 1, h2 => 2, h3 => 3, h4 => 4);
-  my $linkable = 'h1, h2, h3, h4';
-  $linkable .= ', dt' unless $c->stash('module') eq 'search';
-  my (@toc, $parent);
-  for my $e ($dom->find($linkable)->each) {
-    my $link = Mojo::URL->new->fragment($e->{id});
-    my $text = $e->all_text;
-    unless ($e->tag eq 'dt') {
+  # Assemble table of contents
+  my @toc;
+  unless ($module eq 'index') {
+    my $parent;
+    for my $e ($dom->find('h1, h2, h3, h4')->each) {
+      my $link = Mojo::URL->new->fragment($e->{id});
+      my $text = $e->all_text =~ s/^#//r;
       my $entry = {tag => $e->tag, text => $text, link => $link};
       $parent = $parent->{parent} until !defined $parent
-        or $level{$e->tag} > $level{$parent->{tag}};
+        or $toc_level{$e->tag} > $toc_level{$parent->{tag}};
       if (defined $parent) {
         weaken($entry->{parent} = $parent);
         push @{$parent->{contents}}, $entry;
@@ -199,8 +237,6 @@ sub _render_html ($c, $dom) {
       }
       $parent = $entry;
     }
-    my $permalink = $c->link_to('#' => $link, class => 'permalink');
-    $e->content($permalink . $e->content);
   }
 
   # Combine everything to a proper response
@@ -209,7 +245,6 @@ sub _render_html ($c, $dom) {
 }
 
 my %index_redirects = (
-  'index' => 'perl#GETTING-HELP',
   'index-faq' => 'perlfaq',
   'index-functions' => 'functions#Alphabetical-Listing-of-Perl-Functions',
   'index-functions-by-cat' => 'functions#Perl-Functions-by-Category',
@@ -233,7 +268,7 @@ sub _perldoc ($c) {
   if (exists $index_redirects{$module}) {
     my $current_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
     $c->res->code(301);
-    return $c->redirect_to($c->url_for("$current_prefix/$index_redirects{$module}"));
+    return $c->redirect_to($c->url_for("$current_prefix/$index_redirects{$module}")->to_abs);
   }
 
   # Legacy separator redirects
@@ -241,7 +276,7 @@ sub _perldoc ($c) {
     $module =~ s!/+!::!g;
     my $current_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
     $c->res->code(301);
-    return $c->redirect_to($c->url_for("$current_prefix/$module"));
+    return $c->redirect_to($c->url_with("$current_prefix/$module")->to_abs);
   }
 
   # Find module or redirect to CPAN
@@ -324,13 +359,27 @@ sub _variable ($c) {
 
   $c->respond_to(
     txt => {data => $src},
-    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'perlvar', undef, $variable)) },
+    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'variables', undef, $variable)) },
+  );
+}
+
+sub _main_index ($c) {
+  $c->stash(page_name => 'Perl Documentation');
+  $c->stash(cpan => 'https://metacpan.org/pod/perl');
+
+  my $src = _get_index_page($c);
+
+  return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
+
+  $c->respond_to(
+    txt => {data => $src},
+    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'index')) },
   );
 }
 
 sub _functions_index ($c) {
-  $c->stash(page_name => 'functions');
-  $c->stash(cpan => 'https://metacpan.org/pod/perlfunc#Perl-Functions-by-Category');
+  $c->stash(page_name => 'Perl builtin functions');
+  $c->stash(cpan => 'https://metacpan.org/pod/perlfunc');
 
   my $categories = _get_function_categories($c);
   my $descriptions = _get_function_list($c);
@@ -338,7 +387,8 @@ sub _functions_index ($c) {
   return $c->res->code(301) && $c->redirect_to($c->stash('cpan'))
     unless defined $categories or defined $descriptions;
 
-  my $src = join "\n\n", '=pod', grep { defined } $categories, $descriptions;
+  my $src = join "\n\n", '=pod', 'I<Full documentation of builtin functions: L<perlfunc>>',
+    grep { defined } $categories, $descriptions;
 
   $c->respond_to(
     txt => {data => $src},
@@ -346,8 +396,24 @@ sub _functions_index ($c) {
   );
 }
 
+sub _variables_index ($c) {
+  $c->stash(page_name => 'Perl predefined variables');
+  $c->stash(cpan => 'https://metacpan.org/pod/perlvar');
+
+  my $src = _get_variable_list($c);
+
+  return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $src;
+
+  $src = join "\n\n", '=pod', 'I<Full documentation of predefined variables: L<perlvar>>', $src;
+
+  $c->respond_to(
+    txt => {data => $src},
+    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'variables')) },
+  );
+}
+
 sub _modules_index ($c) {
-  $c->stash(page_name => 'modules');
+  $c->stash(page_name => 'Perl core modules');
   $c->stash(cpan => 'https://metacpan.org');
 
   my $src = _get_module_list($c);
@@ -377,6 +443,57 @@ sub _get_variable_pod ($c, $variable) {
   return join "\n\n", '=over', @$result, '=back';
 }
 
+sub _get_index_page ($c) {
+  my $path = _find_pod($c, 'perl') // return undef;
+  my $src = path($path)->slurp;
+
+  my ($in_intro, $in_desc, @intro, @sections, @description);
+  foreach my $para (split /\n\n+/, $src) {
+    if ($para =~ m/^=head/) {
+      $in_intro = $in_desc = 0;
+    }
+    if ($para =~ m/^=head1\s+(?:SYNOPSIS|GETTING HELP)/i) {
+      $in_intro = 1;
+      @intro = ();
+    } elsif ($in_intro and $para !~ m/^B<perl>/) {
+      push @intro, $para;
+    } elsif ($para =~ m/^=head1\s+DESCRIPTION/i) {
+      $in_desc = 1;
+    } elsif ($in_desc) {
+      push @description, $para;
+    } elsif ($para =~ m/^=head2\s+(.*)/) {
+      push @sections, $1;
+    }
+  }
+
+  my @result;
+  my $perl_version = $c->stash('perl_version');
+
+  push @result, "=head1 Perl $perl_version Documentation", @intro;
+
+  if (@sections) {
+    push @result, '=over';
+    foreach my $section (@sections) {
+      my $name = $c->pod_to_text_content("=pod\n\n$section");
+      push @result, '=item *', "L<< $name|perl/$section >>";
+    }
+    push @result, '=back';
+  }
+
+  push @result, 'I<Full perl(1) documentation: L<perl>>';
+
+  push @result, '=head2 Reference Lists', '=over';
+  push @result, '=item *', 'L<Operators|perlop>';
+  push @result, '=item *', "L<< \u$_|$_ >>" for qw(functions variables modules);
+  push @result, '=item *', 'L<Utilities|perlutil>';
+  push @result, '=back';
+
+  push @result, '=head2 About Perl', @description;
+
+  return undef unless @result;
+  return join "\n\n", @result;
+}
+
 sub _get_function_categories ($c) {
   my $path = _find_pod($c, 'perlfunc') // return undef;
   my $src = path($path)->slurp;
@@ -397,15 +514,56 @@ sub _get_function_categories ($c) {
 }
 
 sub _get_function_list ($c) {
-  my $functions = $c->function_descriptions($c->stash('perl_version'));
-  return undef unless @$functions;
+  my $perl_version = $c->stash('perl_version');
+  my $names = $c->function_names($perl_version);
+  return undef unless @$names;
+  my $descriptions = $c->function_descriptions($perl_version);
   my @result = ('=head2 Alphabetical Listing of Perl Functions', '=over');
-  foreach my $function (@$functions) {
-    my ($name, $desc) = @$function;
-    $name = _escape_pod($name);
-    push @result, '=item *', "C<$name> - $desc";
+  foreach my $name (@$names) {
+    my $desc = $descriptions->{$name};
+    my $escaped = _escape_pod($name);
+    my $item = "C<$escaped>";
+    $item .= " - $desc" if defined $desc;
+    push @result, '=item *', $item;
   }
   push @result, '=back';
+  return join "\n\n", @result;
+}
+
+sub _get_variable_list ($c) {
+  my $path = _find_pod($c, 'perlvar') // return undef;
+  my $src = path($path)->slurp;
+
+  my ($level, @names, $heading, @section, @result);
+  foreach my $para (split /\n\n+/, $src) {
+    if ($level == 1 and $para =~ m/^=item\s+(.*)/) {
+      push @names, $1;
+    } elsif ($level == 1 and $para !~ m/^=/ and @names) {
+      @names = $names[-1] unless $names[0] eq '$a' or $names[0] eq '$b';
+      my $name = join ', ', map { "B<< $_ >>" } @names;
+      # extract first sentence as description
+      next if $para =~ m/^(?:See\b|WARNING:|This variable is no longer supported)/;
+      $para =~ s/.*?(?=Perl)//is if $names[-1] eq '$^M';
+      my $sentences = get_sentences $para;
+      my $desc = shift @$sentences;
+      $desc =~ s/\.$//;
+      push @section, '=item *', "$name - $desc";
+      @names = ();
+    } elsif ($para =~ m/^=over/) {
+      push @section, $para unless $level;
+      $level++;
+    } elsif ($para =~ m/^=back/) {
+      $level--;
+      push @section, $para unless $level;
+    } elsif ($para =~ m/^=head[23]/ and $para !~ m/^=head\d Performance issues/) {
+      push @result, $heading, @section if @section;
+      @section = ();
+      $heading = $para;
+    }
+  }
+  push @result, $heading, @section if @section;
+
+  return undef unless @result;
   return join "\n\n", @result;
 }
 
@@ -413,14 +571,22 @@ sub _get_module_list ($c) {
   my $path = _find_pod($c, 'perlmodlib') // return undef;
   my $src = path($path)->slurp;
 
-  my ($started, $standard, @result);
+  my ($started, $standard, $name, @result);
   foreach my $para (split /\n\n+/, $src) {
     if (!$started and $para =~ m/^=head\d Pragmatic Modules/) {
       $started = 1;
       push @result, $para;
     } elsif ($started) {
       $standard = 1 if $para =~ m/^=head\d Standard Modules/;
-      push @result, $para;
+      if ($para =~ m/^=item\s+(.*)/) {
+        $name = $1;
+        push @result, '=item *';
+      } elsif ($para !~ m/^=/ and defined $name) {
+        push @result, "B<<< L<< $name >> >>> - $para";
+        undef $name;
+      } else {
+        push @result, $para;
+      }
       last if $standard and $para =~ m/^=back/;
     }
   }
