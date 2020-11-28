@@ -1,0 +1,85 @@
+# NAME
+
+Perldoc Browser - Docker Deployment
+
+# DESCRIPTION
+
+The Objective of the `Docker Deployment` is to be able to run the `perldoc-browser.pl` Command in
+a seperate Docker Container.
+It can be useful to run `Test::Mojo` Test Suites.
+
+# REQUIREMENTS
+
+To build and run the Docker Container the Minimum Requirement is to have the `Docker` Service installed.
+Additionally the `docker-compose` Command can provide a nice enhancement to ease the Operation
+of the Docker Container.
+
+# INSTALLATION
+
+- docker-compose
+
+    To run the Docker Container with the `docker-compose` Command the `docker-compose` Package should
+    be installed first. The `docker-compose` Package is provided by most Linux Distributions.
+
+- Docker Engine
+
+    Next the `Docker` Service is installed locally.
+    if you want to use `docker-compose` it is recommended to do this step first because
+    the `docker-compose` installation can break your Docker Engine installation.
+    To install the Docker Engine it is recommended to follow the guides of the Official Documentation
+    [Docker Engine Installation](https://docs.docker.com/engine/install/)
+
+# IMAGE BUILD
+
+- preconditions
+
+    \* The Docker Service must be running
+    \* Build User must have access to the Docker Service (perhaps `root` access is required)
+    \* Current Working Directory must be the Project Root Directory
+    \* The `docker-compose` Build requires a `docker-compose.yml` file which can be created
+      from the `docker-compose.yml.example` file
+
+- Build with Docker
+
+    The Container Image for the `Mojolicious` Web Service was called "_perldoc\_web_" to difference it
+    from the Backend Container Image.
+    So the command to build the docker image is:
+
+        docker build -t perldoc_web .
+
+- Build with `docker-compose`
+
+    To build the Container Image with `docker-compose` a `docker-compose.yml` file is required.
+    It can be created from the `docker-compose.yml.example` file by copying it.
+    Within the `docker-compose.yml` file the entry `services.web.volumes` must be configured to
+    contain the absolute path to the Project Root Directory on the system.
+    The `docker-compose.yml` file contains instructions to expose the `Mojolicious` Web Service
+    on Port `3000` which seems to be the default behaviour for the Application.
+    If the Application was configured to listen on a different port the file entry `services.web.ports`
+    must be adjusted accordingly.
+    So the command to build the docker image and launch it is:
+
+        docker-compose up --build
+
+# IMAGE INITIALISATION
+
+- `cpanm` Installation
+
+    As discussed in the task issue [Docker Deployment Issue](https://github.com/Grinnz/perldoc-browser/issues/26) the
+    installation of the _Perl_ Modules for the SQLite Backend from the `cpanfile` was executed at Image Build Time.
+    So on updates of the `cpanfile` it is recommendable to rebuild the Container Image as described above
+    under **IMAGE BUILD**.
+    Still the Start-Up Script will detect a different backend configuration or the
+    `perldoc-browser.pl install` Command and check whether key dependencies are met and run the
+    `cpanm` Installation accordingly
+
+- populating the search backend
+
+    The new built Container Image contains an empty `perldoc-browser.pl` Installation
+    To run correctly the Search Backend needs to be populated.
+    So the command to populate the Search Backend is:
+
+        docker run -it -v /absolute/path/to/project:/home/perldoc-browser:Z perldoc_web perldoc-browser.pl index all
+
+    This will execute command `perldoc-browser.pl index all` in the project directory.
+    The results will be stored persistently in the project directory for further container launches.
