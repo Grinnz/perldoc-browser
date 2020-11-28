@@ -25,7 +25,7 @@ be installed first. The C<docker-compose> Package is provided by most Linux Dist
 
 =item Docker Engine
 
-Next the C<Docker> Service is installed locally.
+Next the C<Docker> Service has to be installed locally.
 if you want to use C<docker-compose> it is recommended to do this step first because
 the C<docker-compose> installation can break your Docker Engine installation.
 To install the Docker Engine it is recommended to follow the guides of the Official Documentation
@@ -35,15 +35,22 @@ L<Docker Engine Installation|https://docs.docker.com/engine/install/>
 
 =head1 IMAGE BUILD
 
-=over
+=over 4
 
-=item preconditions
+=item Preconditions
 
-* The Docker Service must be running
-* Build User must have access to the Docker Service (perhaps C<root> access is required)
-* Current Working Directory must be the Project Root Directory
-* The C<docker-compose> Build requires a C<docker-compose.yml> file which can be created
-  from the C<docker-compose.yml.example> file
+=over 2
+
+=item * The Docker Service must be running
+
+=item * Build User must have access to the Docker Service (perhaps C<root> access is required)
+
+=item * Current Working Directory must be the Project Root Directory
+
+=item * The C<docker-compose> Build requires a F<docker-compose.yml> file which can be created
+  from the F<docker-compose.yml.example> file
+
+=back
 
 =item Build with Docker
 
@@ -55,11 +62,11 @@ So the command to build the docker image is:
 
 =item Build with C<docker-compose>
 
-To build the Container Image with C<docker-compose> a C<docker-compose.yml> file is required.
-It can be created from the C<docker-compose.yml.example> file by copying it.
-Within the C<docker-compose.yml> file the entry C<services.web.volumes> must be configured to
+To build the Container Image with C<docker-compose> a F<docker-compose.yml> file is required.
+It can be created from the F<docker-compose.yml.example> file by copying it.
+Within the F<docker-compose.yml> file the entry C<services.web.volumes> must be configured to
 contain the absolute path to the Project Root Directory on the system.
-The C<docker-compose.yml> file contains instructions to expose the C<Mojolicious> Web Service
+The F<docker-compose.yml> file contains instructions to expose the C<Mojolicious> Web Service
 on Port C<3000> which seems to be the default behaviour for the Application.
 If the Application was configured to listen on a different port the file entry C<services.web.ports>
 must be adjusted accordingly.
@@ -76,9 +83,19 @@ So the command to build the docker image and launch it is:
 =item C<cpanm> Installation
 
 As discussed in the task issue L<Docker Deployment Issue|https://github.com/Grinnz/perldoc-browser/issues/26> the
-installation of the I<Perl> Modules for the SQLite Backend from the C<cpanfile> was executed at Image Build Time.
-So on updates of the C<cpanfile> it is recommendable to rebuild the Container Image as described above
+installation of the I<Perl> Modules for the SQLite Backend from the F<cpanfile> was executed at Image Build Time.
+So on updates of the F<cpanfile> it is recommendable to rebuild the Container Image as described above
 under B<IMAGE BUILD>.
+
+The used F<cpanfile> can be found in F</usr/share/perldoc-browser/> within the Docker Image.
+Also the C<cpanm> Installation Log is found inside the Image in F</usr/share/perldoc-browser/log/>.
+
+To inspect the Docker Image run the command:
+
+    docker run -it -v /absolute/path/to/project:/home/perldoc-browser:Z perldoc_web bash
+
+This will give a C<bash> shell and the file system can be inspected.
+
 Still the Start-Up Script will detect a different backend configuration or the
 C<perldoc-browser.pl install> Command and check whether key dependencies are met and run the
 C<cpanm> Installation accordingly

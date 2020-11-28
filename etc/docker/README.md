@@ -23,7 +23,7 @@ of the Docker Container.
 
 - Docker Engine
 
-    Next the `Docker` Service is installed locally.
+    Next the `Docker` Service has to be installed locally.
     if you want to use `docker-compose` it is recommended to do this step first because
     the `docker-compose` installation can break your Docker Engine installation.
     To install the Docker Engine it is recommended to follow the guides of the Official Documentation
@@ -31,14 +31,12 @@ of the Docker Container.
 
 # IMAGE BUILD
 
-- preconditions
-
-    \* The Docker Service must be running
-    \* Build User must have access to the Docker Service (perhaps `root` access is required)
-    \* Current Working Directory must be the Project Root Directory
-    \* The `docker-compose` Build requires a `docker-compose.yml` file which can be created
+- Preconditions
+    - The Docker Service must be running
+    - Build User must have access to the Docker Service (perhaps `root` access is required)
+    - Current Working Directory must be the Project Root Directory
+    - The `docker-compose` Build requires a `docker-compose.yml` file which can be created
       from the `docker-compose.yml.example` file
-
 - Build with Docker
 
     The Container Image for the `Mojolicious` Web Service was called "_perldoc\_web_" to difference it
@@ -69,6 +67,16 @@ of the Docker Container.
     installation of the _Perl_ Modules for the SQLite Backend from the `cpanfile` was executed at Image Build Time.
     So on updates of the `cpanfile` it is recommendable to rebuild the Container Image as described above
     under **IMAGE BUILD**.
+
+    The used `cpanfile` can be found in `/usr/share/perldoc-browser/` within the Docker Image.
+    Also the `cpanm` Installation Log is found inside the Image in `/usr/share/perldoc-browser/log/`.
+
+    To inspect the Docker Image run the command:
+
+        docker run -it -v /absolute/path/to/project:/home/perldoc-browser:Z perldoc_web bash
+
+    This will give a `bash` shell and the file system can be inspected.
+
     Still the Start-Up Script will detect a different backend configuration or the
     `perldoc-browser.pl install` Command and check whether key dependencies are met and run the
     `cpanm` Installation accordingly
