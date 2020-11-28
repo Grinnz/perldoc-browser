@@ -172,7 +172,7 @@ if [ "$1" = "perldoc-browser.pl" ]; then
     echo "Installing Dependencies with cpanm ..."
 
     for feat in "$sfeatures"; do
-      sfeatoptions+=" --with-feature=$feat"
+      sfeatoptions="$sfeatoptions --with-feature=$feat"
     done
 
     date +"%s" > log/cpanm_install_$(date +"%F").log
