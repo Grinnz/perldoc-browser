@@ -7,6 +7,12 @@ RUN apt-get update &&\
     liburl-encode-perl libextutils-config-perl libextutils-helpers-perl libextutils-installpaths-perl\
     libclone-choose-perl libhash-merge-perl libtest-deep-perl liburi-nested-perl\
     libsql-abstract-perl liburi-db-perl libdbd-sqlite3-perl
+RUN mkdir -p /usr/share/perldoc-browser/log
+COPY cpanfile cpanfile-cpandoc /usr/share/perldoc-browser/
+RUN cd /usr/share/perldoc-browser/\
+  && date +"%s" > log/cpanm_install_$(date +"%F").log\
+  ; cpanm -vn --installdeps --with-feature=sqlite . 2>&1 >> log/cpanm_install_$(date +"%F").log\
+  ; date +"%s" >> log/cpanm_install_$(date +"%F").log
 COPY etc/docker/entrypoint.sh /usr/local/bin/
 RUN chmod a+x /usr/local/bin/entrypoint.sh\
   && ln -s /usr/local/bin/entrypoint.sh /entrypoint.sh # backwards compat
