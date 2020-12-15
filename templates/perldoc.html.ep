@@ -1,5 +1,4 @@
 % use Mojo::Util;
-% my $expand = $c->cookie('perldoc_expand');
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -121,7 +120,7 @@
         margin-right: auto;
         padding: 3em;
         padding-top: 1em;
-        max-width: <%= $expand ? 'none' : '960px' %>;
+        max-width: 960px;
       }
       #moduleversion { float: right }
       #wrapperlicious .leading-notice {
@@ -159,7 +158,7 @@
 % }
   </head>
   <body onload="PR.prettyPrint()">
-    %= include 'menubar', expand => $expand
+    %= include 'menubar'
     <div id="wrapperlicious" class="container-fluid">
       <div id="perldocdiv">
       % my $url_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
