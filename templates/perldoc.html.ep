@@ -76,7 +76,7 @@
         margin-top: 0;
       }
       #wrapperlicious pre {
-        background-color: #fafafa;
+        background-color: #f6f6f6;
         border: 1px solid #c1c1c1;
         border-radius: 3px;
         font: 100% Consolas, Menlo, Monaco, Courier, monospace;
