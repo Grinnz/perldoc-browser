@@ -116,10 +116,11 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
   # Rewrite code blocks for syntax highlighting and correct indentation
   for my $e ($dom->find('pre > code')->each) {
     my $str = $e->all_text;
-    next if length $str < 5000 and $str =~ /[\$\@\%]\w|->\w|[;{]\s*(?:#|$)/m;
-    my $attrs = $e->attr;
-    my $class = $attrs->{class};
-    $attrs->{class} = defined $class ? "$class nohighlight" : 'nohighlight';
+    if (length $str > 5000 or $str !~ m/[\$\@\%]\w|->\w|[;{]\s*(?:#|$)/m) {
+      my $add_class = length $str > 5000 ? 'nohighlight' : 'plaintext';
+      my $attrs = $e->attr;
+      $attrs->{class} = join ' ', grep { defined } $attrs->{class}, $add_class;
+    }
   }
 
   my $url_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
