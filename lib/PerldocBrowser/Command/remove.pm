@@ -16,7 +16,10 @@ sub run ($self, @versions) {
   foreach my $version (@versions) {
     $self->app->unindex_perl_version($version) if defined $self->app->search_backend;
     my $target = $self->app->perls_dir->child($version);
+    my $rendered = $self->app->home->child('html', $version);
+    next unless -e $target;
     $target->remove_tree;
+    $rendered->remove_tree if -e $rendered;
     print "Removed Perl $version from $target\n";
   }
 }
