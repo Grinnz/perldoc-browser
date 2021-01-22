@@ -77,3 +77,6 @@ This is free software, licensed under:
 
 Bundled Perl 5 Raptor is Copyright (c) 2012, Sebastian Riedel, licensed under
 the CC-SA License, Version 4.0 L<http://creativecommons.org/licenses/by-sa/4.0>.
+
+Bundled highlight.pack.js is Copyright (c) 2006 by Ivan Sagalaev, licensed under
+the (three-clause) BSD License L<https://opensource.org/licenses/BSD-3-Clause>.
