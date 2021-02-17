@@ -534,7 +534,7 @@ sub _get_variable_list ($c) {
   my $path = _find_pod($c, 'perlvar') // return undef;
   my $src = path($path)->slurp;
 
-  my ($level, @names, $heading, @section, @result);
+  my ($level, @names, $heading, @section, @result) = (0);
   foreach my $para (split /\n\n+/, $src) {
     if ($level == 1 and $para =~ m/^=item\s+(.*)/) {
       push @names, $1;
