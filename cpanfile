@@ -11,7 +11,7 @@ requires 'List::Util' => '1.50';
 requires 'MetaCPAN::Pod::XHTML';
 requires 'Module::Metadata';
 requires 'Module::Runtime';
-requires 'Mojolicious' => '8.04';
+requires 'Mojolicious' => '9.16';
 requires 'Mojo::Log::Role::Clearable';
 requires 'Perl::Build';
 requires 'Pod::Simple' => '3.40';

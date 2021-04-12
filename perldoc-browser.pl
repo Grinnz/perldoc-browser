@@ -154,7 +154,7 @@ post '/csp-reports' => sub ($c) {
   $c->render(data => '');
 };
 
-any '/opensearch';
+any '/opensearch' => [format => ['xml']];
 
 plugin 'PerldocSearch';
 plugin 'PerldocRenderer';

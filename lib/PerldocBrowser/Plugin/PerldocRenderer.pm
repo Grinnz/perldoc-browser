@@ -49,15 +49,18 @@ sub register ($self, $app, $conf) {
   my $latest_perl_version = $app->latest_perl_version;
 
   foreach my $perl_version (@{$app->all_perl_versions}, '') {
-    my $versioned = $r->any("/$perl_version")->to(
+    my $versioned = $r->any("/$perl_version" => [format => ['html', 'txt']])->to(
       module => $homepage,
       perl_version => length $perl_version ? $perl_version : $latest_perl_version,
       url_perl_version => $perl_version,
+      format => undef, # format extension optional
     );
 
     # individual function and variable pages
+    # functions may contain / but not .
     $versioned->any('/functions/:function' => {module => 'functions'}
       => [function => qr/[^.]+/] => \&_function);
+    # variables may contain /, and . only in the cases of $. and $<digits> ($1, $2, ...)
     $versioned->any('/variables/:variable' => {module => 'variables'}
       => [variable => qr/[^.]+(?:\.{3}[^.]+|\.)?/] => \&_variable);
 
@@ -69,7 +72,8 @@ sub register ($self, $app, $conf) {
     $versioned->any('/modules' => {module => 'modules'} => \&_modules_index);
 
     # all other docs
-    $versioned->any('/:module' => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
+    # allow .pl for perl5db.pl
+    $versioned->any('/:module' => [format => ['html', 'txt', 'pl'], module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
   }
 }
 
