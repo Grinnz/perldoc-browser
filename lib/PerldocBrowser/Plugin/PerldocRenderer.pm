@@ -73,7 +73,8 @@ sub register ($self, $app, $conf) {
 
     # all other docs
     # allow .pl for perl5db.pl
-    $versioned->any('/:module' => [format => ['html', 'txt', 'pl'], module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
+    # allow / for legacy compatibility - redirected to ::
+    $versioned->any('/:module' => [format => ['html', 'txt', 'pl'], module => qr/[^.]+/] => \&_perldoc);
   }
 }
 
