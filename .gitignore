@@ -8,7 +8,6 @@ perldoc-browser.sqlite*
 hypnotoad.pid
 
 #Project Files
-.gitignore
 .project
 
 #Container Runtime Content
