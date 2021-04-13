@@ -6,3 +6,16 @@ html/*
 perldoc-browser.conf
 perldoc-browser.sqlite*
 hypnotoad.pid
+
+#Project Files
+.project
+
+#Container Runtime Content
+.bash_history
+.cpanm
+.cpanm/*
+perl5
+perl5/*
+
+#Local Docker-Compose Configuration
+docker-compose.yml

@@ -1,0 +1,116 @@
+=head1 NAME
+
+Perldoc Browser - Docker Deployment
+
+=head1 DESCRIPTION
+
+The Objective of the C<Docker Deployment> is to be able to run the C<perldoc-browser.pl> Command in
+a seperate Docker Container.
+It can be useful to run C<Test::Mojo> Test Suites.
+
+=head1 REQUIREMENTS
+
+To build and run the Docker Container the Minimum Requirement is to have the C<Docker> Service installed.
+Additionally the C<docker-compose> Command can provide a nice enhancement to ease the Operation
+of the Docker Container.
+
+=head1 INSTALLATION
+
+=over
+
+=item docker-compose
+
+To run the Docker Container with the C<docker-compose> Command the C<docker-compose> Package should
+be installed first. The C<docker-compose> Package is provided by most Linux Distributions.
+
+=item Docker Engine
+
+Next the C<Docker> Service has to be installed locally.
+if you want to use C<docker-compose> it is recommended to do this step first because
+the C<docker-compose> installation can break your Docker Engine installation.
+To install the Docker Engine it is recommended to follow the guides of the Official Documentation
+L<Docker Engine Installation|https://docs.docker.com/engine/install/>
+
+=back
+
+=head1 IMAGE BUILD
+
+=over 4
+
+=item Preconditions
+
+=over 2
+
+=item * The Docker Service must be running
+
+=item * Build User must have access to the Docker Service (perhaps C<root> access is required)
+
+=item * Current Working Directory must be the Project Root Directory
+
+=item * The C<docker-compose> Build requires a F<docker-compose.yml> file which can be created
+  from the F<docker-compose.yml.example> file
+
+=back
+
+=item Build with Docker
+
+The Container Image for the C<Mojolicious> Web Service was called "I<perldoc_web>" to difference it
+from the Backend Container Image.
+So the command to build the docker image is:
+
+    docker build -t perldoc_web .
+
+=item Build with C<docker-compose>
+
+To build the Container Image with C<docker-compose> a F<docker-compose.yml> file is required.
+It can be created from the F<docker-compose.yml.example> file by copying it.
+Within the F<docker-compose.yml> file the entry C<services.web.volumes> must be configured to
+contain the absolute path to the Project Root Directory on the system.
+The F<docker-compose.yml> file contains instructions to expose the C<Mojolicious> Web Service
+on Port C<3000> which seems to be the default behaviour for the Application.
+If the Application was configured to listen on a different port the file entry C<services.web.ports>
+must be adjusted accordingly.
+So the command to build the docker image and launch it is:
+
+    docker-compose up --build
+
+=back
+
+=head1 IMAGE INITIALISATION
+
+=over
+
+=item C<cpanm> Installation
+
+As discussed in the task issue L<Docker Deployment Issue|https://github.com/Grinnz/perldoc-browser/issues/26> the
+installation of the I<Perl> Modules for the SQLite Backend from the F<cpanfile> was executed at Image Build Time.
+So on updates of the F<cpanfile> it is recommendable to rebuild the Container Image as described above
+under B<IMAGE BUILD>.
+
+The used F<cpanfile> can be found in F</usr/share/perldoc-browser/> within the Docker Image.
+Also the C<cpanm> Installation Log is found inside the Image in F</usr/share/perldoc-browser/log/>.
+
+To inspect the Docker Image run the command:
+
+    docker run -it -v /absolute/path/to/project:/home/perldoc-browser:Z perldoc_web bash
+
+This will give a C<bash> shell and the file system can be inspected.
+
+Still the Start-Up Script will detect a different backend configuration or the
+C<perldoc-browser.pl install> Command and check whether key dependencies are met and run the
+C<cpanm> Installation accordingly
+
+=item populating the search backend
+
+The new built Container Image contains an empty C<perldoc-browser.pl> Installation
+To run correctly the Search Backend needs to be populated.
+So the command to populate the Search Backend is:
+
+   docker run -it -v /absolute/path/to/project:/home/perldoc-browser:Z perldoc_web perldoc-browser.pl index all
+
+This will execute command C<perldoc-browser.pl index all> in the project directory.
+The results will be stored persistently in the project directory for further container launches.
+
+=back
+
+=cut
