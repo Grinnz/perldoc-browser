@@ -1,5 +1,4 @@
 % use Mojo::Util;
-% my $expand = $c->cookie('perldoc_expand');
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -12,8 +11,7 @@
     % $canonical->host(config('canonical_host')) if defined config('canonical_host');
     <link rel="canonical" href="<%= $canonical->to_string %>">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prettify/r298/prettify.min.css" integrity="sha256-IPtNBA1od/cGBfXTxYDxuT5+Y2BKy14o6j0FaIXDmYk=" crossorigin="anonymous" />
-    %= stylesheet '/prettify-mojo-light.css'
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/stackoverflow-light.min.css" integrity="sha512-cG1IdFxqipi3gqLmksLtuk13C+hBa57a6zpWxMeoY3Q9O6ooFxq50DayCdm0QrDgZjMUn23z/0PMZlgft7Yp5Q==" crossorigin="anonymous" />
     <style>
       body {
         background: #f4f4f5;
@@ -78,19 +76,20 @@
         margin-top: 0;
       }
       #wrapperlicious pre {
-        background-color: #fafafa;
         border: 1px solid #c1c1c1;
         border-radius: 3px;
         font: 100% Consolas, Menlo, Monaco, Courier, monospace;
-        padding: 1em;
         margin-bottom: 1em;
         margin-top: 1em;
       }
       #wrapperlicious pre > code {
+        display: block;
+        background-color: #f6f6f6;
         font: 0.9em Consolas, Menlo, Monaco, Courier, monospace;
         line-height: 1.5em;
         text-align: left;
         white-space: pre;
+        padding: 1em;
       }
       #wrapperlicious dl, #wrapperlicious ol, #wrapperlicious ul {
         margin-bottom: 1em;
@@ -121,7 +120,7 @@
         margin-right: auto;
         padding: 3em;
         padding-top: 1em;
-        max-width: <%= $expand ? 'none' : '960px' %>;
+        max-width: 960px;
       }
       #moduleversion { float: right }
       #wrapperlicious .leading-notice {
@@ -158,8 +157,8 @@
     </script>
 % }
   </head>
-  <body onload="PR.prettyPrint()">
-    %= include 'menubar', expand => $expand
+  <body>
+    %= include 'menubar'
     <div id="wrapperlicious" class="container-fluid">
       <div id="perldocdiv">
       % my $url_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
@@ -229,6 +228,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.slim.min.js" integrity="sha512-/DXTXr6nQodMUiq+IUJYCt2PPOUjrHJ9wFrqpJ3XkgPNOZVfMok7cRw6CSxyCQxXn6ozlESsSh1/sMCTF1rL/g==" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.1/umd/popper.min.js" integrity="sha512-ubuT8Z88WxezgSqf3RLuNi5lmjstiJcyezx34yIU2gAHonIi27Na7atqzUZCOoY4CExaoFumzOsFQ2Ch+I/HCw==" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prettify/r298/prettify.min.js" integrity="sha256-SHXnnZAbgSEf+OBhDLR7I2mx9vNZAIzPeCGhxRV+VQw=" crossorigin="anonymous"></script>
+    %= javascript '/highlight.pack.js';
+    <script>hljs.initHighlightingOnLoad();</script>
   </body>
 </html>

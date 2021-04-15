@@ -49,15 +49,18 @@ sub register ($self, $app, $conf) {
   my $latest_perl_version = $app->latest_perl_version;
 
   foreach my $perl_version (@{$app->all_perl_versions}, '') {
-    my $versioned = $r->any("/$perl_version")->to(
+    my $versioned = $r->any("/$perl_version" => [format => ['html', 'txt']])->to(
       module => $homepage,
       perl_version => length $perl_version ? $perl_version : $latest_perl_version,
       url_perl_version => $perl_version,
+      format => undef, # format extension optional
     );
 
     # individual function and variable pages
+    # functions may contain / but not .
     $versioned->any('/functions/:function' => {module => 'functions'}
       => [function => qr/[^.]+/] => \&_function);
+    # variables may contain /, and . only in the cases of $. and $<digits> ($1, $2, ...)
     $versioned->any('/variables/:variable' => {module => 'variables'}
       => [variable => qr/[^.]+(?:\.{3}[^.]+|\.)?/] => \&_variable);
 
@@ -69,7 +72,9 @@ sub register ($self, $app, $conf) {
     $versioned->any('/modules' => {module => 'modules'} => \&_modules_index);
 
     # all other docs
-    $versioned->any('/:module' => [module => qr/[^.]+(?:\.[0-9]+)*/] => \&_perldoc);
+    # allow .pl for perl5db.pl and .pl scripts
+    # allow / for legacy compatibility - redirected to ::
+    $versioned->any('/:module' => [format => ['html', 'txt', 'pl'], module => qr/[^.]+/] => \&_perldoc);
   }
 }
 
@@ -115,12 +120,12 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
 
   # Rewrite code blocks for syntax highlighting and correct indentation
   for my $e ($dom->find('pre > code')->each) {
-    next if (my $str = $e->all_text) =~ /^\s*(?:\$|Usage:)\s+/m;
-    next unless $str =~ /[\$\@\%]\w|->\w|[;{]\s*(?:#|$)/m;
-    next if length $str > 5000;
-    my $attrs = $e->attr;
-    my $class = $attrs->{class};
-    $attrs->{class} = defined $class ? "$class prettyprint" : 'prettyprint';
+    my $str = $e->all_text;
+    if (length $str > 5000 or $str !~ m/[\$\@\%]\w|->\w|[;{]\s*(?:#|$)/m) {
+      my $add_class = length $str > 5000 ? 'nohighlight' : 'plaintext';
+      my $attrs = $e->attr;
+      $attrs->{class} = join ' ', grep { defined } $attrs->{class}, $add_class;
+    }
   }
 
   my $url_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
@@ -534,7 +539,7 @@ sub _get_variable_list ($c) {
   my $path = _find_pod($c, 'perlvar') // return undef;
   my $src = path($path)->slurp;
 
-  my ($level, @names, $heading, @section, @result);
+  my ($level, @names, $heading, @section, @result) = (0);
   foreach my $para (split /\n\n+/, $src) {
     if ($level == 1 and $para =~ m/^=item\s+(.*)/) {
       push @names, $1;

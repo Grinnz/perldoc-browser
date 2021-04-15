@@ -22,7 +22,7 @@ sub run ($self) {
   my $target = $self->app->perls_dir->child('bleads', $date);
   my $logfile = $self->app->home->child('log', "perl-build-blead.log");
   print "Installing Perl blead to $target ...\n";
-  my @args = ('--noman', '-Dusedevel', '--symlink-devel-executables');
+  my @args = ('--noman', '-Dusedevel', '-Uversiononly');
   run3 ['perl-build', @args, 'blead', $target], undef, "$logfile", "$logfile";
   die "Failed to install Perl blead to $target (logfile can be found at $logfile)\n" if $?;
   print "Installed Perl blead to $target\n";

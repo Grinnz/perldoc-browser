@@ -38,10 +38,11 @@ sub register ($self, $app, $conf) {
   my $latest_perl_version = $app->latest_perl_version;
 
   foreach my $perl_version (@{$app->all_perl_versions}, '') {
-    my $versioned = $app->routes->any("/$perl_version")->to(
+    my $versioned = $app->routes->any("/$perl_version" => [format => ['html']])->to(
       module => 'search',
       perl_version => length $perl_version ? $perl_version : $latest_perl_version,
       url_perl_version => $perl_version,
+      format => undef, # format extension optional
     );
     $versioned->any('/search' => \&_search);
   }

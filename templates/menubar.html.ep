@@ -72,21 +72,44 @@
     </ul>
     <ul class="navbar-nav">
       <script>
-        function toggle_expand(){
+        function set_expand (expand) {
           var perldocdiv = document.getElementById('perldocdiv');
           var width = window.getComputedStyle(perldocdiv).getPropertyValue('max-width');
-          var expand = (width == '' || width == 'none') ? 0 : 1;
-          perldocdiv.style.setProperty('max-width', expand ? 'none' : '960px');
-          var button = document.getElementById('content-expand-button');
-          if (expand) {
-            button.classList.replace('btn-outline-light', 'btn-light');
-          } else {
-            button.classList.replace('btn-light', 'btn-outline-light');
+          var expanded = (width == '' || width == 'none') ? true : false;
+          if (expand === null) {
+            expand = !expanded;
           }
+          if ((expand && !expanded) || (!expand && expanded)) {
+            perldocdiv.style.setProperty('max-width', expand ? 'none' : '960px');
+            var button_classlist = document.getElementById('content-expand-button').classList;
+            if (expand) {
+              button_classlist.add('btn-light');
+              button_classlist.remove('btn-outline-light');
+            } else {
+              button_classlist.add('btn-outline-light');
+              button_classlist.remove('btn-light');
+            }
+          }
+          return expand;
+        }
+        function toggle_expand () {
+          var expand = set_expand(null);
           document.cookie = 'perldoc_expand=' + (expand ? 1 : 0) + '; path=/; expires=Tue, 19 Jan 2038 03:14:07 UTC';
         }
+        function read_expand () {
+          return document.cookie.split(';').some(function (item) { return item.indexOf('perldoc_expand=1') >= 0 });
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () {
+            if (read_expand()) {
+              set_expand(true);
+            }
+          });
+        } else if (read_expand()) {
+          set_expand(true);
+        }
       </script>
-      <button id="content-expand-button" type="button" class="btn <%= $expand ? 'btn-light' : 'btn-outline-light' %> d-none d-lg-inline-block mr-2" onclick="toggle_expand()">Expand</button>
+      <button id="content-expand-button" type="button" class="btn btn-outline-light d-none d-lg-inline-block mr-2" onclick="toggle_expand()">Expand</button>
     <ul>
 % if (defined app->search_backend) {
 %   my $search_params = config('search_params') // {};
