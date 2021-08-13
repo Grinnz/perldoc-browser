@@ -115,6 +115,22 @@ sub _find_module ($c, $module) {
   return $meta;
 }
 
+my %perlglossary_anchors = (
+  buffered        => 'buffer',
+  compiled        => 'compile',
+  captured        => 'capturing',
+  casemaps        => 'case',
+  dereferencing   => 'dereference',
+  destroying      => 'destroy',
+  directories     => 'directory',
+  'dynamic scope' => 'dynamic-scoping',
+  executed        => 'execute',
+  execution       => 'execute',
+  importing       => 'import',
+  'lexical scope' => 'lexical-scoping',
+  qualifying      => 'qualified',
+);
+
 sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $variable = undef) {
   my $dom = Mojo::DOM->new($c->pod_to_html($src, $url_perl_version));
 
@@ -187,6 +203,28 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
     for my $e ($dom->find('p > b')->each) {
       my $text = $e->all_text;
       $e->content($text) if $text =~ s/^use \K([a-z]+)(;|$)/$c->link_to("$1" => $c->url_for($c->append_url_path("$url_prefix\/", "$1"))) . $2/e;
+    }
+  }
+
+  # Insert links on perlglossary
+  if ($module eq 'perlglossary') {
+    my %words = %perlglossary_anchors;
+    for my $e ($dom->find('dt')->each) {
+      my $id = $e->{id} // next;
+      my $text = lc $e->all_text;
+      $words{$text} = $words{$text =~ tr/ /-/r} = $id;
+      $words{$_} //= $id for map { ($_, s/s\z//r, s/es\z//r) } split ' ', $text;
+    }
+
+    for my $e ($dom->find('dd b')->each) {
+      my $text = lc $e->all_text;
+      next unless $text =~ m/^[a-z]/;
+      my $anchor = $words{$text} // $words{$text =~ s/s\z//r} // $words{$text =~ s/es\z//r};
+      if (defined $anchor) {
+        $e->wrap($c->link_to('' => "#$anchor"));
+      } else {
+        $c->app->log->debug("($url_perl_version) No perlglossary heading found for '$text'");
+      }
     }
   }
 
