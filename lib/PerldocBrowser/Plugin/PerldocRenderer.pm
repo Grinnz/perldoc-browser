@@ -212,14 +212,14 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
     for my $e ($dom->find('dt')->each) {
       my $id = $e->{id} // next;
       my $text = lc $e->all_text;
-      $words{$text} = $words{$text =~ tr/ /-/r} = $id;
-      $words{$_} //= $id for map { ($_, s/s\z//r, s/es\z//r) } split ' ', $text;
+      $words{$text} = $words{$text =~ tr/ /-/r} = $words{"${text}s"} = $words{"${text}es"} = $id;
+      $words{$_} //= $id for split ' ', $text;
     }
 
     for my $e ($dom->find('dd b')->each) {
       my $text = lc $e->all_text;
       next unless $text =~ m/^[a-z]/;
-      my $anchor = $words{$text} // $words{$text =~ s/s\z//r} // $words{$text =~ s/es\z//r};
+      my $anchor = $words{$text};
       if (defined $anchor) {
         $e->wrap($c->link_to('' => "#$anchor"));
       } else {
