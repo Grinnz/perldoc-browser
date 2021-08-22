@@ -6,7 +6,7 @@ RUN apt-get update &&\
     libsyntax-keyword-try-perl libcapture-tiny-perl libhttp-tinyish-perl libnet-ssleay-perl\
     liburl-encode-perl libextutils-config-perl libextutils-helpers-perl libextutils-installpaths-perl\
     libclone-choose-perl libhash-merge-perl libtest-deep-perl liburi-nested-perl\
-    libsql-abstract-perl liburi-db-perl libdbd-sqlite3-perl
+    libsql-abstract-perl liburi-db-perl libdbd-sqlite3-perl postgresql-server-dev-all
 RUN mkdir -p /usr/share/perldoc-browser/log
 COPY cpanfile cpanfile-cpandoc /usr/share/perldoc-browser/
 RUN cd /usr/share/perldoc-browser/\
