@@ -1,5 +1,17 @@
 version: '3'
 services:
+  db:
+    container_name: 'perldoc_db'
+    image: postgres:11.13-alpine3.14
+#    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - /absolute/path/to/project/data:/var/lib/postgresql/data:Z
+    environment:
+      - COMPONENT=perldoc_db
+      - POSTGRES_USER=perldoc
+      - POSTGRES_PASSWORD=secret
   web:
     container_name: 'perldoc_web'
     image: perldoc_web
