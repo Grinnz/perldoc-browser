@@ -19,7 +19,7 @@ services:
     ports:
       - "9200:9200"
     volumes:
-      - /home/bodo/Projekte/perl/perldoc_web/data/es:/usr/share/elasticsearch/data:Z
+      - /absolute/path/to/project/data/es:/usr/share/elasticsearch/data:Z
     environment:
       - COMPONENT=perldoc_es
   web:
