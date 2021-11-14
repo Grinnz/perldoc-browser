@@ -96,7 +96,7 @@ with the C<docker-compose> command.
 
 =item C<cpanm> Installation
 
-As discussed in the task issue L<Docker Deployment Issue|https://github.com/Grinnz/perldoc-browser/issues/26> the
+As discussed in the task issue L<Docker Deployment Task|https://github.com/Grinnz/perldoc-browser/issues/26> the
 installation of the I<Perl> Modules for the SQLite Backend from the F<cpanfile> was executed at Image Build Time.
 So on updates of the F<cpanfile> it is recommendable to rebuild the Container Image as described above
 under L<B<IMAGE BUILD>>.
@@ -114,12 +114,11 @@ Still the Container Start-Up Script F<entrypoint.sh> will detect a different bac
 or the C<perldoc-browser.pl install> Command and check whether the key dependencies are met
 and run the C<cpanm> Installation accordingly
 
-=item starting up the Docker Cluster
+=item Starting up the Docker Cluster
 
-The C<PostgreSQL> Database is only within the C<docker-compose> environment known with the hostname C<db>.
-So to use the database hostname C<db> any command must be run within the C<docker-compose> environment.
-To startup the Docker Cluster with the C<docker-compose> environment the following command
-is needed at first:
+The Docker Cluster consists of three components.
+To access any of these components at first the Docker Cluster needs to be started with
+this C<docker-compose> command:
 
     docker-compose up -d
 
@@ -128,7 +127,65 @@ It is important to verify that the containers are running correctly with:
 
     docker-compose ps
 
-=item populating the search backend
+This will make the three components accessible with the C<docker-compose exec> command.
+
+=over 2
+
+=item * The I<Web Site>
+
+The I<Web Site> is accessible with the component name C<web>.
+In the I<Web Site> component runs the C<perldoc-browser.pl> I<Mojolicious> Web Application.
+To access the I<Web Site> component and get a C<bash> prompt
+this C<docker-compose> command can be used:
+
+    docker-compose exec web bash
+
+=item * The I<PostgreSQL> Database
+
+The I<PostgreSQL> Database is only within the C<docker-compose> environment known with the hostname C<db>.
+So, to use the database hostname C<db> any command must be run within the C<docker-compose> environment.
+On a new installation the ownership of I<PostgreSQL> data directory must be changed
+to match the containers C<postgres> user with this command:
+
+    chown 70:70 data/pg
+
+=item * The I<Elasticsearch> Engine
+
+The I<Elasticsearch> Engine is only within the C<docker-compose> environment known with the hostname C<elasticsearch>.
+So, to use the I<Elasticsearch> hostname C<elasticsearch> any command must be run within the C<docker-compose> environment.
+The I<Elasticsearch> API is also accessible on the external port C<9200>.
+So, it can also be queried with the URL C<http://localhost:9200> from outside the Docker Cluster.
+According to the official I<Elastic.co> documentation the Virtual Memory per process must
+be increased as documented at
+L<Virtual Memory Requirements|https://www.elastic.co/guide/en/elasticsearch/reference/6.8/vm-max-map-count.html>.
+It can be increase temporary with this command:
+
+    sysctl -w vm.max_map_count=262144
+
+or it can be set permanently within a file like F</etc/sysctl.d/elasticserach.conf> or directly in F</etc/sysctl.conf>
+
+    vm.max_map_count = 262144
+
+and then reloaded with the command C<sysctl -p>.
+The I<Suse> Documentation explains very nicely how and whether this will affect the system
+as documented at L<I<Suse> Documentation on C<vm.max_map_count>|https://www.suse.com/support/kb/doc/?id=000016692>
+
+B<NOTICE:>
+
+=over 2
+
+The I<Elasticsearch> Engine is known to start up slow. It can take up to B<30 s>.
+This is also understandable from the referenced I<Suse> Documentation on the Virtual Memory Requirement.
+So, a too early querying can produce an error as documented at
+L<Too early Query produces an Exception|https://github.com/Grinnz/perldoc-browser/issues/45>.
+See L</"Querying the I<Elasticsearch> Engine"> for instructions to check whether
+the engine is ready for service
+
+=back
+
+=back
+
+=item Populating the search backend
 
 The new built Container Image contains an empty C<perldoc-browser.pl> Installation
 To run correctly the Search Backend needs to be populated.
@@ -140,10 +197,10 @@ Now the command to populate the Search Backend is:
 This will execute command C<perldoc-browser.pl index all> in the project directory.
 The results will be stored persistently in the project directory for further container launches.
 
-=item accessing the C<PostgreSQL> Database
+=item Accessing the I<PostgreSQL> Database
 
 To be able to access the database the Docker Cluster must be launched as described
-in L<B<starting up the Docker Cluster>>.
+in L</"B<Starting up the Docker Cluster>">.
 
 Next the command C<psql> can be used within the C<PostgreSQL> container.
 The C<PostgreSQL> image is based on I<Alpine Linux>
@@ -177,6 +234,129 @@ The C<pods> table can contain for 1 I<Perl> Version 1456 entries:
     -------
       1456
     (1 row)
+
+
+=item Querying the I<Elasticsearch> Engine
+
+The I<Elasticsearch> Engine needs to be queried in different occasions to check its
+availability and health and the correctness of the indices.
+This can be done easily over the I<Elasticsearch> API by using the Web Endpoints that it publishes.
+
+=over 2
+
+=item Ready for Service
+
+The I<Elasticsearch> Engine is ready for service when its Root Web Endpoints produces
+a HTTP Response with B<HTTP Status Code> C<200 OK>
+
+    curl http://localhost:9200
+
+The Response will look similar to this:
+
+    > GET / HTTP/1.1
+    > Host: localhost:9200
+    > User-Agent: curl/7.64.0
+    > Accept: */*
+    >
+    < HTTP/1.1 200 OK
+    < content-type: application/json; charset=UTF-8
+    < content-length: 490
+    <
+    {
+      "name" : "Evou766",
+      "cluster_name" : "elasticsearch",
+      "cluster_uuid" : "D7p_jR1TQBeK7J69Hk3QRg",
+      "version" : {
+        "number" : "6.8.13",
+        "build_flavor" : "oss",
+        "build_type" : "tar",
+        "build_hash" : "be13c69",
+        "build_date" : "2020-10-16T09:09:46.555371Z",
+        "build_snapshot" : false,
+        "lucene_version" : "7.7.3",
+        "minimum_wire_compatibility_version" : "5.6.0",
+        "minimum_index_compatibility_version" : "5.0.0"
+      },
+      "tagline" : "You Know, for Search"
+    }
+
+=item Cluster Health Status
+
+The I<Elasticsearch> Cluster Health is an indicator for any error within the engine
+or the indices. A status of "I<green>" or "I<yellow>" indicates a correct and healthy status.
+While a status "I<red>" indicates an error within the indices. This can originate
+from uncomplete or interrupted indexing or an sudden crash of the engine.
+An re-indexing might fix this issue.
+The Cluster Health can be checked over this API endpoint:
+
+    curl -v http://localhost:9200/_cat/health
+
+The Response will look similar to this:
+
+    > GET /_cat/health HTTP/1.1
+    > Host: localhost:9200
+    > User-Agent: curl/7.64.0
+    > Accept: */*
+    >
+    < HTTP/1.1 200 OK
+    < content-type: text/plain; charset=UTF-8
+    < content-length: 65
+    <
+    1636891612 12:06:52 elasticsearch yellow 1 1 5 5 0 0 5 0 - 50.0%
+
+=item Indices Health Status
+
+The I<Elasticsearch> Indices Health Status is an indicator for any error within the indices.
+A status of "I<green>" or "I<yellow>" indicates a correct and healthy status.
+While a status "I<red>" indicates an error within the indices. This can originate
+from uncomplete or interrupted indexing or an sudden crash of the engine.
+An re-indexing might fix this issue.
+The Indices Health Status can be checked over this API endpoint:
+
+    curl -v http://localhost:9200/_cat/indices
+
+The Response will look similar to this:
+
+    > GET /_cat/indices HTTP/1.1
+    > Host: localhost:9200
+    > User-Agent: curl/7.64.0
+    > Accept: */*
+    >
+    < HTTP/1.1 200 OK
+    < content-type: text/plain; charset=UTF-8
+    < content-length: 455
+    <
+    yellow open perldeltas_5.28.1_1636798290 BTS4QdaeQk6OJLFnyYUI9g 1 1 2164 0   3.2mb   3.2mb
+    yellow open faqs_5.28.1_1636798290       gyrqSq7mQrKXzAmQJ4cGVA 1 1  305 0 784.9kb 784.9kb
+    yellow open variables_5.28.1_1636798290  wjDlOrQrRaWb77HTKhdA5Q 1 1  150 0  17.2kb  17.2kb
+    yellow open pods_5.28.1_1636798290       PJ-EZ0IbQb67EOzkGrVj1w 1 1 1579 0  23.2mb  23.2mb
+    yellow open functions_5.28.1_1636798290  xzukrTriSNWiyPqKMpZU4w 1 1  292 0 570.6kb 570.6kb
+
+=item Aliases Associations
+
+The Project also uses aliases in I<Elasticsearch>. It is important that they are set correctly.
+The Aliases Associations can be checked over this API endpoint:
+
+    curl -v http://localhost:9200/_cat/aliases
+
+The Response will look similar to this:
+
+    > GET /_cat/aliases HTTP/1.1
+    > Host: localhost:9200
+    > User-Agent: curl/7.64.0
+    > Accept: */*
+    >
+    < HTTP/1.1 200 OK
+    < content-type: text/plain; charset=UTF-8
+    < content-length: 265
+    <
+    functions_5.28.1  functions_5.28.1_1636798290  - - -
+    perldeltas_5.28.1 perldeltas_5.28.1_1636798290 - - -
+    faqs_5.28.1       faqs_5.28.1_1636798290       - - -
+    variables_5.28.1  variables_5.28.1_1636798290  - - -
+    pods_5.28.1       pods_5.28.1_1636798290       - - -
+
+=back
 
 =back
 

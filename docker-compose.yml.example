@@ -22,6 +22,7 @@ services:
       - /absolute/path/to/project/data/es:/usr/share/elasticsearch/data:Z
     environment:
       - COMPONENT=perldoc_es
+      - JAVA_HOME=/usr/lib/jvm/default-jvm
   web:
     container_name: 'perldoc_web'
     image: perldoc_web
