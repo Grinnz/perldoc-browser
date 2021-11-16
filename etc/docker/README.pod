@@ -99,7 +99,7 @@ with the C<docker-compose> command.
 As discussed in the task issue L<Docker Deployment Task|https://github.com/Grinnz/perldoc-browser/issues/26> the
 installation of the I<Perl> Modules for the SQLite Backend from the F<cpanfile> was executed at Image Build Time.
 So on updates of the F<cpanfile> it is recommendable to rebuild the Container Image as described above
-under L<B<IMAGE BUILD>>.
+under L</"B<IMAGE BUILD>">.
 
 The used F<cpanfile> can be found in F</usr/share/perldoc-browser/> within the Docker Image.
 Also the C<cpanm> Installation Log is found inside the Image in F</usr/share/perldoc-browser/log/>.
@@ -144,10 +144,9 @@ this C<docker-compose> command can be used:
 
 The I<PostgreSQL> Database is only within the C<docker-compose> environment known with the hostname C<db>.
 So, to use the database hostname C<db> any command must be run within the C<docker-compose> environment.
-On a new installation the ownership of I<PostgreSQL> data directory must be changed
-to match the containers C<postgres> user with this command:
+On a new installation the file F<data/pg/.keep> obstructs the process and must be removed with this command:
 
-    chown 70:70 data/pg
+    rm data/pg/.keep
 
 =item * The I<Elasticsearch> Engine
 
