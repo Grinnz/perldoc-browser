@@ -137,8 +137,13 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
   # Rewrite code blocks for syntax highlighting and correct indentation
   for my $e ($dom->find('pre > code')->each) {
     my $str = $e->all_text;
-    if (length $str > 5000 or $str !~ m/[\$\@\%]\w|->\w|[;{]\s*(?:#|$)/m) {
-      my $add_class = length $str > 5000 ? 'nohighlight' : 'plaintext';
+    my $add_class;
+    if ($module eq 'perl' or $module eq 'index' or length $str > 5000) {
+      $add_class = 'nohighlight';
+    } elsif ($str !~ m/[\$\@\%]\w|->\w|[;{]\s*(?:#|$)/m) {
+      $add_class = 'plaintext';
+    }
+    if (defined $add_class) {
       my $attrs = $e->attr;
       $attrs->{class} = join ' ', grep { defined } $attrs->{class}, $add_class;
     }
