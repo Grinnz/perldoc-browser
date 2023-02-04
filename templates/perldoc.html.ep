@@ -190,7 +190,7 @@
         <div class="leading-notice">
           You are viewing the version of this documentation from Perl <%= $url_perl_version %>.
           % if (perl_version_is_dev($perl_version)) {
-            This is a development release of Perl.
+            This is a development version of Perl.
           % } else {
             <%= link_to 'View the latest version' => url_with(current_doc_path) %>
           % }
