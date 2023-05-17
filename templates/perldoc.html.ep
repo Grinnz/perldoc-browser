@@ -15,7 +15,7 @@
     <style>
       body {
         background: #f4f4f5;
-        color: #445555;
+        color: #020202;
       }
       .navbar-dark {
         background-image: -webkit-linear-gradient(top, #005f85 0, #002e49 100%);
@@ -41,7 +41,7 @@
       #wrapperlicious h4 { font-size: 0.9em }
       #wrapperlicious h1, #wrapperlicious h2, #wrapperlicious h3,
       #wrapperlicious h4, #wrapperlicious dt {
-        color: #2a2a2a;
+        color: #020202;
         margin-top: 1em;
         margin-bottom: 1em;
         position: relative;
@@ -55,7 +55,7 @@
         color: inherit;
         background-color: rgba(0, 0, 0, 0.04);
         border-radius: 3px;
-        font: 0.9em Consolas, Menlo, Monaco, Courier, monospace;
+        font: 0.9em Consolas, Menlo, Monaco, monospace;
         padding: 0.3em;
       }
       #wrapperlicious dd {
@@ -78,14 +78,14 @@
       #wrapperlicious pre {
         border: 1px solid #c1c1c1;
         border-radius: 3px;
-        font: 100% Consolas, Menlo, Monaco, Courier, monospace;
+        font: 100% Consolas, Menlo, Monaco, monospace;
         margin-bottom: 1em;
         margin-top: 1em;
       }
       #wrapperlicious pre > code {
         display: block;
         background-color: #f6f6f6;
-        font: 0.9em Consolas, Menlo, Monaco, Courier, monospace;
+        font: 0.9em Consolas, Menlo, Monaco, monospace;
         line-height: 1.5em;
         text-align: left;
         white-space: pre;
