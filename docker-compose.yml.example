@@ -7,11 +7,21 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - /absolute/path/to/project/data:/var/lib/postgresql/data:Z
+      - /absolute/path/to/project/data/pg:/var/lib/postgresql/data:Z
     environment:
       - COMPONENT=perldoc_db
       - POSTGRES_USER=perldoc
       - POSTGRES_PASSWORD=secret
+  elasticsearch:
+    container_name: 'perldoc_es'
+    image: blacktop/elasticsearch:6.8
+#    restart: always
+    ports:
+      - "9200:9200"
+    volumes:
+      - /absolute/path/to/project/data/es:/usr/share/elasticsearch/data:Z
+    environment:
+      - COMPONENT=perldoc_es
   web:
     container_name: 'perldoc_web'
     image: perldoc_web

@@ -19,8 +19,7 @@ perl5/*
 
 #Database Container Storage
 data
-data/*
-!data/.keep
+data/**
 
 #Local Docker-Compose Configuration
 docker-compose.yml
