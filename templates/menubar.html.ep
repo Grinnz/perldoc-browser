@@ -110,7 +110,7 @@
         }
       </script>
       <button id="content-expand-button" type="button" class="btn btn-outline-light d-none d-lg-inline-block mr-2" onclick="toggle_expand()">Expand</button>
-    <ul>
+    </ul>
 % if (defined app->search_backend) {
 %   my $search_params = config('search_params') // {};
     <form class="form-inline" method="get" action="<%= url_for("$current_prefix/search") %>">
