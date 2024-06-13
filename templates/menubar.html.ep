@@ -117,7 +117,7 @@
 %   foreach my $name (keys %$search_params) {
       <input type="hidden" name="<%= $name %>" value="<%= $search_params->{$name} %>">
 %   }
-      <input class="form-control mr-3" type="search" name="q" placeholder="Search" aria-label="Search">
+      <input class="form-control mr-3" type="search" name="q" placeholder="Search" aria-label="Search" value="<%= $c->param('q') %>">
     </form>
 % }
   </div>
