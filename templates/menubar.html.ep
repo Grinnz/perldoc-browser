@@ -109,7 +109,7 @@
           set_expand(true);
         }
       </script>
-      <button id="content-expand-button" type="button" class="btn btn-outline-light d-none d-lg-inline-block mr-2" onclick="toggle_expand()">Expand</button>
+      <button id="content-expand-button" type="button" class="btn btn-outline-light d-none d-lg-inline-block mr-4" onclick="toggle_expand()">Expand</button>
     </ul>
 % if (defined app->search_backend) {
 %   my $search_params = config('search_params') // {};
@@ -117,7 +117,7 @@
 %   foreach my $name (keys %$search_params) {
       <input type="hidden" name="<%= $name %>" value="<%= $search_params->{$name} %>">
 %   }
-      <input class="form-control mr-3" type="search" name="q" placeholder="Search" aria-label="Search" value="<%= $c->param('q') %>">
+      <input class="form-control mr-3" type="search" name="q" placeholder="Search" aria-label="Search" value="<%= param('q') %>">
     </form>
 % }
   </div>
