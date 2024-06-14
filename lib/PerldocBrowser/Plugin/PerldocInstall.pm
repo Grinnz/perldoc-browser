@@ -167,7 +167,7 @@ sub _cache_perl_to_html ($c, $perl_version) {
     my $filename = sha1_sum(encode 'UTF-8', $pod) . '.html';
     print "Rendering $pod for $perl_version to $filename\n";
     my $dom = $c->app->prepare_perldoc_html(path($pod_paths{$pod})->slurp, $url_version, $pod);
-    $version_dir->child($filename)->spurt(encode 'UTF-8', $dom->to_string);
+    $version_dir->child($filename)->spew(encode 'UTF-8', $dom->to_string);
   }
 }
 
