@@ -31,7 +31,7 @@ version 9.6. The C<pg> configuration key must be set to a database connection
 URL in the form C<postgresql://user:password@host:port/database>.
 
 The C<es> backend requires L<Search::Elasticsearch> and an Elasticsearch server
-running at least version 6.0. The C<es> configuration key may be set to the URL
+running at least version 7.0. The C<es> configuration key may be set to the URL
 to connect to the server (defaults to C<http://localhost:9200>).
 
 The C<sqlite> backend requires L<Mojo::SQLite>. The database is stored in the

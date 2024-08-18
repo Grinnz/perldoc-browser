@@ -16,7 +16,7 @@ use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
   my $url = $app->config->{es} // 'http://localhost:9200';
-  my $es = Search::Elasticsearch->new(client => '6_0::Direct', nodes => $url,
+  my $es = Search::Elasticsearch->new(client => '8_0::Direct', nodes => $url,
     log_to => [MojoLog => logger => $app->log],
     deprecate_to => [MojoLog => logger => $app->log],
   );
@@ -250,25 +250,25 @@ sub _index_perl_version ($c, $perl_version, $pods) {
     $index_alias{perldeltas} = "perldeltas_\L$perl_version";
     $index_name{perldeltas} = "$index_alias{perldeltas}_$time";
   }
-  _create_index($es, $_, $index_name{$_}, $index_alias{$_}) for keys %index_name;
+  _create_index($es, $_, $index_name{$_}) for keys %index_name;
   try {
-    my $bulk_pod = _bulk_helper($es, $index_name{pods}, $index_alias{pods});
+    my $bulk_pod = _bulk_helper($es, $index_name{pods});
     foreach my $pod (keys %$pods) {
       print "Indexing $pod for $perl_version ($pods->{$pod})\n";
       my $src = path($pods->{$pod})->slurp;
       _index_pod($bulk_pod, $c->prepare_index_pod($pod, $src));
       if (defined $index_name{functions} and $pod eq 'perlfunc') {
         print "Indexing functions for $perl_version\n";
-        _index_functions($es, $index_name{functions}, $index_alias{functions}, $c->prepare_index_functions($src));
+        _index_functions($es, $index_name{functions}, $c->prepare_index_functions($src));
       } elsif (defined $index_name{variables} and $pod eq 'perlvar') {
         print "Indexing variables for $perl_version\n";
-        _index_variables($es, $index_name{variables}, $index_alias{variables}, $c->prepare_index_variables($src));
+        _index_variables($es, $index_name{variables}, $c->prepare_index_variables($src));
       } elsif (defined $index_name{faqs} and $pod =~ m/^perlfaq[1-9]$/) {
         print "Indexing $pod FAQs for $perl_version\n";
-        _index_faqs($es, $index_name{faqs}, $index_alias{faqs}, $pod, $c->prepare_index_faqs($src));
+        _index_faqs($es, $index_name{faqs}, $pod, $c->prepare_index_faqs($src));
       } elsif (defined $index_name{perldeltas} and $pod =~ m/^perl[0-9]+delta$/) {
         print "Indexing $pod deltas for $perl_version\n";
-        _index_perldelta($es, $index_name{perldeltas}, $index_alias{perldeltas}, $pod, $c->prepare_index_perldelta($src));
+        _index_perldelta($es, $index_name{perldeltas}, $pod, $c->prepare_index_perldelta($src));
       }
     }
     $bulk_pod->flush;
@@ -328,9 +328,9 @@ my %index_properties = (
   },
 );
 
-sub _create_index ($es, $type, $name, $index_type = $name) {
+sub _create_index ($es, $type, $name) {
   my %body;
-  $body{mappings}{$index_type}{properties} = $index_properties{$type} // {};
+  $body{mappings}{properties} = $index_properties{$type} // {};
   $body{settings}{analysis} = {
     analyzer => {
       default => {
@@ -361,8 +361,8 @@ sub _index_pod ($bulk, $properties) {
   });
 }
 
-sub _index_functions ($es, $index_name, $index_type, $functions) {
-  my $bulk = _bulk_helper($es, $index_name, $index_type);
+sub _index_functions ($es, $index_name, $functions) {
+  my $bulk = _bulk_helper($es, $index_name);
   foreach my $properties (@$functions) {
     delete $properties->{description} unless length $properties->{description};
     $bulk->update({
@@ -374,8 +374,8 @@ sub _index_functions ($es, $index_name, $index_type, $functions) {
   $bulk->flush;
 }
 
-sub _index_variables ($es, $index_name, $index_type, $variables) {
-  my $bulk = _bulk_helper($es, $index_name, $index_type);
+sub _index_variables ($es, $index_name, $variables) {
+  my $bulk = _bulk_helper($es, $index_name);
   foreach my $properties (@$variables) {
     $bulk->update({
       id => $properties->{name},
@@ -386,8 +386,8 @@ sub _index_variables ($es, $index_name, $index_type, $variables) {
   $bulk->flush;
 }
 
-sub _index_faqs ($es, $index_name, $index_type, $perlfaq, $faqs) {
-  my $bulk = _bulk_helper($es, $index_name, $index_type);
+sub _index_faqs ($es, $index_name, $perlfaq, $faqs) {
+  my $bulk = _bulk_helper($es, $index_name);
   foreach my $properties (@$faqs) {
     delete $properties->{answer} unless length $properties->{answer};
     $bulk->update({
@@ -399,8 +399,8 @@ sub _index_faqs ($es, $index_name, $index_type, $perlfaq, $faqs) {
   $bulk->flush;
 }
 
-sub _index_perldelta ($es, $index_name, $index_type, $perldelta, $sections) {
-  my $bulk = _bulk_helper($es, $index_name, $index_type);
+sub _index_perldelta ($es, $index_name, $perldelta, $sections) {
+  my $bulk = _bulk_helper($es, $index_name);
   foreach my $properties (@$sections) {
     delete $properties->{contents} unless length $properties->{contents};
     $bulk->update({
@@ -420,8 +420,8 @@ sub _index_is_ready ($es, $index) {
   return 1;
 }
 
-sub _bulk_helper ($es, $index, $type) {
-  return $es->bulk_helper(index => $index, type => $type,
+sub _bulk_helper ($es, $index) {
+  return $es->bulk_helper(index => $index,
     on_conflict => sub {
       my ($action, $response) = @_;
       warn "Bulk conflict [$action]: " . dumper($response);
