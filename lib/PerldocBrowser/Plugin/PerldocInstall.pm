@@ -14,7 +14,6 @@ use File::Spec;
 use File::Temp;
 use IPC::Run3;
 use List::Util 'first';
-use Module::Runtime 'require_module';
 use Mojo::File 'path';
 use Mojo::Util qw(encode sha1_sum trim);
 use Pod::Simple::Search;
@@ -53,12 +52,17 @@ sub _download_perl_extracted ($c, $perl_version, $dir) {
     $tarball = 'blead.tar.gz';
     $url = 'https://github.com/Perl/perl5/archive/blead.tar.gz';
   } else {
-    my $tarball_path;
-    foreach my $module (qw(CPAN::Perl::Releases CPAN::Perl::Releases::MetaCPAN)) {
-      require_module $module;
-      my $releases = $module->can('perl_tarballs')->($perl_version =~ s/^perl-//r);
-      $tarball_path = $releases->{'tar.gz'};
-      last if defined $tarball_path;
+    require CPAN::Perl::Releases;
+    my $releases = CPAN::Perl::Releases::perl_tarballs($perl_version =~ s/^perl-//r);
+    my $tarball_path = $releases->{'tar.gz'};
+    unless (defined $tarball_path) {
+      require CPAN::Perl::Releases::MetaCPAN;
+      my $releases = CPAN::Perl::Releases::MetaCPAN->new->get;
+      foreach my $release (@$releases) {
+        next unless ($release->{name} =~ s/^perl-//r) eq ($perl_version =~ s/^perl-//r);
+        ($tarball_path) = $release->{download_url} =~ m{/authors/id/(.*)};
+        last if defined $tarball_path;
+      }
     }
     die "Could not find release of Perl version $perl_version\n" unless defined $tarball_path;
 
