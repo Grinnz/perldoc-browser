@@ -44,7 +44,7 @@ sub run ($self, @versions) {
       {      
         my $in_build = pushd $build;
         
-        my @args = ('-de', "-Dprefix=$target", '-Dman1dir=none', '-Dman3dir=none');
+        my @args = ('-de', "-Dprefix=$target", '-Dman1dir=none', '-Dman3dir=none', '-Uafs');
         run3 ['sh', 'Configure', @args], undef, $logfh, $logfh;
         die "Failed to install Perl $version to $target\n" if $?;
         run3 ['make'], undef, $logfh, $logfh;
