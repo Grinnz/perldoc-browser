@@ -3,9 +3,10 @@
   sqlite => '/path/to/perldoc-browser.sqlite',
   pg => 'postgresql://perldoc:secret@/perldoc',
   es => 'http://127.0.0.1:9200',
+  es_ssl_options => {SSL_ca_file => '/etc/pki/tls/http_ca.crt'},
   search_backend => 'sqlite',
-  contact_pod => [
-    '=head1 CONTACT',
-    'This is where contact information goes for the /contact page.',
+  footer_pod => [
+    'This is where author and contact information goes for the page footer.',
+    'This website is maintained by C<foobar> at L<https://example.com>',
   ],
 }

@@ -17,7 +17,7 @@ use experimental 'signatures';
 sub register ($self, $app, $conf) {
   my $url = $app->config->{es} // 'http://localhost:9200';
   my $es = Search::Elasticsearch->new(client => '8_0::Direct', nodes => $url,
-    ssl_options => $app->config->{ssl_options} // {},
+    ssl_options => $app->config->{es_ssl_options} // {},
     log_to => [MojoLog => logger => $app->log],
     deprecate_to => [MojoLog => logger => $app->log],
   );
