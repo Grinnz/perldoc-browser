@@ -64,6 +64,7 @@
           <a class="dropdown-item" href="<%= url_for("$current_prefix/modules") %>">Modules</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perlutil") %>">Utilities</a>
           <div class="dropdown-divider"></div>
+          <a class="dropdown-item" href="<%= url_for("$current_prefix/perldelta") %>">Release Notes</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perlcommunity") %>">Community</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perlhist") %>">History</a>
         </div>

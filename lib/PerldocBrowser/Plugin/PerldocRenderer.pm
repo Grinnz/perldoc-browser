@@ -536,6 +536,12 @@ sub _get_index_page ($c) {
   push @result, '=item *', 'L<Utilities|perlutil>';
   push @result, '=back';
 
+  push @result, '=head2 More Info', '=over';
+  push @result, '=item *', "L<Perl $perl_version Release Notes|perldelta>" unless $perl_version eq 'blead';
+  push @result, '=item *', 'L<Community|perlcommunity>';
+  push @result, '=item *', 'L<FAQs|perlfaq>';
+  push @result, '=back';
+
   push @result, '=head2 About Perl', @description;
 
   return undef unless @result;
