@@ -6,7 +6,6 @@ package PerldocBrowser::Command::index;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Command';
-use Pod::Simple::Search;
 use experimental 'signatures';
 
 has description => 'Index perldocs for search';
@@ -18,9 +17,8 @@ sub run ($self, @versions) {
     @versions = @{$self->app->all_perl_versions};
   }
   foreach my $version (@versions) {
-    my $inc_dirs = $self->app->inc_dirs($version) // [];
-    my %pod_paths = %{Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@$inc_dirs)};
-    $self->app->index_perl_version($version, \%pod_paths);
+    my $pod_paths = $self->app->pod_paths($version);
+    $self->app->index_perl_version($version, $pod_paths);
   }
 }
 

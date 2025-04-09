@@ -89,16 +89,14 @@ sub _current_doc_path ($c) {
   return $path;
 }
 
-sub _find_pod ($c, $module) {
-  my $inc_dirs = $c->inc_dirs($c->stash('perl_version'));
+sub _find_pod ($c, $perl_version, $module) {
+  my $inc_dirs = $c->inc_dirs($perl_version);
   my $path = Pod::Simple::Search->new->inc(0)->find($module, @$inc_dirs);
   return undef unless defined $path and -r $path;
   return $path;
 }
 
-sub _find_html ($c, $module) {
-  my $url_perl_version = $c->stash('url_perl_version');
-  my $perl_version = $c->stash('perl_version');
+sub _find_html ($c, $url_perl_version, $perl_version, $module) {
   my $version = length $url_perl_version ? $url_perl_version : "latest-$perl_version";
   my $filename = sha1_sum(encode 'UTF-8', $module) . '.html';
   my $path = $c->app->home->child('html', $version, $filename);
@@ -131,8 +129,26 @@ my %perlglossary_anchors = (
   qualifying      => 'qualified',
 );
 
-sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $variable = undef) {
+# Called from command line when pre-rendering docs, so cannot use the stash
+sub _prepare_html ($c, $src, $url_perl_version, $pod_paths, $module, $function = undef, $variable = undef) {
   my $dom = Mojo::DOM->new($c->pod_to_html($src, $url_perl_version));
+
+  my $url_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
+
+  # Rewrite links to unknown documentation to MetaCPAN
+  if ($module ne 'index' and $module ne 'search' and $module ne 'perltoc') {
+    for my $e ($dom->find('a[href]')->each) {
+      my $link = Mojo::URL->new($e->attr('href'));
+      next if length $link->host;
+      if ($link->path =~ m{^\Q$url_prefix\E/([^/]+)\z}) {
+        my $module = $1;
+        next if exists $pod_paths->{$module};
+        my $metacpan_url = $c->append_url_path('https://metacpan.org/pod', $module);
+        $metacpan_url->fragment($link->fragment) if length $link->fragment;
+        $e->attr(href => $metacpan_url);
+      }
+    }
+  }
 
   # Rewrite code blocks for syntax highlighting and correct indentation
   for my $e ($dom->find('pre > code')->each) {
@@ -148,8 +164,6 @@ sub _prepare_html ($c, $src, $url_perl_version, $module, $function = undef, $var
       $attrs->{class} = join ' ', grep { defined } $attrs->{class}, $add_class;
     }
   }
-
-  my $url_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
 
   if ($module eq 'functions') {
     # Rewrite links on function pages
@@ -311,6 +325,7 @@ $index_redirects{"index-modules-$_"} = 'modules#Standard-Modules' for 'A'..'Z';
 sub _perldoc ($c) {
   my $module = $c->stash('module');
   my $url_perl_version = $c->stash('url_perl_version');
+  my $perl_version = $c->stash('perl_version');
 
   # Legacy index page redirects
   if (exists $index_redirects{$module}) {
@@ -333,16 +348,16 @@ sub _perldoc ($c) {
 
   $c->respond_to(
     txt => sub {
-      my $path = _find_pod($c, $module);
+      my $path = _find_pod($c, $perl_version, $module);
       return $c->res->code(301) && $c->redirect_to($c->stash('cpan')) unless defined $path;
       $c->render(data => path($path)->slurp);
     },
     html => sub {
       my $dom;
-      if (defined(my $html_path = _find_html($c, $module))) {
+      if (defined(my $html_path = _find_html($c, $url_perl_version, $perl_version, $module))) {
         $dom = Mojo::DOM->new(decode 'UTF-8', path($html_path)->slurp);
-      } elsif (defined(my $pod_path = _find_pod($c, $module))) {
-        $dom = $c->prepare_perldoc_html(path($pod_path)->slurp, $url_perl_version, $module);
+      } elsif (defined(my $pod_path = _find_pod($c, $perl_version, $module))) {
+        $dom = $c->prepare_perldoc_html(path($pod_path)->slurp, $url_perl_version, $c->pod_paths($perl_version), $module);
       } else {
         $c->res->code(301);
         return $c->redirect_to($c->stash('cpan'));
@@ -389,7 +404,8 @@ sub _function ($c) {
         $c->stash(alt_page_type => 'module', alt_page_name => $pod) if defined $pod;
       }
 
-      $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'functions', $function));
+      my $pod_paths = $c->pod_paths($c->stash('perl_version'));
+      $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), $pod_paths, 'functions', $function));
     },
   );
 }
@@ -407,7 +423,10 @@ sub _variable ($c) {
 
   $c->respond_to(
     txt => {data => $src},
-    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'variables', undef, $variable)) },
+    html => sub {
+      my $pod_paths = $c->pod_paths($c->stash('perl_version'));
+      $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), $pod_paths, 'variables', undef, $variable));
+    },
   );
 }
 
@@ -421,7 +440,10 @@ sub _main_index ($c) {
 
   $c->respond_to(
     txt => {data => $src},
-    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'index')) },
+    html => sub {
+      my $pod_paths = $c->pod_paths($c->stash('perl_version'));
+      $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), $pod_paths, 'index'));
+    },
   );
 }
 
@@ -440,7 +462,10 @@ sub _functions_index ($c) {
 
   $c->respond_to(
     txt => {data => $src},
-    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'functions')) },
+    html => sub {
+      my $pod_paths = $c->pod_paths($c->stash('perl_version'));
+      $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), $pod_paths, 'functions'));
+    },
   );
 }
 
@@ -456,7 +481,10 @@ sub _variables_index ($c) {
 
   $c->respond_to(
     txt => {data => $src},
-    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'variables')) },
+    html => sub {
+      my $pod_paths = $c->pod_paths($c->stash('perl_version'));
+      $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), $pod_paths, 'variables'));
+    },
   );
 }
 
@@ -469,12 +497,15 @@ sub _modules_index ($c) {
 
   $c->respond_to(
     txt => {data => $src},
-    html => sub { $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), 'modules')) },
+    html => sub {
+      my $pod_paths = $c->pod_paths($c->stash('perl_version'));
+      $c->render_perldoc_html($c->prepare_perldoc_html($src, $c->stash('url_perl_version'), $pod_paths, 'modules'));
+    },
   );
 }
 
 sub _get_function_pod ($c, $function) {
-  my $path = _find_pod($c, 'perlfunc') // return undef;
+  my $path = _find_pod($c, $c->stash('perl_version'), 'perlfunc') // return undef;
   my $src = path($path)->slurp;
 
   my $result = $c->split_functions($src, $function);
@@ -483,7 +514,7 @@ sub _get_function_pod ($c, $function) {
 }
 
 sub _get_variable_pod ($c, $variable) {
-  my $path = _find_pod($c, 'perlvar') // return undef;
+  my $path = _find_pod($c, $c->stash('perl_version'), 'perlvar') // return undef;
   my $src = path($path)->slurp;
 
   my $result = $c->split_variables($src, $variable);
@@ -492,7 +523,7 @@ sub _get_variable_pod ($c, $variable) {
 }
 
 sub _get_index_page ($c) {
-  my $path = _find_pod($c, 'perl') // return undef;
+  my $path = _find_pod($c, $c->stash('perl_version'), 'perl') // return undef;
   my $src = path($path)->slurp;
 
   my ($in_intro, $in_desc, @intro, @sections, @description);
@@ -549,7 +580,7 @@ sub _get_index_page ($c) {
 }
 
 sub _get_function_categories ($c) {
-  my $path = _find_pod($c, 'perlfunc') // return undef;
+  my $path = _find_pod($c, $c->stash('perl_version'), 'perlfunc') // return undef;
   my $src = path($path)->slurp;
 
   my ($started, @result);
@@ -585,7 +616,7 @@ sub _get_function_list ($c) {
 }
 
 sub _get_variable_list ($c) {
-  my $path = _find_pod($c, 'perlvar') // return undef;
+  my $path = _find_pod($c, $c->stash('perl_version'), 'perlvar') // return undef;
   my $src = path($path)->slurp;
 
   my ($level, @names, $heading, @section, @result) = (0);
@@ -622,7 +653,7 @@ sub _get_variable_list ($c) {
 }
 
 sub _get_module_list ($c) {
-  my $path = _find_pod($c, 'perlmodlib') // return undef;
+  my $path = _find_pod($c, $c->stash('perl_version'), 'perlmodlib') // return undef;
   my $src = path($path)->slurp;
 
   my ($started, $standard, $name, @result);

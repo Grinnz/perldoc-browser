@@ -39,8 +39,8 @@ sub run ($self) {
   $self->app->copy_modules_from_source('blead', @$missing) if @$missing;
 
   if (defined $self->app->search_backend) {
-    my %pod_paths = %{Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@$inc_dirs)};
-    $self->app->index_perl_version('blead', \%pod_paths);
+    my $pod_paths = $self->app->warmup_pod_paths('blead');
+    $self->app->index_perl_version('blead', $pod_paths);
   }
 }
 

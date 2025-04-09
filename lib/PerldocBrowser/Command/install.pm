@@ -11,7 +11,6 @@ use File::pushd;
 use File::Spec;
 use File::Temp;
 use IPC::Run3;
-use Pod::Simple::Search;
 use Syntax::Keyword::Try;
 use version;
 use experimental 'signatures';
@@ -73,8 +72,8 @@ sub run ($self, @versions) {
     $self->app->cache_perl_to_html('latest') if $version eq $self->app->latest_perl_version;
 
     if (defined $self->app->search_backend) {
-      my %pod_paths = %{Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@$inc_dirs)};
-      $self->app->index_perl_version($version, \%pod_paths);
+      my $pod_paths = $self->app->pod_paths($version);
+      $self->app->index_perl_version($version, $pod_paths);
     }
   }
 }

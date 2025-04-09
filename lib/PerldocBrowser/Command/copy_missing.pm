@@ -6,7 +6,6 @@ package PerldocBrowser::Command::copy_missing;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Command';
-use Pod::Simple::Search;
 use experimental 'signatures';
 
 has description => 'Copy missing platform-specific module files from Perl source tree';

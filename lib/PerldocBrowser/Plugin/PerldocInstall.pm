@@ -163,14 +163,13 @@ sub _cache_perl_to_html ($c, $perl_version) {
     $real_version = $c->app->latest_perl_version;
     $path_version = "latest-$real_version";
   }
-  my $inc_dirs = $c->app->inc_dirs($real_version) // [];
-  my %pod_paths = %{Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@$inc_dirs)};
-  return unless keys %pod_paths;
+  my $pod_paths = $c->app->pod_paths($real_version) // {};
+  return unless keys %$pod_paths;
   my $version_dir = $c->app->home->child('html', $path_version)->remove_tree({keep_root => 1})->make_path;
-  foreach my $pod (keys %pod_paths) {
+  foreach my $pod (keys %$pod_paths) {
     my $filename = sha1_sum(encode 'UTF-8', $pod) . '.html';
     print "Rendering $pod for $perl_version to $filename\n";
-    my $dom = $c->app->prepare_perldoc_html(path($pod_paths{$pod})->slurp, $url_version, $pod);
+    my $dom = $c->app->prepare_perldoc_html(path($pod_paths->{$pod})->slurp, $url_version, $pod_paths, $pod);
     $version_dir->child($filename)->spew(encode 'UTF-8', $dom->to_string);
   }
 }
