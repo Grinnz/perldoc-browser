@@ -8,7 +8,7 @@ use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
 use Lingua::EN::Sentence 'get_sentences';
 use List::Util 'first';
-use MetaCPAN::Pod::XHTML;
+use MetaCPAN::Pod::HTML;
 use Module::Metadata;
 use Mojo::ByteStream;
 use Mojo::DOM;
@@ -892,7 +892,7 @@ sub _split_perldelta ($src, $section = undef) {
 }
 
 sub _pod_to_html ($pod, $url_perl_version = '', $with_errata = 1) {
-  my $parser = MetaCPAN::Pod::XHTML->new;
+  my $parser = MetaCPAN::Pod::HTML->new;
   $parser->perldoc_url_prefix($url_perl_version ? "/$url_perl_version/" : '/');
   $parser->$_('') for qw(html_header html_footer);
   $parser->anchor_items(1);

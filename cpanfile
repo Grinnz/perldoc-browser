@@ -8,7 +8,7 @@ requires 'File::Temp';
 requires 'IPC::Run3';
 requires 'Lingua::EN::Sentence';
 requires 'List::Util' => '1.50';
-requires 'MetaCPAN::Pod::XHTML' => '0.003002';
+requires 'MetaCPAN::Pod::HTML' => '0.004000';
 requires 'Module::Metadata';
 requires 'Mojolicious' => '9.34';
 requires 'Mojo::Log::Role::Clearable';
