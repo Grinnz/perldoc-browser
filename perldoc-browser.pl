@@ -87,6 +87,8 @@ helper pod_paths => sub ($c, $perl_version, $refresh = 0) {
   return $pod_paths{$perl_version};
 };
 
+helper latest_has_doc => sub ($c, $module) { exists $c->pod_paths($c->latest_perl_version)->{$module} };
+
 my $perls_dir = path(app->config->{perls_dir} // app->home->child('perls'));
 helper perls_dir => sub ($c) { $perls_dir };
 
@@ -134,6 +136,7 @@ helper warmup_perl_versions => sub ($c) {
       $function_descriptions{$current_version} = {names => \@function_names, descriptions => \%descriptions};
     }
   }
+  app->pod_paths($latest_version); # always cache pod paths for latest version
 };
 
 helper all_perl_versions => sub ($c) { [@all_versions] };

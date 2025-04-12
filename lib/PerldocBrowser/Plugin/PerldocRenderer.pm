@@ -343,7 +343,6 @@ sub _perldoc ($c) {
   }
 
   $c->stash(page_name => $module);
-  $c->stash(cpan => $c->append_url_path('https://metacpan.org/pod', $module));
 
   $c->respond_to(
     txt => sub {
@@ -351,6 +350,9 @@ sub _perldoc ($c) {
       $c->render(data => path($path)->slurp);
     },
     html => sub {
+      $c->stash(cpan => $c->append_url_path('https://metacpan.org/pod', $module));
+      $c->stash(latest_url => $c->latest_has_doc($module) ? $c->url_with($c->current_doc_path) : $c->stash('cpan'));
+
       my $dom;
       if (defined(my $html_path = _find_html($c, $url_perl_version, $perl_version, $module))) {
         $dom = Mojo::DOM->new(decode 'UTF-8', path($html_path)->slurp);
@@ -387,6 +389,8 @@ sub _function ($c) {
     txt => {data => $src},
     html => sub {
       $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlfunc')->fragment($function));
+      $c->stash(latest_url => $c->url_with($c->current_doc_path));
+
       my $heading = first { m/^=item/ } split /\n\n+/, $src;
       if (defined $heading) {
         my $target = $c->pod_to_text_content(join "\n\n", '=over', $heading, '=back');
@@ -425,6 +429,7 @@ sub _variable ($c) {
       my $link = Mojo::DOM->new($c->pod_to_html(qq{=pod\n\nL<< /"$escaped" >>}))->at('a');
       my $fragment = defined $link ? Mojo::URL->new($link->attr('href'))->fragment : $variable;
       $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlvar')->fragment($fragment));
+      $c->stash(latest_url => $c->url_with($c->current_doc_path));
 
       my $pod_paths = $c->pod_paths($perl_version);
       $c->render_perldoc_html($c->prepare_perldoc_html($src, $url_perl_version, $pod_paths, 'variables', undef, $variable));
@@ -446,6 +451,7 @@ sub _main_index ($c) {
     txt => {data => $src},
     html => sub {
       $c->stash(cpan => 'https://metacpan.org/pod/perl');
+      $c->stash(latest_url => $c->url_with($c->current_doc_path));
       my $pod_paths = $c->pod_paths($perl_version);
       $c->render_perldoc_html($c->prepare_perldoc_html($src, $url_perl_version, $pod_paths, 'index'));
     },
@@ -472,6 +478,7 @@ sub _functions_index ($c) {
     txt => {data => $src},
     html => sub {
       $c->stash(cpan => 'https://metacpan.org/pod/perlfunc');
+      $c->stash(latest_url => $c->url_with($c->current_doc_path));
       my $pod_paths = $c->pod_paths($perl_version);
       $c->render_perldoc_html($c->prepare_perldoc_html($src, $url_perl_version, $pod_paths, 'functions'));
     },
@@ -494,6 +501,7 @@ sub _variables_index ($c) {
     txt => {data => $src},
     html => sub {
       $c->stash(cpan => 'https://metacpan.org/pod/perlvar');
+      $c->stash(latest_url => $c->url_with($c->current_doc_path));
       my $pod_paths = $c->pod_paths($perl_version);
       $c->render_perldoc_html($c->prepare_perldoc_html($src, $url_perl_version, $pod_paths, 'variables'));
     },
@@ -514,6 +522,7 @@ sub _modules_index ($c) {
     txt => {data => $src},
     html => sub {
       $c->stash(cpan => 'https://metacpan.org');
+      $c->stash(latest_url => $c->url_with($c->current_doc_path));
       my $pod_paths = $c->pod_paths($perl_version);
       $c->render_perldoc_html($c->prepare_perldoc_html($src, $url_perl_version, $pod_paths, 'modules'));
     },

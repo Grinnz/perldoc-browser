@@ -192,7 +192,7 @@
           % if (perl_version_is_dev($perl_version)) {
             This is a development version of Perl.
           % } else {
-            <%= link_to 'View the latest version' => url_with(current_doc_path) %>
+            <%= link_to 'View the latest version' => $latest_url %>
           % }
         </div>
       % }
