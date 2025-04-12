@@ -192,7 +192,7 @@
           % if (perl_version_is_dev($perl_version)) {
             This is a development version of Perl.
           % } else {
-            <%= link_to 'View the latest version' => $latest_url %>
+            <%= link_to 'View the latest version' => stash('latest_url') %>
           % }
         </div>
       % }
