@@ -72,7 +72,7 @@ sub run ($self, @versions) {
     $self->app->cache_perl_to_html('latest') if $version eq $self->app->latest_perl_version;
 
     if (defined $self->app->search_backend) {
-      my $pod_paths = $self->app->pod_paths($version);
+      my $pod_paths = $self->app->pod_paths($version, 1);
       $self->app->index_perl_version($version, $pod_paths);
     }
   }

@@ -39,7 +39,7 @@ sub run ($self) {
   $self->app->copy_modules_from_source('blead', @$missing) if @$missing;
 
   if (defined $self->app->search_backend) {
-    my $pod_paths = $self->app->warmup_pod_paths('blead');
+    my $pod_paths = $self->app->pod_paths('blead', 1);
     $self->app->index_perl_version('blead', $pod_paths);
   }
 }

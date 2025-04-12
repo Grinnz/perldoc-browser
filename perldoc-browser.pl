@@ -78,14 +78,14 @@ helper function_descriptions => sub ($c, $perl_version) { $function_descriptions
 helper function_description => sub ($c, $perl_version, $name) { $function_descriptions{$perl_version}{descriptions}{$name} };
 
 my %pod_paths;
-helper warmup_pod_paths => sub ($c, $perl_version) {
+helper pod_paths => sub ($c, $perl_version, $refresh = 0) {
+  return $pod_paths{$perl_version} if defined $pod_paths{$perl_version} and !$refresh;
   my $inc_dirs = $c->app->inc_dirs($perl_version) // [];
   $pod_paths{$perl_version} = Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@$inc_dirs);
   # recognize perl5db.pl as documentation
   $pod_paths{$perl_version}{'perl5db.pl'} //= $pod_paths{$perl_version}{perl5db} if exists $pod_paths{$perl_version}{perl5db};
   return $pod_paths{$perl_version};
 };
-helper pod_paths => sub ($c, $perl_version) { $pod_paths{$perl_version} // {} };
 
 my $perls_dir = path(app->config->{perls_dir} // app->home->child('perls'));
 helper perls_dir => sub ($c) { $perls_dir };
@@ -114,7 +114,6 @@ helper warmup_perl_versions => sub ($c) {
       }
       app->warmup_inc_dirs($perl_version);
       app->warmup_function_descs($perl_version);
-      app->warmup_pod_paths($perl_version);
     }
     $latest_version //= $all_versions[0];
   } else {
@@ -134,7 +133,6 @@ helper warmup_perl_versions => sub ($c) {
       my %descriptions = map { ($_ => $Pod::Functions::Flavor{$_}) } @function_names;
       $function_descriptions{$current_version} = {names => \@function_names, descriptions => \%descriptions};
     }
-    $pod_paths{$current_version} = Pod::Simple::Search->new->inc(0)->laborious(1)->survey(@{$inc_dirs{$current_version}});
   }
 };
 
