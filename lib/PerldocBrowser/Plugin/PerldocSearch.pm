@@ -225,25 +225,13 @@ sub _prepare_index_pod ($c, $name, $src) {
 
 sub _prepare_index_functions ($c, $src) {
   my $blocks = $c->split_functions($src);
+
   my %functions;
   foreach my $block (@$blocks) {
-    my ($list_level, $is_filetest, $indexed_name, %names) = (0);
-    foreach my $para (@$block) {
-      $list_level++ if $para =~ m/^=over/;
-      $list_level-- if $para =~ m/^=back/;
-      # 0: navigatable, 1: navigatable and returned in search results
-      if (!$list_level and $para =~ m/^=item/) {
-        my $heading = $c->pod_to_text_content("=over\n\n$para\n\n=back");
-        if ($heading =~ m/^([-\w\/]+)/) {
-          $names{"$1"} //= $indexed_name ? 0 : 1;
-          $indexed_name = 1;
-        }
-        $names{"$1"} //= 0 if $heading =~ m/^([-\w]+)/;
-        $is_filetest = 1 if $heading =~ m/^-X\b/;
-      }
-      do { $names{"$_"} //= 0 for $para =~ m/^\s+(-[a-zA-Z])\s/mg } if $is_filetest;
-    }
-    push @{$functions{$_}}, $names{$_} ? @$block : () for keys %names;
+    my @names = @{$block->{names}};
+    next unless @names;
+    $functions{$_} //= [] for @names;
+    push @{$functions{$names[0]}}, @{$block->{contents}};
   }
 
   my @functions;
