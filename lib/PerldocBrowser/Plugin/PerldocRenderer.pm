@@ -21,6 +21,7 @@ use Scalar::Util 'weaken';
 use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
+  $app->helper(function_pod_page => \&_function_pod_page);
   $app->helper(split_functions => sub ($c, @args) { _split_functions(@args) });
   $app->helper(split_variables => sub ($c, @args) { _split_variables(@args) });
   $app->helper(split_faqs => sub ($c, @args) { _split_faqs(@args) });
@@ -96,10 +97,10 @@ sub _find_pod ($c, $perl_version, $module) {
   return $path;
 }
 
-sub _find_html ($c, $url_perl_version, $perl_version, $module) {
+sub _find_html ($c, $url_perl_version, $perl_version, @parts) {
   my $version = length $url_perl_version ? $url_perl_version : "latest-$perl_version";
-  my $filename = sha1_sum(encode 'UTF-8', $module) . '.html';
-  my $path = $c->app->home->child('html', $version, $filename);
+  my $filename = sha1_sum(encode 'UTF-8', pop @parts) . '.html';
+  my $path = $c->app->home->child('html', $version, @parts, $filename);
   return -r $path ? $path : undef;
 }
 
@@ -402,13 +403,19 @@ sub _function ($c) {
         }
       }
 
+      my $dom;
+      if (defined(my $html_path = _find_html($c, $url_perl_version, $perl_version, 'functions', $function))) {
+        $dom = Mojo::DOM->new(decode 'UTF-8', path($html_path)->slurp);
+      } else {
+        $dom = $c->prepare_perldoc_html($src, $url_perl_version, $c->pod_paths($perl_version), 'functions', $function);
+      }
+
       if (defined $c->app->search_backend) {
         my $pod = $c->pod_name_match($perl_version, $function);
         $c->stash(alt_page_type => 'module', alt_page_name => $pod) if defined $pod;
       }
 
-      my $pod_paths = $c->pod_paths($perl_version);
-      $c->render_perldoc_html($c->prepare_perldoc_html($src, $url_perl_version, $pod_paths, 'functions', $function));
+      $c->render_perldoc_html($dom);
     },
   );
 }
@@ -532,10 +539,7 @@ sub _modules_index ($c) {
 sub _get_function_pod ($c, $function) {
   my $path = _find_pod($c, $c->stash('perl_version'), 'perlfunc') // return undef;
   my $src = path($path)->slurp;
-
-  my $result = $c->split_functions($src, $function);
-  return undef unless @$result;
-  return join "\n\n", '=over', @$result, '=back';
+  return $c->function_pod_page($src, $function);
 }
 
 sub _get_variable_pod ($c, $variable) {
@@ -703,6 +707,12 @@ sub _get_module_list ($c) {
 
   return undef unless @result;
   return join "\n\n", @result;
+}
+
+sub _function_pod_page ($c, $src, $function) {
+  my $result = $c->split_functions($src, $function);
+  return undef unless @$result;
+  return join "\n\n", '=over', @$result, '=back';
 }
 
 # Edge cases: eval, do, select, chop, q/STRING/, y///, -X, getgrent, __END__

@@ -172,6 +172,18 @@ sub _cache_perl_to_html ($c, $perl_version) {
     my $dom = $c->app->prepare_perldoc_html(path($pod_paths->{$pod})->slurp, $url_version, $pod_paths, $pod);
     $version_dir->child($filename)->spew(encode 'UTF-8', $dom->to_string);
   }
+  if (defined $pod_paths->{perlfunc}) {
+    my $functions_dir = $version_dir->child('functions')->make_path;
+    my $perlfunc_pod = path($pod_paths->{perlfunc})->slurp;
+    my %functions = map { ($_ => 1) } map { @{$_->{names}} } @{$c->split_functions($perlfunc_pod)};
+    foreach my $function (keys %functions) {
+      my $filename = sha1_sum(encode 'UTF-8', $function) . '.html';
+      print "Rendering function $function for $perl_version to $filename\n";
+      my $function_pod = $c->function_pod_page($perlfunc_pod, $function);
+      my $dom = $c->app->prepare_perldoc_html($function_pod, $url_version, $pod_paths, 'functions', $function);
+      $functions_dir->child($filename)->spew(encode 'UTF-8', $dom->to_string);
+    }
+  }
 }
 
 1;
