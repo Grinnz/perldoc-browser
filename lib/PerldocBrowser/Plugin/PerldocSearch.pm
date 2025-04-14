@@ -249,17 +249,7 @@ sub _prepare_index_variables ($c, $src) {
   my $blocks = $c->split_variables($src);
   my %variables;
   foreach my $block (@$blocks) {
-    my ($list_level, %names) = (0);
-    foreach my $para (@$block) {
-      $list_level++ if $para =~ m/^=over/;
-      $list_level-- if $para =~ m/^=back/;
-      # 0: navigatable, 1: navigatable and returned in search results
-      if (!$list_level and $para =~ m/^=item/) {
-        my $heading = $c->pod_to_text_content("=over\n\n$para\n\n=back");
-        $names{"$1"} = 0 if $heading =~ m/^([\$\@%].+)$/ or $heading =~ m/^([a-zA-Z]+)$/;
-      }
-    }
-    push @{$variables{$_}}, $names{$_} ? @$block : () for keys %names;
+    $variables{$_} //= [] for @{$block->{names}};
   }
 
   my @variables;

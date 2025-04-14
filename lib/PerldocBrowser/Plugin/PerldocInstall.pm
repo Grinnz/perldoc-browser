@@ -184,6 +184,18 @@ sub _cache_perl_to_html ($c, $perl_version) {
       $functions_dir->child($filename)->spew(encode 'UTF-8', $dom->to_string);
     }
   }
+  if (defined $pod_paths->{perlvar}) {
+    my $variables_dir = $version_dir->child('variables')->make_path;
+    my $perlvar_pod = path($pod_paths->{perlvar})->slurp;
+    my %variables = map { ($_ => 1) } map { @{$_->{names}} } @{$c->split_variables($perlvar_pod)};
+    foreach my $variable (keys %variables) {
+      my $filename = sha1_sum(encode 'UTF-8', $variable) . '.html';
+      print "Rendering variable $variable for $perl_version to $filename\n";
+      my $variable_pod = $c->variable_pod_page($perlvar_pod, $variable);
+      my $dom = $c->app->prepare_perldoc_html($variable_pod, $url_version, $pod_paths, 'variables', undef, $variable);
+      $variables_dir->child($filename)->spew(encode 'UTF-8', $dom->to_string);
+    }
+  }
 }
 
 1;

@@ -22,6 +22,7 @@ use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
   $app->helper(function_pod_page => \&_function_pod_page);
+  $app->helper(variable_pod_page => \&_variable_pod_page);
   $app->helper(split_functions => sub ($c, @args) { _split_functions(@args) });
   $app->helper(split_variables => sub ($c, @args) { _split_variables(@args) });
   $app->helper(split_faqs => sub ($c, @args) { _split_faqs(@args) });
@@ -424,19 +425,30 @@ sub _variable ($c) {
 
   $c->stash(page_name => $variable);
 
-  my $src = _get_variable_pod($c, $variable) // return $c->reply->not_found;
-
   $c->respond_to(
-    txt => {data => $src},
+    txt => sub {
+      my $src = _get_variable_pod($c, $variable) // return $c->reply->not_found;
+      $c->render(data => $src);
+    },
     html => sub {
-      my $escaped = $c->escape_pod($variable);
-      my $link = Mojo::DOM->new($c->pod_to_html(qq{=pod\n\nL<< /"$escaped" >>}))->at('a');
-      my $fragment = defined $link ? Mojo::URL->new($link->attr('href'))->fragment : $variable;
-      $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlvar')->fragment($fragment));
+      $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlvar')->fragment($variable));
       $c->stash(latest_url => $c->url_with($c->current_doc_path));
 
-      my $pod_paths = $c->pod_paths($perl_version);
-      $c->render_perldoc_html($c->prepare_perldoc_html($src, $url_perl_version, $pod_paths, 'variables', undef, $variable));
+      my $dom;
+      if (defined(my $html_path = _find_html($c, $url_perl_version, $perl_version, 'variables', $variable))) {
+        $dom = Mojo::DOM->new(decode 'UTF-8', path($html_path)->slurp);
+      } elsif (defined(my $src = _get_variable_pod($c, $variable))) {
+        $dom = $c->prepare_perldoc_html($src, $url_perl_version, $c->pod_paths($perl_version), 'variables', undef, $variable);
+      } else {
+        return $c->reply->not_found;
+      }
+
+      my $heading = $dom->at('dt[id]');
+      if (defined $heading) {
+        $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlvar')->fragment($heading->{id}));
+      }
+
+      $c->render_perldoc_html($dom);
     },
   );
 }
@@ -542,10 +554,7 @@ sub _get_function_pod ($c, $function) {
 sub _get_variable_pod ($c, $variable) {
   my $path = _find_pod($c, $c->stash('perl_version'), 'perlvar') // return undef;
   my $src = path($path)->slurp;
-
-  my $result = $c->split_variables($src, $variable);
-  return undef unless @$result;
-  return join "\n\n", '=over', @$result, '=back';
+  return $c->variable_pod_page($src, $variable);
 }
 
 sub _get_index_page ($c) {
@@ -712,6 +721,12 @@ sub _function_pod_page ($c, $src, $function) {
   return join "\n\n", '=over', @$result, '=back';
 }
 
+sub _variable_pod_page ($c, $src, $variable) {
+  my $result = $c->split_variables($src, $variable);
+  return undef unless @$result;
+  return join "\n\n", '=over', @$result, '=back';
+}
+
 # Edge cases: eval, do, select, chop, q/STRING/, y///, -X, getgrent, __END__
 sub _split_functions ($src, $function = undef) {
   my $list_level = 0;
@@ -817,63 +832,63 @@ sub _split_functions ($src, $function = undef) {
 sub _split_variables ($src, $variable = undef) {
   my $list_level = 0;
   my $found = '';
-  my ($started, @variable, @variables);
+  my ($started, %found_variable, @variables);
 
   foreach my $para (split /\n\n+/, $src) {
     # keep track of list depth
     if ($para =~ m/^=over/) {
       $list_level++;
+      # skip the list start directive
       next if $list_level == 1;
     }
     if ($para =~ m/^=back/) {
       $list_level--;
-      $found = 'end' if $found and $list_level == 0;
+      # complete processing of a variable if leaving the list
+      if ($found and $list_level == 0) {
+        return $found_variable{contents} // [] if defined $variable;
+        push @variables, {contents => $found_variable{contents}, names => [sort keys %{$found_variable{names}}]};
+        %found_variable = ();
+        $found = '';
+      }
     }
 
     # variables are only declared at depth 1
-    my ($is_header, $is_variable_header);
     if ($list_level == 1) {
-      $is_header = 1 if $para =~ m/^=item/;
-      if ($is_header) {
-        if (defined $variable) {
-          my $heading = _pod_to_text_content("=over\n\n$para\n\n=back");
-          # see if this is the start or end of the variable we want
-          $is_variable_header = 1 if $heading eq $variable;
-          $found = 'header' if !$found and $is_variable_header;
-          $found = 'end' if $found eq 'content' and !$is_variable_header;
-        } else {
+      if ($para =~ m/^=item/) {
+        unless (defined $variable) {
           # this indicates a new variable section if we found content
-          $found = 'header' if !$found;
-          $found = 'end' if $found eq 'content';
+          if ($found eq 'content') {
+            push @variables, {contents => $found_variable{contents}, names => [sort keys %{$found_variable{names}}]};
+            %found_variable = ();
+          }
+          $found = 'header';
         }
+
+        my $heading = _pod_to_text_content("=over\n\n$para\n\n=back");
+        if (defined $variable) {
+          # see if this is the start or end of the variable we want
+          my $is_variable_header = !!($heading eq $variable);
+          $found = 'header' if !$found and $is_variable_header;
+          return $found_variable{contents} // [] if $found eq 'content' and !$is_variable_header;
+        }
+
+        # track names to navigate to this variable
+        $found_variable{names}{"$1"} //= 1 if $heading =~ m/^([\$\@%].+)$/ or $heading =~ m/^([a-zA-Z]+)$/;
       } elsif ($found eq 'header') {
         # variable content if we're in a variable section
-        $found = 'content' unless $found eq 'end';
+        $found = 'content';
       } elsif (!$found and defined $variable) {
         # skip content if this isn't the variable section we're looking for
-        @variable = ();
+        %found_variable = ();
         next;
       }
     }
 
-    if ($found eq 'end') {
-      if (defined $variable) {
-        # we're done
-        last;
-      } else {
-        # add this variable section
-        push @variables, [@variable];
-      }
-      # start next variable section
-      @variable = ();
-      $found = $is_header && (!defined $variable or $is_variable_header) ? 'header' : '';
-    }
-
     # variable contents at depth 1+
-    push @variable, $para if $list_level >= 1;
+    push @{$found_variable{contents}}, $para if $list_level >= 1;
   }
 
-  return defined $variable ? \@variable : \@variables;
+  return defined $variable ? $found_variable{contents} // [] : \@variables;
 }
 
 sub _split_faqs ($src, $question = undef) {
