@@ -384,30 +384,27 @@ sub _function ($c) {
 
   $c->stash(page_name => $function);
 
-  my $src = _get_function_pod($c, $function) // return $c->reply->not_found;
-
   $c->respond_to(
-    txt => {data => $src},
+    txt => sub {
+      my $src = _get_function_pod($c, $function) // return $c->reply->not_found;
+      $c->render(data => $src);
+    },
     html => sub {
       $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlfunc')->fragment($function));
       $c->stash(latest_url => $c->url_with($c->current_doc_path));
 
-      my $heading = first { m/^=item/ } split /\n\n+/, $src;
-      if (defined $heading) {
-        my $target = $c->pod_to_text_content(join "\n\n", '=over', $heading, '=back');
-        my $escaped = $c->escape_pod($target);
-        my $link = Mojo::DOM->new($c->pod_to_html(qq{=pod\n\nL<< /"$escaped" >>}))->at('a');
-        if (defined $link) {
-          my $fragment = Mojo::URL->new($link->attr('href'))->fragment;
-          $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlfunc')->fragment($fragment));
-        }
-      }
-
       my $dom;
       if (defined(my $html_path = _find_html($c, $url_perl_version, $perl_version, 'functions', $function))) {
         $dom = Mojo::DOM->new(decode 'UTF-8', path($html_path)->slurp);
-      } else {
+      } elsif (defined(my $src = _get_function_pod($c, $function))) {
         $dom = $c->prepare_perldoc_html($src, $url_perl_version, $c->pod_paths($perl_version), 'functions', $function);
+      } else {
+        return $c->reply->not_found;
+      }
+
+      my $heading = $dom->at('dt[id]');
+      if (defined $heading) {
+        $c->stash(cpan => Mojo::URL->new('https://metacpan.org/pod/perlfunc')->fragment($heading->{id}));
       }
 
       if (defined $c->app->search_backend) {
