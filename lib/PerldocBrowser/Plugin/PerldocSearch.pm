@@ -284,15 +284,7 @@ sub _prepare_index_perldelta ($c, $src) {
   my $blocks = $c->split_perldelta($src);
   my %sections;
   foreach my $block (@$blocks) {
-    my %headings;
-    foreach my $para (@$block) {
-      # 0: navigatable, 1: navigatable and returned in search results
-      if ($para =~ m/^=head\d/) {
-        my $heading = $c->pod_to_text_content("=pod\n\n$para");
-        $headings{$heading} = 1;
-      }
-    }
-    push @{$sections{$_}}, $headings{$_} ? @$block : () for keys %headings;
+    push @{$sections{$block->{heading}}}, @{$block->{contents}};
   }
 
   my @sections;

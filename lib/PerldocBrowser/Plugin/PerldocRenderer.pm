@@ -942,56 +942,51 @@ sub _split_faqs ($src, $question = undef) {
 
 sub _split_perldelta ($src, $section = undef) {
   my $found = '';
-  my ($started, @section, @sections);
+  my ($started, %found_section, @sections);
 
   foreach my $para (split /\n\n+/, $src) {
-    my ($is_header, $is_section_header);
-    $is_header = 1 if $para =~ m/^=head\d/;
-
-    $started = 1 if !$started and $is_header and $para !~ m/^=head1\s+(NAME|DESCRIPTION)$/;
+    $started = 1 if !$started and $para =~ m/^=head\d/ and $para !~ m/^=head1\s+(NAME|DESCRIPTION)$/;
     next unless $started;
 
-    if ($is_header) {
-      if (defined $section) {
-        my $heading = _pod_to_text_content("=pod\n\n$para");
-        # see if this is the start or end of the section we want
-        $is_section_header = 1 if $heading eq $section;
-        $found = 'header' if !$found and $is_section_header;
-        $found = 'end' if $found eq 'content' and !$is_section_header;
-      } else {
+    if ($para =~ m/^=head\d/) {
+      unless (defined $section) {
         # this indicates a new section if we found content
-        $found = 'header' if !$found;
-        $found = 'end' if $found eq 'content';
+        if ($found eq 'content') {
+          push @sections, {contents => $found_section{contents}, heading => $found_section{heading}};
+          %found_section = ();
+        } elsif ($found eq 'header') {
+          # Don't include previous headings in contents
+          %found_section = ();
+        }
+        $found = 'header';
       }
+
+      my $heading = _pod_to_text_content("=pod\n\n$para");
+      if (defined $section) {
+        # see if this is the start or end of the section we want
+        my $is_section_header = !!($heading eq $section);
+        $found = 'header' if !$found and $is_section_header;
+        return $found_section{contents} // [] if $found eq 'content' and !$is_section_header;
+      }
+
+      # track innermost heading to search this perldelta section
+      $found_section{heading} = $heading;
     } elsif ($found eq 'header') {
       # section content if we're in a section
-      $found = 'content' unless $found eq 'end';
+      $found = 'content';
     } elsif (!$found and defined $section) {
       # skip content if this isn't the section we're looking for
-      @section = ();
+      %found_section = ();
       next;
-    }
-
-    if ($found eq 'end') {
-      if (defined $section) {
-        # we're done
-        last;
-      } else {
-        # add this section if it has content
-        push @sections, [@section] if @section > 1;
-      }
-      # start next section
-      @section = ();
-      $found = $is_header && (!defined $section or $is_section_header) ? 'header' : '';
     }
 
     last if $para =~ m/^=head1\s+Reporting Bugs$/;
 
     # section content
-    push @section, $para;
+    push @{$found_section{contents}}, $para;
   }
 
-  return defined $section ? \@section : \@sections;
+  return defined $section ? $found_section{contents} // [] : \@sections;
 }
 
 sub _pod_to_html ($pod, $url_perl_version = '', $with_errata = 1) {
