@@ -267,15 +267,7 @@ sub _prepare_index_faqs ($c, $src) {
   my $blocks = $c->split_faqs($src);
   my %faqs;
   foreach my $block (@$blocks) {
-    my %questions;
-    foreach my $para (@$block) {
-      # 0: navigatable, 1: navigatable and returned in search results
-      if ($para =~ m/^=head2/) {
-        my $heading = $c->pod_to_text_content("=pod\n\n$para");
-        $questions{$heading} = 1;
-      }
-    }
-    push @{$faqs{$_}}, $questions{$_} ? @$block : () for keys %questions;
+    push @{$faqs{$_}}, @{$block->{contents}} for @{$block->{questions}};
   }
 
   my @faqs;

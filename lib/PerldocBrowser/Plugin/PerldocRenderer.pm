@@ -891,54 +891,53 @@ sub _split_variables ($src, $variable = undef) {
   return defined $variable ? $found_variable{contents} // [] : \@variables;
 }
 
+# edge case: perlfaq4
 sub _split_faqs ($src, $question = undef) {
   my $found = '';
-  my ($started, @faq, @faqs);
+  my (%found_faq, @faqs);
 
   foreach my $para (split /\n\n+/, $src) {
-    $found = 'end' if $found and $para =~ m/^=head1/;
+    if ($found and $para =~ m/^=head1/) {
+      return $found_faq{contents} // [] if defined $question;
+      push @faqs, {contents => $found_faq{contents}, questions => [sort keys %{$found_faq{questions}}]};
+      %found_faq = ();
+      $found = '';
+    }
 
-    my ($is_header, $is_question_header);
-    $is_header = 1 if $para =~ m/^=head2/;
-    if ($is_header) {
-      if (defined $question) {
-        my $heading = _pod_to_text_content("=pod\n\n$para");
-        # see if this is the start or end of the question we want
-        $is_question_header = 1 if $heading eq $question;
-        $found = 'header' if !$found and $is_question_header;
-        $found = 'end' if $found eq 'content' and !$is_question_header;
-      } else {
+    if ($para =~ m/^=head2/) {
+      unless (defined $question) {
         # this indicates a new faq section if we found content
-        $found = 'header' if !$found;
-        $found = 'end' if $found eq 'content';
+        if ($found eq 'content') {
+          push @faqs, {contents => $found_faq{contents}, questions => [sort keys %{$found_faq{questions}}]};
+          %found_faq = ();
+        }
+        $found = 'header';
       }
+
+      my $heading = _pod_to_text_content("=pod\n\n$para");
+      if (defined $question) {
+        # see if this is the start or end of the question we want
+        my $is_question_header = !!($heading eq $question);
+        $found = 'header' if !$found and $is_question_header;
+        return $found_faq{contents} // [] if $found eq 'content' and !$is_question_header;
+      }
+
+      # track questions to search this faq section
+      $found_faq{questions}{$heading} //= 1;
     } elsif ($found eq 'header') {
       # faq answer if we're in a faq section
-      $found = 'content' unless $found eq 'end';
+      $found = 'content';
     } elsif (!$found and defined $question) {
       # skip content if this isn't the faq section we're looking for
-      @faq = ();
+      %found_faq = ();
       next;
     }
 
-    if ($found eq 'end') {
-      if (defined $question) {
-        # we're done
-        last;
-      } else {
-        # add this faq section
-        push @faqs, [@faq];
-      }
-      # start next faq section
-      @faq = ();
-      $found = $is_header && (!defined $question or $is_question_header) ? 'header' : '';
-    }
-
     # faq section
-    push @faq, $para;
+    push @{$found_faq{contents}}, $para if $found;
   }
 
-  return defined $question ? \@faq : \@faqs;
+  return defined $question ? $found_faq{contents} // [] : \@faqs;
 }
 
 sub _split_perldelta ($src, $section = undef) {
