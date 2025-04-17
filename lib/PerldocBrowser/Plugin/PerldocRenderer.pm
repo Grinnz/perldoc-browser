@@ -20,36 +20,40 @@ use Pod::Simple::TextContent;
 use Scalar::Util 'weaken';
 use experimental 'signatures';
 
-my %indexes = (
-  index => {
-    module => 'index',
-    pod_source => 'perl',
-    page_name => 'Perl Documentation',
-    cpan => 'https://metacpan.org/pod/perl',
-  },
-  functions => {
-    module => 'functions',
-    pod_source => 'perlfunc',
-    page_name => 'Perl builtin functions',
-    cpan => 'https://metacpan.org/pod/perlfunc',
-  },
-  variables => {
-    module => 'variables',
-    pod_source => 'perlvar',
-    page_name => 'Perl predefined variables',
-    cpan => 'https://metacpan.org/pod/perlvar',
-  },
-  modules => {
-    module => 'modules',
-    pod_source => 'perlmodlib',
-    page_name => 'Perl core modules',
-    cpan => 'https://metacpan.org',
-  },
-);
+{
+  my %indexes = (
+    index => {
+      module => 'index',
+      pod_source => 'perl',
+      page_name => 'Perl Documentation',
+      cpan => 'https://metacpan.org/pod/perl',
+    },
+    functions => {
+      module => 'functions',
+      pod_source => 'perlfunc',
+      page_name => 'Perl builtin functions',
+      cpan => 'https://metacpan.org/pod/perlfunc',
+    },
+    variables => {
+      module => 'variables',
+      pod_source => 'perlvar',
+      page_name => 'Perl predefined variables',
+      cpan => 'https://metacpan.org/pod/perlvar',
+    },
+    modules => {
+      module => 'modules',
+      pod_source => 'perlmodlib',
+      page_name => 'Perl core modules',
+      cpan => 'https://metacpan.org',
+    },
+  );
 
-sub _pod_source_for_index ($c, $page) {
-  my $index = $indexes{$page} // return undef;
-  return $index->{pod_source};
+  sub _index_pages () { [sort keys %indexes] }
+
+  sub _index_stash ($page) {
+    my $index = $indexes{$page} // return undef;
+    return {%$index};
+  }
 }
 
 sub register ($self, $app, $conf) {
@@ -64,7 +68,8 @@ sub register ($self, $app, $conf) {
   $app->helper(current_doc_path => \&_current_doc_path);
   $app->helper(prepare_perldoc_html => \&_prepare_html);
   $app->helper(render_perldoc_html => \&_render_html);
-  $app->helper(pod_source_for_index => \&_pod_source_for_index);
+  $app->helper(index_pages => sub ($c, @args) { _index_pages(@args) });
+  $app->helper(index_stash => sub ($c, @args) { _index_stash(@args) });
   $app->helper(index_page => \&_index_page);
   $app->helper(function_pod_page => \&_function_pod_page);
   $app->helper(variable_pod_page => \&_variable_pod_page);
@@ -101,12 +106,12 @@ sub register ($self, $app, $conf) {
       => [variable => qr/[^.]+(?:\.{3}[^.]+|\.)?/] => \&_variable);
 
     # index pages
-    if (exists $indexes{$homepage}) {
-      $versioned->any('/' => {%{$indexes{$homepage}}, current_doc_path => '/'} => \&_index);
+    if (defined(my $index_stash = $app->index_stash($homepage))) {
+      $versioned->any('/' => {%$index_stash, current_doc_path => '/'} => \&_index);
     } else {
       $versioned->any('/' => {module => $homepage, current_doc_path => '/'} => \&_perldoc);
     }
-    $versioned->any("/$_" => $indexes{$_} => \&_index) for sort keys %indexes;
+    $versioned->any("/$_" => $app->index_stash($_) => \&_index) for @{$app->index_pages};
 
     # all other docs
     # allow .pl for perl5db.pl and .pl scripts
@@ -506,7 +511,7 @@ sub _index ($c) {
   my $page = $c->stash('module');
   
   my $url_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
-  my $pod_source = $c->pod_source_for_index($page);
+  my $pod_source = $c->index_stash($page)->{pod_source};
   my $backup_url = $c->url_for("$url_prefix/$pod_source");
 
   $c->respond_to(
@@ -533,7 +538,7 @@ sub _index ($c) {
 }
 
 sub _get_index_page ($c, $perl_version, $page) {
-  my $pod = $c->pod_source_for_index($page) // return undef;
+  my $pod = $c->index_stash($page)->{pod_source} // return undef;
   my $path = _find_pod($c, $perl_version, $pod) // return undef;
   my $src = path($path)->slurp;
   return $c->index_page($src, $perl_version, $page);
