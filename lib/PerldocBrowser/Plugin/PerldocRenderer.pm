@@ -892,55 +892,42 @@ sub _split_variables ($src, $variable = undef) {
 }
 
 # edge case: perlfaq4
-sub _split_faqs ($src, $question = undef) {
+sub _split_faqs ($src) {
   my $found = '';
   my (%found_faq, @faqs);
 
   foreach my $para (split /\n\n+/, $src) {
     if ($found and $para =~ m/^=head1/) {
-      return $found_faq{contents} // [] if defined $question;
       push @faqs, {contents => $found_faq{contents}, questions => [sort keys %{$found_faq{questions}}]};
       %found_faq = ();
       $found = '';
     }
 
     if ($para =~ m/^=head2/) {
-      unless (defined $question) {
-        # this indicates a new faq section if we found content
-        if ($found eq 'content') {
-          push @faqs, {contents => $found_faq{contents}, questions => [sort keys %{$found_faq{questions}}]};
-          %found_faq = ();
-        }
-        $found = 'header';
+      # this indicates a new faq section if we found content
+      if ($found eq 'content') {
+        push @faqs, {contents => $found_faq{contents}, questions => [sort keys %{$found_faq{questions}}]};
+        %found_faq = ();
       }
+      $found = 'header';
 
       my $heading = _pod_to_text_content("=pod\n\n$para");
-      if (defined $question) {
-        # see if this is the start or end of the question we want
-        my $is_question_header = !!($heading eq $question);
-        $found = 'header' if !$found and $is_question_header;
-        return $found_faq{contents} // [] if $found eq 'content' and !$is_question_header;
-      }
 
       # track questions to search this faq section
       $found_faq{questions}{$heading} //= 1;
     } elsif ($found eq 'header') {
       # faq answer if we're in a faq section
       $found = 'content';
-    } elsif (!$found and defined $question) {
-      # skip content if this isn't the faq section we're looking for
-      %found_faq = ();
-      next;
     }
 
     # faq section
     push @{$found_faq{contents}}, $para if $found;
   }
 
-  return defined $question ? $found_faq{contents} // [] : \@faqs;
+  return \@faqs;
 }
 
-sub _split_perldelta ($src, $section = undef) {
+sub _split_perldelta ($src) {
   my $found = '';
   my ($started, %found_section, @sections);
 
@@ -949,35 +936,23 @@ sub _split_perldelta ($src, $section = undef) {
     next unless $started;
 
     if ($para =~ m/^=head\d/) {
-      unless (defined $section) {
-        # this indicates a new section if we found content
-        if ($found eq 'content') {
-          push @sections, {contents => $found_section{contents}, heading => $found_section{heading}};
-          %found_section = ();
-        } elsif ($found eq 'header') {
-          # Don't include previous headings in contents
-          %found_section = ();
-        }
-        $found = 'header';
+      # this indicates a new section if we found content
+      if ($found eq 'content') {
+        push @sections, {contents => $found_section{contents}, heading => $found_section{heading}};
+        %found_section = ();
+      } elsif ($found eq 'header') {
+        # Don't include previous headings in contents
+        %found_section = ();
       }
+      $found = 'header';
 
       my $heading = _pod_to_text_content("=pod\n\n$para");
-      if (defined $section) {
-        # see if this is the start or end of the section we want
-        my $is_section_header = !!($heading eq $section);
-        $found = 'header' if !$found and $is_section_header;
-        return $found_section{contents} // [] if $found eq 'content' and !$is_section_header;
-      }
 
       # track innermost heading to search this perldelta section
       $found_section{heading} = $heading;
     } elsif ($found eq 'header') {
       # section content if we're in a section
       $found = 'content';
-    } elsif (!$found and defined $section) {
-      # skip content if this isn't the section we're looking for
-      %found_section = ();
-      next;
     }
 
     last if $para =~ m/^=head1\s+Reporting Bugs$/;
@@ -986,7 +961,7 @@ sub _split_perldelta ($src, $section = undef) {
     push @{$found_section{contents}}, $para;
   }
 
-  return defined $section ? $found_section{contents} // [] : \@sections;
+  return \@sections;
 }
 
 sub _pod_to_html ($pod, $url_perl_version = '', $with_errata = 1) {
