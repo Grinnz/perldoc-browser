@@ -145,8 +145,8 @@ sub _find_html ($c, $url_perl_version, $perl_version, @parts) {
   return -r $path ? $path : undef;
 }
 
-sub _find_module ($c, $module) {
-  my $inc_dirs = $c->inc_dirs($c->stash('perl_version'));
+sub _find_module ($c, $perl_version, $module) {
+  my $inc_dirs = $c->inc_dirs($perl_version);
   my $meta;
   { local $@;
     $c->app->log->debug("Error retrieving module metadata for $module: $@")
@@ -404,7 +404,7 @@ sub _perldoc ($c) {
         return $c->reply->not_found;
       }
 
-      if (defined(my $module_meta = _find_module($c, $module))) {
+      if (defined(my $module_meta = _find_module($c, $perl_version, $module))) {
         $c->stash(module_version => $module_meta->version($module));
       }
 
@@ -543,6 +543,8 @@ sub _get_index_page ($c, $perl_version, $page) {
   my $src = path($path)->slurp;
   return $c->index_page($src, $perl_version, $page);
 }
+
+# The following functions are called from the command-line and cannot use the stash
 
 sub _index_page ($c, $src, $perl_version, $page) {
   my $sub = __PACKAGE__->can("_index_page_$page") // return undef;
