@@ -20,9 +20,39 @@ use Pod::Simple::TextContent;
 use Scalar::Util 'weaken';
 use experimental 'signatures';
 
+my %indexes = (
+  index => {
+    module => 'index',
+    pod_source => 'perl',
+    page_name => 'Perl Documentation',
+    cpan => 'https://metacpan.org/pod/perl',
+  },
+  functions => {
+    module => 'functions',
+    pod_source => 'perlfunc',
+    page_name => 'Perl builtin functions',
+    cpan => 'https://metacpan.org/pod/perlfunc',
+  },
+  variables => {
+    module => 'variables',
+    pod_source => 'perlvar',
+    page_name => 'Perl predefined variables',
+    cpan => 'https://metacpan.org/pod/perlvar',
+  },
+  modules => {
+    module => 'modules',
+    pod_source => 'perlmodlib',
+    page_name => 'Perl core modules',
+    cpan => 'https://metacpan.org',
+  },
+);
+
+sub _pod_source_for_index ($c, $page) {
+  my $index = $indexes{$page} // return undef;
+  return $index->{pod_source};
+}
+
 sub register ($self, $app, $conf) {
-  $app->helper(function_pod_page => \&_function_pod_page);
-  $app->helper(variable_pod_page => \&_variable_pod_page);
   $app->helper(split_functions => sub ($c, @args) { _split_functions(@args) });
   $app->helper(split_variables => sub ($c, @args) { _split_variables(@args) });
   $app->helper(split_faqs => sub ($c, @args) { _split_faqs(@args) });
@@ -34,6 +64,10 @@ sub register ($self, $app, $conf) {
   $app->helper(current_doc_path => \&_current_doc_path);
   $app->helper(prepare_perldoc_html => \&_prepare_html);
   $app->helper(render_perldoc_html => \&_render_html);
+  $app->helper(pod_source_for_index => \&_pod_source_for_index);
+  $app->helper(index_page => \&_index_page);
+  $app->helper(function_pod_page => \&_function_pod_page);
+  $app->helper(variable_pod_page => \&_variable_pod_page);
 
   # canonicalize without .html
   my $r = $app->routes->under(sub ($c) {
@@ -67,11 +101,12 @@ sub register ($self, $app, $conf) {
       => [variable => qr/[^.]+(?:\.{3}[^.]+|\.)?/] => \&_variable);
 
     # index pages
-    $versioned->any('/' => {module => $homepage, current_doc_path => '/'} => ($homepage eq 'index' ? \&_main_index : \&_perldoc));
-    $versioned->any('/index' => {module => 'index'} => \&_main_index);
-    $versioned->any('/functions' => {module => 'functions'} => \&_functions_index);
-    $versioned->any('/variables' => {module => 'variables'} => \&_variables_index);
-    $versioned->any('/modules' => {module => 'modules'} => \&_modules_index);
+    if (exists $indexes{$homepage}) {
+      $versioned->any('/' => {%{$indexes{$homepage}}, current_doc_path => '/'} => \&_index);
+    } else {
+      $versioned->any('/' => {module => $homepage, current_doc_path => '/'} => \&_perldoc);
+    }
+    $versioned->any("/$_" => $indexes{$_} => \&_index) for sort keys %indexes;
 
     # all other docs
     # allow .pl for perl5db.pl and .pl scripts
@@ -387,7 +422,7 @@ sub _function ($c) {
 
   $c->respond_to(
     txt => sub {
-      my $src = _get_function_pod($c, $function) // return $c->reply->not_found;
+      my $src = _get_function_pod($c, $perl_version, $function) // return $c->reply->not_found;
       $c->render(data => $src);
     },
     html => sub {
@@ -397,7 +432,7 @@ sub _function ($c) {
       my $dom;
       if (defined(my $html_path = _find_html($c, $url_perl_version, $perl_version, 'functions', $function))) {
         $dom = Mojo::DOM->new(decode 'UTF-8', path($html_path)->slurp);
-      } elsif (defined(my $src = _get_function_pod($c, $function))) {
+      } elsif (defined(my $src = _get_function_pod($c, $perl_version, $function))) {
         $dom = $c->prepare_perldoc_html($src, $url_perl_version, $c->pod_paths($perl_version), 'functions', $function);
       } else {
         return $c->reply->not_found;
@@ -418,6 +453,12 @@ sub _function ($c) {
   );
 }
 
+sub _get_function_pod ($c, $perl_version, $function) {
+  my $path = _find_pod($c, $perl_version, 'perlfunc') // return undef;
+  my $src = path($path)->slurp;
+  return $c->function_pod_page($src, $function);
+}
+
 sub _variable ($c) {
   my $variable = $c->stash('variable');
   my $url_perl_version = $c->stash('url_perl_version');
@@ -427,7 +468,7 @@ sub _variable ($c) {
 
   $c->respond_to(
     txt => sub {
-      my $src = _get_variable_pod($c, $variable) // return $c->reply->not_found;
+      my $src = _get_variable_pod($c, $perl_version, $variable) // return $c->reply->not_found;
       $c->render(data => $src);
     },
     html => sub {
@@ -437,7 +478,7 @@ sub _variable ($c) {
       my $dom;
       if (defined(my $html_path = _find_html($c, $url_perl_version, $perl_version, 'variables', $variable))) {
         $dom = Mojo::DOM->new(decode 'UTF-8', path($html_path)->slurp);
-      } elsif (defined(my $src = _get_variable_pod($c, $variable))) {
+      } elsif (defined(my $src = _get_variable_pod($c, $perl_version, $variable))) {
         $dom = $c->prepare_perldoc_html($src, $url_perl_version, $c->pod_paths($perl_version), 'variables', undef, $variable);
       } else {
         return $c->reply->not_found;
@@ -453,114 +494,57 @@ sub _variable ($c) {
   );
 }
 
-sub _main_index ($c) {
-  my $url_perl_version = $c->stash('url_perl_version');
-  my $perl_version = $c->stash('perl_version');
-
-  $c->stash(page_name => 'Perl Documentation');
-
-  my $src = _get_index_page($c);
-  my $url_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
-  return $c->res->code(302) && $c->redirect_to($c->url_for("$url_prefix/perl")) unless defined $src;
-
-  $c->respond_to(
-    txt => {data => $src},
-    html => sub {
-      $c->stash(cpan => 'https://metacpan.org/pod/perl');
-      $c->stash(latest_url => $c->url_with($c->current_doc_path));
-      my $pod_paths = $c->pod_paths($perl_version);
-      $c->render_perldoc_html($c->prepare_perldoc_html($src, $url_perl_version, $pod_paths, 'index'));
-    },
-  );
-}
-
-sub _functions_index ($c) {
-  my $url_perl_version = $c->stash('url_perl_version');
-  my $perl_version = $c->stash('perl_version');
-
-  $c->stash(page_name => 'Perl builtin functions');
-
-  my $categories = _get_function_categories($c);
-  my $descriptions = _get_function_list($c);
-
-  my $url_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
-  return $c->res->code(302) && $c->redirect_to($c->url_for("$url_prefix/perlfunc"))
-    unless defined $categories or defined $descriptions;
-
-  my $src = join "\n\n", '=pod', 'I<Full documentation of builtin functions: L<perlfunc>>',
-    grep { defined } $categories, $descriptions;
-
-  $c->respond_to(
-    txt => {data => $src},
-    html => sub {
-      $c->stash(cpan => 'https://metacpan.org/pod/perlfunc');
-      $c->stash(latest_url => $c->url_with($c->current_doc_path));
-      my $pod_paths = $c->pod_paths($perl_version);
-      $c->render_perldoc_html($c->prepare_perldoc_html($src, $url_perl_version, $pod_paths, 'functions'));
-    },
-  );
-}
-
-sub _variables_index ($c) {
-  my $url_perl_version = $c->stash('url_perl_version');
-  my $perl_version = $c->stash('perl_version');
-
-  $c->stash(page_name => 'Perl predefined variables');
-
-  my $src = _get_variable_list($c);
-  my $url_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
-  return $c->res->code(302) && $c->redirect_to($c->url_for("$url_prefix/perlvar")) unless defined $src;
-
-  $src = join "\n\n", '=pod', 'I<Full documentation of predefined variables: L<perlvar>>', $src;
-
-  $c->respond_to(
-    txt => {data => $src},
-    html => sub {
-      $c->stash(cpan => 'https://metacpan.org/pod/perlvar');
-      $c->stash(latest_url => $c->url_with($c->current_doc_path));
-      my $pod_paths = $c->pod_paths($perl_version);
-      $c->render_perldoc_html($c->prepare_perldoc_html($src, $url_perl_version, $pod_paths, 'variables'));
-    },
-  );
-}
-
-sub _modules_index ($c) {
-  my $url_perl_version = $c->stash('url_perl_version');
-  my $perl_version = $c->stash('perl_version');
-
-  $c->stash(page_name => 'Perl core modules');
-
-  my $src = _get_module_list($c);
-  my $url_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
-  return $c->res->code(302) && $c->redirect_to($c->url_for("$url_prefix/perlmodlib")) unless defined $src;
-
-  $c->respond_to(
-    txt => {data => $src},
-    html => sub {
-      $c->stash(cpan => 'https://metacpan.org');
-      $c->stash(latest_url => $c->url_with($c->current_doc_path));
-      my $pod_paths = $c->pod_paths($perl_version);
-      $c->render_perldoc_html($c->prepare_perldoc_html($src, $url_perl_version, $pod_paths, 'modules'));
-    },
-  );
-}
-
-sub _get_function_pod ($c, $function) {
-  my $path = _find_pod($c, $c->stash('perl_version'), 'perlfunc') // return undef;
-  my $src = path($path)->slurp;
-  return $c->function_pod_page($src, $function);
-}
-
-sub _get_variable_pod ($c, $variable) {
-  my $path = _find_pod($c, $c->stash('perl_version'), 'perlvar') // return undef;
+sub _get_variable_pod ($c, $perl_version, $variable) {
+  my $path = _find_pod($c, $perl_version, 'perlvar') // return undef;
   my $src = path($path)->slurp;
   return $c->variable_pod_page($src, $variable);
 }
 
-sub _get_index_page ($c) {
-  my $path = _find_pod($c, $c->stash('perl_version'), 'perl') // return undef;
-  my $src = path($path)->slurp;
+sub _index ($c) {
+  my $url_perl_version = $c->stash('url_perl_version');
+  my $perl_version = $c->stash('perl_version');
+  my $page = $c->stash('module');
+  
+  my $url_prefix = $url_perl_version ? $c->append_url_path('/', $url_perl_version) : '';
+  my $pod_source = $c->pod_source_for_index($page);
+  my $backup_url = $c->url_for("$url_prefix/$pod_source");
 
+  $c->respond_to(
+    txt => sub {
+      my $src = _get_index_page($c, $perl_version, $page) // return $c->res->code(302) && $c->redirect_to($backup_url);
+      $c->render(data => $src);
+    },
+    html => sub {
+      $c->stash(latest_url => $c->url_with($c->current_doc_path));
+
+      my $dom;
+      if (defined(my $html_path = _find_html($c, $url_perl_version, $perl_version, $page))) {
+        $dom = Mojo::DOM->new(decode 'UTF-8', path($html_path)->slurp);
+      } elsif (defined(my $src = _get_index_page($c, $perl_version, $page))) {
+        $dom = $c->prepare_perldoc_html($src, $url_perl_version, $c->pod_paths($perl_version), $page);
+      } else {
+        $c->res->code(302);
+        return $c->redirect_to($backup_url);
+      }
+
+      $c->render_perldoc_html($dom);
+    },
+  );
+}
+
+sub _get_index_page ($c, $perl_version, $page) {
+  my $pod = $c->pod_source_for_index($page) // return undef;
+  my $path = _find_pod($c, $perl_version, $pod) // return undef;
+  my $src = path($path)->slurp;
+  return $c->index_page($src, $perl_version, $page);
+}
+
+sub _index_page ($c, $src, $perl_version, $page) {
+  my $sub = __PACKAGE__->can("_index_page_$page") // return undef;
+  return $sub->($c, $src, $perl_version);
+}
+
+sub _index_page_index ($c, $src, $perl_version) {
   my ($in_intro, $in_desc, @intro, @sections, @description);
   foreach my $para (split /\n\n+/, $src) {
     if ($para =~ m/^=head/) {
@@ -581,7 +565,6 @@ sub _get_index_page ($c) {
   }
 
   my @result;
-  my $perl_version = $c->stash('perl_version');
 
   push @result, "=head1 Perl $perl_version Documentation", @intro;
 
@@ -614,10 +597,15 @@ sub _get_index_page ($c) {
   return join "\n\n", @result;
 }
 
-sub _get_function_categories ($c) {
-  my $path = _find_pod($c, $c->stash('perl_version'), 'perlfunc') // return undef;
-  my $src = path($path)->slurp;
+sub _index_page_functions ($c, $src, $perl_version) {
+  my $categories = _get_function_categories($c, $src);
+  my $descriptions = _get_function_list($c, $perl_version);
+  return undef unless defined $categories or defined $descriptions;
+  return join "\n\n", '=pod', 'I<Full documentation of builtin functions: L<perlfunc>>',
+    grep { defined } $categories, $descriptions;
+}
 
+sub _get_function_categories ($c, $src) {
   my ($started, @result);
   foreach my $para (split /\n\n+/, $src) {
     if (!$started and $para =~ m/^=head2 Perl Functions by Category/) {
@@ -633,8 +621,7 @@ sub _get_function_categories ($c) {
   return join "\n\n", @result;
 }
 
-sub _get_function_list ($c) {
-  my $perl_version = $c->stash('perl_version');
+sub _get_function_list ($c, $perl_version) {
   my $names = $c->function_names($perl_version);
   return undef unless @$names;
   my $descriptions = $c->function_descriptions($perl_version);
@@ -650,10 +637,7 @@ sub _get_function_list ($c) {
   return join "\n\n", @result;
 }
 
-sub _get_variable_list ($c) {
-  my $path = _find_pod($c, $c->stash('perl_version'), 'perlvar') // return undef;
-  my $src = path($path)->slurp;
-
+sub _index_page_variables ($c, $src, $perl_version) {
   my ($level, @names, $heading, @section, @result) = (0);
   foreach my $para (split /\n\n+/, $src) {
     if ($level == 1 and $para =~ m/^=item\s+(.*)/) {
@@ -684,13 +668,10 @@ sub _get_variable_list ($c) {
   push @result, $heading, @section if @section;
 
   return undef unless @result;
-  return join "\n\n", @result;
+  return join "\n\n", '=pod', 'I<Full documentation of predefined variables: L<perlvar>>', @result;
 }
 
-sub _get_module_list ($c) {
-  my $path = _find_pod($c, $c->stash('perl_version'), 'perlmodlib') // return undef;
-  my $src = path($path)->slurp;
-
+sub _index_page_modules ($c, $src, $perl_version) {
   my ($started, $standard, $name, @result);
   foreach my $para (split /\n\n+/, $src) {
     if (!$started and $para =~ m/^=head\d Pragmatic Modules/) {
