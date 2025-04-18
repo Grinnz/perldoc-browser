@@ -6,18 +6,26 @@ package PerldocBrowser::Command::render;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Command';
+use Mojo::Util 'getopt';
 use experimental 'signatures';
 
 has description => 'Pre-render perldocs to HTML';
-has usage => "Usage: $0 render [all | latest | <version> ...]\n";
+has usage => "Usage: $0 render [--pods] [--indexes] [--functions] [--variables] [all | latest | <version> ...]\n";
 
-sub run ($self, @versions) {
+sub run ($self, @args) {
+  my %types;
+  getopt \@args,
+    pods => \$types{pods},
+    indexes => \$types{indexes},
+    functions => \$types{functions},
+    variables => \$types{variables};
+  my @versions = @args;
   die $self->usage unless @versions;
   if ($versions[0] eq 'all') {
     @versions = grep { $_ ne 'blead' } ('latest', @{$self->app->all_perl_versions});
   }
   foreach my $version (@versions) {
-    $self->app->cache_perl_to_html($version);
+    $self->app->cache_perl_to_html($version, grep($_, values %types) ? \%types : ());
   }
 }
 
