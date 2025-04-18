@@ -73,6 +73,7 @@ sub register ($self, $app, $conf) {
   $app->helper(index_page => \&_index_page);
   $app->helper(function_pod_page => \&_function_pod_page);
   $app->helper(variable_pod_page => \&_variable_pod_page);
+  $app->helper(cache_perl_to_html => \&_cache_perl_to_html);
 
   # canonicalize without .html
   my $r = $app->routes->under(sub ($c) {
@@ -950,6 +951,67 @@ sub _split_perldelta ($src) {
   }
 
   return \@sections;
+}
+
+sub _cache_perl_to_html ($c, $perl_version) {
+  my $url_version = my $real_version = my $path_version = $perl_version;
+  if ($perl_version eq 'latest') {
+    $url_version = '';
+    $real_version = $c->app->latest_perl_version;
+    $path_version = "latest-$real_version";
+  }
+
+  my $pod_paths = $c->app->pod_paths($real_version) // {};
+  return unless keys %$pod_paths;
+
+  my $version_dir = $c->app->home->child('html', $path_version)->remove_tree({keep_root => 1})->make_path;
+
+  foreach my $pod (keys %$pod_paths) {
+    my $filename = sha1_sum(encode 'UTF-8', $pod) . '.html';
+    print "Rendering $pod for $perl_version to $filename\n";
+    my $dom = $c->app->prepare_perldoc_html(path($pod_paths->{$pod})->slurp, $url_version, $pod_paths, $pod);
+    $version_dir->child($filename)->spew(encode 'UTF-8', $dom->to_string);
+  }
+
+  foreach my $index (@{$c->app->index_pages}) {
+    my $pod_source = $c->app->index_stash($index)->{pod_source} // next;
+    next unless defined $pod_paths->{$pod_source};
+    my $filename = sha1_sum(encode 'UTF-8', $index) . '.html';
+    print "Rendering index page $index for $perl_version to $filename\n";
+    my $src = $c->app->index_page(path($pod_paths->{$pod_source})->slurp, $real_version, $index);
+    my $dom = $c->app->prepare_perldoc_html($src, $url_version, $pod_paths, $index);
+    $version_dir->child($filename)->spew(encode 'UTF-8', $dom->to_string);
+  }
+
+  if (defined $pod_paths->{perlfunc}) {
+    my $functions_dir = $version_dir->child('functions')->make_path;
+
+    my $perlfunc_pod = path($pod_paths->{perlfunc})->slurp;
+    my %functions = map { ($_ => 1) } map { @{$_->{names}} } @{$c->split_functions($perlfunc_pod)};
+
+    foreach my $function (keys %functions) {
+      my $filename = sha1_sum(encode 'UTF-8', $function) . '.html';
+      print "Rendering function $function for $perl_version to $filename\n";
+      my $function_pod = $c->function_pod_page($perlfunc_pod, $function);
+      my $dom = $c->app->prepare_perldoc_html($function_pod, $url_version, $pod_paths, 'functions', $function);
+      $functions_dir->child($filename)->spew(encode 'UTF-8', $dom->to_string);
+    }
+  }
+
+  if (defined $pod_paths->{perlvar}) {
+    my $variables_dir = $version_dir->child('variables')->make_path;
+
+    my $perlvar_pod = path($pod_paths->{perlvar})->slurp;
+    my %variables = map { ($_ => 1) } map { @{$_->{names}} } @{$c->split_variables($perlvar_pod)};
+
+    foreach my $variable (keys %variables) {
+      my $filename = sha1_sum(encode 'UTF-8', $variable) . '.html';
+      print "Rendering variable $variable for $perl_version to $filename\n";
+      my $variable_pod = $c->variable_pod_page($perlvar_pod, $variable);
+      my $dom = $c->app->prepare_perldoc_html($variable_pod, $url_version, $pod_paths, 'variables', undef, $variable);
+      $variables_dir->child($filename)->spew(encode 'UTF-8', $dom->to_string);
+    }
+  }
 }
 
 sub _pod_to_html ($pod, $url_perl_version = '', $with_errata = 1) {
