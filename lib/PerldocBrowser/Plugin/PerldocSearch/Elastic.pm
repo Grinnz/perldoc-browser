@@ -229,50 +229,65 @@ sub _perldelta_search ($c, $perl_version, $query, $limit = undef) {
   return \@results;
 }
 
-sub _index_perl_version ($c, $perl_version, $pods) {
+sub _index_perl_version ($c, $perl_version, $pods, $types = undef) {
   my $es = $c->es;
   my $time = time;
   my (%index_name, %index_alias);
-  $index_alias{pods} = "pods_\L$perl_version";
-  $index_name{pods} = "$index_alias{pods}_$time";
-  if (exists $pods->{perlfunc}) {
+  if ((!$types or $types->{pods}) and keys %$pods) {
+    $index_alias{pods} = "pods_\L$perl_version";
+    $index_name{pods} = "$index_alias{pods}_$time";
+  }
+  if ((!$types or $types->{functions}) and exists $pods->{perlfunc}) {
     $index_alias{functions} = "functions_\L$perl_version";
     $index_name{functions} = "$index_alias{functions}_$time";
   }
-  if (exists $pods->{perlvar}) {
+  if ((!$types or $types->{variables}) and exists $pods->{perlvar}) {
     $index_alias{variables} = "variables_\L$perl_version";
     $index_name{variables} = "$index_alias{variables}_$time";
   }
-  if (any { exists $pods->{"perlfaq$_"} } 1..9) {
+  if ((!$types or $types->{faqs}) and any { exists $pods->{"perlfaq$_"} } 1..9) {
     $index_alias{faqs} = "faqs_\L$perl_version";
     $index_name{faqs} = "$index_alias{faqs}_$time";
   }
-  if (any { m/^perl[0-9]+delta$/ } keys %$pods) {
+  if ((!$types or $types->{perldeltas}) and any { m/^perl[0-9]+delta$/ } keys %$pods) {
     $index_alias{perldeltas} = "perldeltas_\L$perl_version";
     $index_name{perldeltas} = "$index_alias{perldeltas}_$time";
   }
   _create_index($es, $_, $index_name{$_}) for keys %index_name;
   try {
-    my $bulk_pod = _bulk_helper($es, $index_name{pods});
-    foreach my $pod (keys %$pods) {
-      print "Indexing $pod for $perl_version ($pods->{$pod})\n";
-      my $src = path($pods->{$pod})->slurp;
-      _index_pod($bulk_pod, $c->prepare_index_pod($pod, $src));
-      if (defined $index_name{functions} and $pod eq 'perlfunc') {
-        print "Indexing functions for $perl_version\n";
-        _index_functions($es, $index_name{functions}, $c->prepare_index_functions($src));
-      } elsif (defined $index_name{variables} and $pod eq 'perlvar') {
-        print "Indexing variables for $perl_version\n";
-        _index_variables($es, $index_name{variables}, $c->prepare_index_variables($src));
-      } elsif (defined $index_name{faqs} and $pod =~ m/^perlfaq[1-9]$/) {
+    if (defined $index_name{pods}) {
+      my $bulk_pod = _bulk_helper($es, $index_name{pods});
+      foreach my $pod (keys %$pods) {
+        print "Indexing $pod for $perl_version ($pods->{$pod})\n";
+        my $src = path($pods->{$pod})->slurp;
+        _index_pod($bulk_pod, $c->prepare_index_pod($pod, $src));
+      }
+      $bulk_pod->flush;
+    }
+    if (defined $index_name{functions}) {
+      my $perlfunc = path($pods->{perlfunc})->slurp;
+      print "Indexing functions for $perl_version\n";
+      _index_functions($es, $index_name{functions}, $c->prepare_index_functions($perlfunc));
+    }
+    if (defined $index_name{variables}) {
+      my $perlvar = path($pods->{perlvar})->slurp;
+      print "Indexing variables for $perl_version\n";
+      _index_variables($es, $index_name{variables}, $c->prepare_index_variables($perlvar));
+    }
+    if (defined $index_name{faqs}) {
+      foreach my $pod (grep { m/^perlfaq[1-9]$/ } keys %$pods) {
+        my $perlfaq = path($pods->{$pod})->slurp;
         print "Indexing $pod FAQs for $perl_version\n";
-        _index_faqs($es, $index_name{faqs}, $pod, $c->prepare_index_faqs($src));
-      } elsif (defined $index_name{perldeltas} and $pod =~ m/^perl[0-9]+delta$/) {
-        print "Indexing $pod deltas for $perl_version\n";
-        _index_perldelta($es, $index_name{perldeltas}, $pod, $c->prepare_index_perldelta($src));
+        _index_faqs($es, $index_name{faqs}, $pod, $c->prepare_index_faqs($perlfaq));
       }
     }
-    $bulk_pod->flush;
+    if (defined $index_name{perldeltas}) {
+      foreach my $pod (grep { m/^perl[0-9]+delta$/ } keys %$pods) {
+        my $perldelta = path($pods->{$pod})->slurp;
+        print "Indexing $pod deltas for $perl_version\n";
+        _index_perldelta($es, $index_name{perldeltas}, $pod, $c->prepare_index_perldelta($perldelta));
+      }
+    }
     $es->indices->forcemerge(index => [values %index_name]);
   } catch {
     $es->indices->delete(index => [values %index_name]);

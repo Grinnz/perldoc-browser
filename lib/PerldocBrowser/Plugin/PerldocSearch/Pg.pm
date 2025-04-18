@@ -105,30 +105,43 @@ sub _perldelta_search ($c, $perl_version, $query, $limit = undef) {
     ORDER BY "rank" DESC, "heading"} . $limit_str, $query, $headline_opts, $perl_version, @limit_param)->hashes;
 }
 
-sub _index_perl_version ($c, $perl_version, $pods) {
+sub _index_perl_version ($c, $perl_version, $pods, $types = undef) {
   my $db = $c->pg->db;
   my $tx = $db->begin;
-  $db->delete('pods', {perl_version => $perl_version});
-  $db->delete('functions', {perl_version => $perl_version}) if exists $pods->{perlfunc};
-  $db->delete('variables', {perl_version => $perl_version}) if exists $pods->{perlvar};
-  $db->delete('faqs', {perl_version => $perl_version}) if any { exists $pods->{"perlfaq$_"} } 1..9;
-  $db->delete('perldeltas', {perl_version => $perl_version}) if any { m/^perl[0-9]+delta$/ } keys %$pods;
-  foreach my $pod (keys %$pods) {
-    print "Indexing $pod for $perl_version ($pods->{$pod})\n";
-    my $src = path($pods->{$pod})->slurp;
-    _index_pod($db, $perl_version, $c->prepare_index_pod($pod, $src));
-    if ($pod eq 'perlfunc') {
-      print "Indexing functions for $perl_version\n";
-      _index_functions($db, $perl_version, $c->prepare_index_functions($src));
-    } elsif ($pod eq 'perlvar') {
-      print "Indexing variables for $perl_version\n";
-      _index_variables($db, $perl_version, $c->prepare_index_variables($src));
-    } elsif ($pod =~ m/^perlfaq[1-9]$/) {
+  if ((!$types or $types->{pods}) and keys %$pods) {
+    $db->delete('pods', {perl_version => $perl_version});
+    foreach my $pod (keys %$pods) {
+      print "Indexing $pod for $perl_version ($pods->{$pod})\n";
+      my $src = path($pods->{$pod})->slurp;
+      _index_pod($db, $perl_version, $c->prepare_index_pod($pod, $src));
+    }
+  }
+  if ((!$types or $types->{functions}) and exists $pods->{perlfunc}) {
+    $db->delete('functions', {perl_version => $perl_version});
+    my $perlfunc = path($pods->{perlfunc})->slurp;
+    print "Indexing functions for $perl_version\n";
+    _index_functions($db, $perl_version, $c->prepare_index_functions($perlfunc));
+  }
+  if ((!$types or $types->{variables}) and exists $pods->{perlvar}) {
+    $db->delete('variables', {perl_version => $perl_version});
+    my $perlvar = path($pods->{perlvar})->slurp;
+    print "Indexing variables for $perl_version\n";
+    _index_variables($db, $perl_version, $c->prepare_index_variables($perlvar));
+  }
+  if ((!$types or $types->{faqs}) and any { exists $pods->{"perlfaq$_"} } 1..9) {
+    $db->delete('faqs', {perl_version => $perl_version});
+    foreach my $pod (grep { m/^perlfaq[1-9]$/ } keys %$pods) {
+      my $perlfaq = path($pods->{$pod})->slurp;
       print "Indexing $pod FAQs for $perl_version\n";
-      _index_faqs($db, $perl_version, $pod, $c->prepare_index_faqs($src));
-    } elsif ($pod =~ m/^perl[0-9]+delta$/) {
+      _index_faqs($db, $perl_version, $pod, $c->prepare_index_faqs($perlfaq));
+    }
+  }
+  if ((!$types or $types->{perldeltas}) and any { m/^perl[0-9]+delta$/ } keys %$pods) {
+    $db->delete('perldeltas', {perl_version => $perl_version});
+    foreach my $pod (grep { m/^perl[0-9]+delta$/ } keys %$pods) {
+      my $perldelta = path($pods->{$pod})->slurp;
       print "Indexing $pod deltas for $perl_version\n";
-      _index_perldelta($db, $perl_version, $pod, $c->prepare_index_perldelta($src));
+      _index_perldelta($db, $perl_version, $pod, $c->prepare_index_perldelta($perldelta));
     }
   }
   $tx->commit;
