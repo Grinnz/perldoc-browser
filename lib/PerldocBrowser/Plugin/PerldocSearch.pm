@@ -201,7 +201,10 @@ sub _search ($c) {
 sub _prepare_index_pod ($c, $name, $src) {
   my %properties = (name => $name, abstract => '', description => '', contents => '');
 
-  unless ($name eq 'perltoc' or $name =~ m/^perlfaq/ or $name =~ m/^perl[0-9]+delta$/) {
+  # perltoc does not need to be searchable
+  # perlfaq and perldelta are separately searched
+  # perl5db searched as perl5db.pl
+  unless ($name eq 'perltoc' or $name =~ m/^perlfaq/ or $name =~ m/^perl[0-9]+delta$/ or $name eq 'perl5db') {
     my $dom = Mojo::DOM->new($c->pod_to_html($src, undef, 0));
     my $headings = $dom->find('h1');
 
