@@ -201,9 +201,9 @@ sub _relink_blead ($c, $target_dir) {
   die "Failed to symlink $target_dir to $link\n" if $exit;
 }
 
-sub _cleanup_bleads ($c, $keep = 2) {
+sub _cleanup_bleads ($c, $bleads_dir, $keep = 2) {
   return [] unless $keep >= 1;
-  my @bleads = $c->app->perls_dir->child('bleads')->list({dir => 1})->sort(sub { $a->basename <=> $b->basename })->each;
+  my @bleads = $bleads_dir->list({dir => 1})->sort(sub { $a->basename <=> $b->basename })->each;
   my @remove = head -$keep, @bleads;
   $_->remove_tree for @remove;
   return [map { $_->basename } @remove];

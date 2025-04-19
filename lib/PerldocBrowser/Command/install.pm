@@ -13,11 +13,11 @@ has usage => "Usage: $0 install <version> [<version> ...]\n";
 
 sub run ($self, @versions) {
   die $self->usage unless @versions;
-  $self->app->perls_dir->make_path;
-  $self->app->home->child('log')->make_path;
+  my $perls_dir = $self->app->perls_dir->make_path;
+  my $log_dir = $self->app->home->child('log')->make_path;
   foreach my $version (@versions) {
-    my $target = $self->app->perls_dir->child($version);
-    my $logfile = $self->app->home->child('log', "perl-build-$version.log");
+    my $target = $perls_dir->child($version);
+    my $logfile = $log_dir->child("perl-build-$version.log");
     print "Installing Perl $version to $target (logfile can be found at $logfile) ...\n";
     $target = $self->app->install_perl($version, $target, $logfile);
     print "Installed Perl $version to $target\n";
