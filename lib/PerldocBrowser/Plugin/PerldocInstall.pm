@@ -14,7 +14,7 @@ use File::pushd;
 use File::Spec;
 use File::Temp;
 use IPC::Run3;
-use List::Util 'first';
+use List::Util 1.50 qw(first head);
 use Mojo::File 'path';
 use Mojo::Util 'trim';
 use Pod::Simple::Search;
@@ -27,6 +27,8 @@ sub register ($self, $app, $conf) {
   $app->helper(download_perl_extracted => \&_download_perl_extracted);
   $app->helper(install_perl => \&_install_perl);
   $app->helper(copy_modules_from_source => \&_copy_modules_from_source);
+  $app->helper(relink_blead => \&_relink_blead);
+  $app->helper(cleanup_bleads => \&_cleanup_bleads);
 }
 
 sub _missing_core_modules ($c, $inc_dirs) {
@@ -190,6 +192,21 @@ sub _copy_modules_from_source ($c, $perl_version, @modules) {
     copy($source_path, $target) or die "Failed to copy $source_path to $target: $!";
     print "Copied $module ($source_path) to $target\n";
   }
+}
+
+sub _relink_blead ($c, $target_dir) {
+  my $link = $c->app->perls_dir->child('blead');
+  my $exit = system 'ln', '-sfT', $target_dir, $link;
+  die "Failed to symlink $target_dir to $link: $!\n" if $exit < 0;
+  die "Failed to symlink $target_dir to $link\n" if $exit;
+}
+
+sub _cleanup_bleads ($c, $keep = 2) {
+  return [] unless $keep >= 1;
+  my @bleads = $c->app->perls_dir->child('bleads')->list({dir => 1})->sort(sub { $a->basename <=> $b->basename })->each;
+  my @remove = head -$keep, @bleads;
+  $_->remove_tree for @remove;
+  return [map { $_->basename } @remove];
 }
 
 1;
