@@ -6,10 +6,8 @@ package PerldocBrowser::Command::refresh_blead;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Command';
-use IPC::Run3;
 use List::Util 1.50 'head';
 use Time::Seconds;
-use version;
 use experimental 'signatures';
 
 has description => 'Refresh Blead Perl for Perldoc Browser';
@@ -21,10 +19,8 @@ sub run ($self) {
   my $date = time;
   my $target = $self->app->perls_dir->child('bleads', $date);
   my $logfile = $self->app->home->child('log', "perl-build-blead.log");
-  print "Installing Perl blead to $target ...\n";
-  my @args = ('--noman', '-Dusedevel', '-Uversiononly');
-  run3 ['perl-build', @args, 'blead', $target], undef, "$logfile", "$logfile";
-  die "Failed to install Perl blead to $target (logfile can be found at $logfile)\n" if $?;
+  print "Installing Perl blead to $target (logfile can be found at $logfile) ...\n";
+  $self->app->install_perl('blead', $target, $logfile);
   print "Installed Perl blead to $target\n";
   my $link = $self->app->perls_dir->child('blead');
   my $exit = system 'ln', '-sfT', $target, $link;

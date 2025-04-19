@@ -6,6 +6,7 @@ package PerldocBrowser::Plugin::PerldocInstall;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
+use Capture::Tiny 'capture_merged';
 use File::Basename 'fileparse';
 use File::Copy;
 use File::Path 'make_path';
@@ -17,11 +18,14 @@ use List::Util 'first';
 use Mojo::File 'path';
 use Mojo::Util 'trim';
 use Pod::Simple::Search;
+use Syntax::Keyword::Try;
+use version;
 use experimental 'signatures';
 
 sub register ($self, $app, $conf) {
   $app->helper(missing_core_modules => \&_missing_core_modules);
   $app->helper(download_perl_extracted => \&_download_perl_extracted);
+  $app->helper(install_perl => \&_install_perl);
   $app->helper(copy_modules_from_source => \&_copy_modules_from_source);
 }
 
@@ -96,6 +100,39 @@ sub _download_perl_extracted ($c, $perl_version, $dir) {
   die "Build directory was not extracted\n" unless defined $build and -d $build;
 
   return $build;
+}
+
+sub _install_perl ($c, $version, $target_dir, $logfile) {
+    my $v = eval { version->parse($version =~ s/^perl-//r) };
+    if (defined $v and $v < version->parse('v5.6.0')) { # ancient perls
+      require Devel::PatchPerl;
+      open my $logfh, '>', $logfile or die "Failed to open $logfile for logging: $!\n";
+
+      my $tempdir = File::Temp->newdir;
+      my $build = $c->app->download_perl_extracted($version, $tempdir);
+      $logfh->print("Downloaded Perl $version to $build\n");
+
+      run3 ['chmod', 'u+w', File::Spec->catfile($build, 'makedepend.SH')], undef, \undef, \undef;
+      my $output = capture_merged { try { Devel::PatchPerl->patch_source($version =~ s/^perl-//r, $build) } catch { warn $@ } };
+      $logfh->print($output);
+
+      my $in_build = pushd $build;
+
+      my @args = ('-de', "-Dprefix=$target_dir", '-Dman1dir=none', '-Dman3dir=none', '-Uafs');
+      run3 ['sh', 'Configure', @args], undef, $logfh, $logfh;
+      die "Failed to install Perl $version to $target_dir\n" if $?;
+      run3 ['make'], undef, $logfh, $logfh;
+      die "Failed to install Perl $version to $target_dir\n" if $?;
+      run3 ['make', 'install'], undef, $logfh, $logfh;
+      die "Failed to install Perl $version to $target_dir\n" if $?;
+    } else {
+      my $is_devel = $version eq 'blead' || (defined $v && ($v->{version}[1] % 2)) ? 1 : 0;
+      my @args = ('--noman');
+      push @args, '-Dusedevel', '-Uversiononly' if $is_devel;
+      run3 ['perl-build', @args, $version, $target_dir], undef, "$logfile", "$logfile";
+      die "Failed to install Perl $version to $target_dir\n" if $?;
+    }
+    return $target_dir;
 }
 
 my %dist_name_override = (
