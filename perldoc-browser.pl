@@ -77,6 +77,20 @@ helper function_names => sub ($c, $perl_version) { $function_descriptions{$perl_
 helper function_descriptions => sub ($c, $perl_version) { $function_descriptions{$perl_version}{descriptions} };
 helper function_description => sub ($c, $perl_version, $name) { $function_descriptions{$perl_version}{descriptions}{$name} };
 
+my $blead_commit;
+helper blead_commit => sub ($c, $refresh = 0) {
+  return $blead_commit if defined $blead_commit and !$refresh;
+  my $bin = $c->perls_dir->child('blead', 'bin', 'perl');
+  local $ENV{PERL5OPT} = '';
+  run3 [$bin, '-V'], undef, \my @output;
+  foreach my $line (@output) {
+    if ($line =~ m/Snapshot of: (\w+)/) {
+      return $blead_commit = $1;
+    }
+  }
+  return $blead_commit = undef;
+};
+
 my %pod_paths;
 helper pod_paths => sub ($c, $perl_version, $refresh = 0) {
   return $pod_paths{$perl_version} if defined $pod_paths{$perl_version} and !$refresh;

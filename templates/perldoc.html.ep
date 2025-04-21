@@ -189,7 +189,9 @@
       % if (length $url_perl_version and $module ne 'search') {
         <div class="leading-notice">
           You are viewing the version of this documentation from Perl <%= $url_perl_version %>.
-          % if (perl_version_is_dev($perl_version)) {
+          % if ($url_perl_version eq 'blead') {
+            This is the main development branch of Perl. (commithash <%= blead_commit %>)
+          % } elsif (perl_version_is_dev($perl_version)) {
             This is a development version of Perl.
           % } else {
             <%= link_to 'View the latest version' => stash('latest_url') %>
