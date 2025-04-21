@@ -192,7 +192,7 @@
           % if ($url_perl_version eq 'blead') {
             This is the main development branch of Perl.
             % if (length(my $commit = blead_commit)) {
-              (git commit <a href="https://github.com/Perl/perl5/commit/<%= $commit %>"><%= $commit %></a>)
+              (git commit <a href="https://github.com/Perl/perl5/tree/<%= $commit %>"><%= $commit %></a>)
             % }
           % } elsif (perl_version_is_dev($perl_version)) {
             This is a development version of Perl.
