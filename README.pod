@@ -79,4 +79,7 @@ Bundled Perl Camel Logo is Copyright (c) 2024 Olaf Alders, licensed under the CC
 L<https://creativecommons.org/licenses/by/4.0/>.
 
 Bundled highlight.pack.js is Copyright (c) 2006-2024 Josh Goebel <hello@joshgoebel.com> and other contributors,
-licensed under the (three-clause) BSD License L<https://opensource.org/licenses/BSD-3-Clause>.
+licensed under the (three-clause) BSD License L<https://opensource.org/license/BSD-3-Clause>.
+
+Bundled StackOverflow Light theme is Copyright (c) Stack Exchange, Inc, licensed under the MIT License
+L<https://opensource.org/license/mit>.

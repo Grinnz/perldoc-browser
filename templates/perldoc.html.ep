@@ -11,7 +11,7 @@
     % $canonical->host(config('canonical_host')) if defined config('canonical_host');
     <link rel="canonical" href="<%= $canonical->to_string %>">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/stackoverflow-light.min.css" integrity="sha512-cG1IdFxqipi3gqLmksLtuk13C+hBa57a6zpWxMeoY3Q9O6ooFxq50DayCdm0QrDgZjMUn23z/0PMZlgft7Yp5Q==" crossorigin="anonymous" />
+    %= stylesheet '/css/stackoverflow-light.min.css';
     <style>
       body {
         background: #f4f4f5;
