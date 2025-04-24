@@ -75,9 +75,6 @@ This is free software, licensed under:
 
   The Artistic License 2.0 (GPL Compatible)
 
-Bundled Perl 5 Raptor is Copyright (c) 2012, Sebastian Riedel, licensed under
-the CC-SA License, Version 4.0 L<http://creativecommons.org/licenses/by-sa/4.0>.
-
 Bundled Perl Camel Logo is Copyright (c) 2024 Olaf Alders, licensed under the CC-BY License, Version 4.0
 L<https://creativecommons.org/licenses/by/4.0/>.
 
