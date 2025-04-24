@@ -1,26 +1,26 @@
-<nav class="navbar navbar-expand-md navbar-dark bg-dark justify-content-between">
-  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+<nav class="navbar navbar-expand-md bg-dark" data-bs-theme="dark"><div class="container-fluid">
+  <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
     <span class="navbar-toggler-icon"></span>
   </button>
-  <a class="navbar-brand" href="/"><img src="/images/perl_camel_30.png" width="30" height="30" class="d-inline-block align-top" alt="Perl Camel Logo"> <%= config('brand') // 'Perldoc Browser' %></a>
+  <a class="navbar-brand" href="/"><img src="/images/perl_camel_30.png" width="30" height="30" class="d-inline-block align-text-top" alt="Perl Camel Logo"> <%= config('brand') // 'Perldoc Browser' %></a>
   <div class="collapse navbar-collapse" id="navbarNav">
-    <ul class="navbar-nav mr-auto">
+    <ul class="navbar-nav me-auto">
 % if (@{perl_versions()} + @{dev_versions()} <= 1) {
       <li class="nav-item">
         <a class="nav-link" href="<%= url_with(current_doc_path) %>"><%= $perl_version %></a>
       </li>
 % } else {
       <li class="nav-item dropdown text-nowrap">
-        <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-stable" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><%= $perl_version %></a>
+        <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-stable" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><%= $perl_version %></a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-stable">
           <a class="dropdown-item" href="<%= url_with(current_doc_path) %>">Latest</a>
 %   if (@{perl_versions()}) {
-          <div class="dropdown-divider"></div>
+          <hr class="dropdown-divider">
 %     my $last_major;
 %     foreach my $perl_option (@{perl_versions()}) {
 %       my $major = perl_version_object($perl_option)->{version}[1] // 0;
 %       if (defined $last_major and $major != $last_major) {
-          <div class="dropdown-divider"></div>
+          <hr class="dropdown-divider">
 %       }
 %       my $prefix = append_url_path('/', $perl_option);
           <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with($prefix . current_doc_path) %>"><%= $perl_option %></a>
@@ -31,13 +31,13 @@
       </li>
 %   if (@{dev_versions()}) {
       <li class="nav-item dropdown text-nowrap">
-        <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-dev" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Dev</a>
+        <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-dev" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Dev</a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-dev">
 %     my $last_major;
 %     foreach my $perl_option (@{dev_versions()}) {
 %       my $major = perl_version_object($perl_option)->{version}[1] // 0;
 %       if (defined $last_major and $major != $last_major) {
-          <div class="dropdown-divider"></div>
+          <hr class="dropdown-divider">
 %       }
 %       my $prefix = append_url_path('/', $perl_option);
           <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with($prefix . current_doc_path) %>"><%= $perl_option %></a>
@@ -50,20 +50,20 @@
 % my $current_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
 % unless (config('hide_core_nav')) {
       <li class="nav-item dropdown text-nowrap">
-        <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-nav" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Documentation</a>
+        <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-nav" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Documentation</a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-nav">
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perl") %>">Perl</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perlintro") %>">Intro</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perl#Tutorials") %>">Tutorials</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perlfaq") %>">FAQs</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perl#Reference-Manual") %>">Reference</a>
-          <div class="dropdown-divider"></div>
+          <hr class="dropdown-divider">
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perlop") %>">Operators</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/functions") %>">Functions</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/variables") %>">Variables</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/modules") %>">Modules</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perlutil") %>">Utilities</a>
-          <div class="dropdown-divider"></div>
+          <hr class="dropdown-divider">
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perldelta") %>">Release Notes</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perlcommunity") %>">Community</a>
           <a class="dropdown-item" href="<%= url_for("$current_prefix/perlhist") %>">History</a>
@@ -110,7 +110,7 @@
           set_expand(true);
         }
       </script>
-      <button id="content-expand-button" type="button" class="btn btn-outline-light d-none d-lg-inline-block mr-4" onclick="toggle_expand()">Expand</button>
+      <button id="content-expand-button" type="button" class="btn btn-outline-light d-none d-lg-inline-block me-4" onclick="toggle_expand()">Expand</button>
     </ul>
 % if (defined app->search_backend) {
 %   my $search_params = config('search_params') // {};
@@ -118,8 +118,8 @@
 %   foreach my $name (keys %$search_params) {
       <input type="hidden" name="<%= $name %>" value="<%= $search_params->{$name} %>">
 %   }
-      <input class="form-control mr-3" type="search" name="q" placeholder="Search" aria-label="Search" value="<%= param('q') %>">
+      <input class="form-control me-3" type="search" name="q" placeholder="Search" aria-label="Search" value="<%= param('q') %>">
     </form>
 % }
   </div>
-</nav>
+</div></nav>

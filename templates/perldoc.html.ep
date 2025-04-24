@@ -10,23 +10,23 @@
     % my $canonical = stash('latest_url') ? stash('latest_url')->to_abs : url_with->to_abs;
     % $canonical->host(config('canonical_host')) if defined config('canonical_host');
     <link rel="canonical" href="<%= $canonical->to_string %>">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+    %= stylesheet '/css/bootstrap.min.css';
     %= stylesheet '/css/stackoverflow-light.min.css';
     <style>
       body {
         background: #f4f4f5;
         color: #020202;
       }
-      .navbar-dark {
+      .navbar {
         background-image: -webkit-linear-gradient(top, #005f85 0, #002e49 100%);
         background-image: -o-linear-gradient(top, #005f85 0, #002e49 100%);
         background-image: linear-gradient(to bottom, #005f85 0, #002e49 100%);
         filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff005f85', endColorstr='#ff002e49', GradientType=0);
         background-repeat: repeat-x;
       }
-      .navbar-dark .navbar-nav .nav-link,
-      .navbar-dark .navbar-nav .nav-link:focus { color: #fff }
-      .navbar-dark .navbar-nav .nav-link:hover { color: #ffef68 }
+      .navbar .navbar-nav .nav-link,
+      .navbar .navbar-nav .nav-link:focus { color: #fff }
+      .navbar .navbar-nav .nav-link:hover { color: #ffef68 }
       #wrapperlicious {
         margin: 0 auto;
         font: 0.9em 'Helvetica Neue', Helvetica, sans-serif;
@@ -230,9 +230,7 @@
         %== footer_html
       </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.slim.min.js" integrity="sha512-/DXTXr6nQodMUiq+IUJYCt2PPOUjrHJ9wFrqpJ3XkgPNOZVfMok7cRw6CSxyCQxXn6ozlESsSh1/sMCTF1rL/g==" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.1/umd/popper.min.js" integrity="sha512-ubuT8Z88WxezgSqf3RLuNi5lmjstiJcyezx34yIU2gAHonIi27Na7atqzUZCOoY4CExaoFumzOsFQ2Ch+I/HCw==" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV" crossorigin="anonymous"></script>
+    %= javascript '/js/bootstrap.bundle.min.js';
     %= javascript '/js/highlight.pack.js';
     <script>hljs.highlightAll();</script>
   </body>
