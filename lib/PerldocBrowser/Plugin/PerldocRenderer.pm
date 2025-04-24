@@ -394,7 +394,7 @@ sub _perldoc ($c) {
     },
     html => sub {
       $c->stash(cpan => $c->append_url_path('https://metacpan.org/pod', $module));
-      $c->stash(latest_url => $c->latest_has_doc($module) ? $c->url_with($c->current_doc_path) : $c->stash('cpan'));
+      $c->stash(latest_url => $c->latest_has_doc($module) ? $c->url_with($c->current_doc_path) : undef);
 
       my $dom;
       if (defined(my $html_path = _find_html($c, $url_perl_version, $perl_version, $module))) {

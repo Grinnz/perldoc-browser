@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><% if (title) { %><%= title %> - <% } %><%= config('brand') // 'Perldoc Browser' %></title>
     <link rel="search" href="/opensearch.xml" type="application/opensearchdescription+xml" title="<%= config('brand') // 'Perldoc Browser' %>">
-    % my $canonical = $c->url_with(current_doc_path)->to_abs;
+    % my $canonical = stash('latest_url') ? stash('latest_url')->to_abs : url_with->to_abs;
     % $canonical->host(config('canonical_host')) if defined config('canonical_host');
     <link rel="canonical" href="<%= $canonical->to_string %>">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
@@ -197,7 +197,7 @@
           % } elsif (perl_version_is_dev($perl_version)) {
             This is a development version of Perl.
           % } else {
-            <%= link_to 'View the latest version' => stash('latest_url') %>
+            <%= link_to 'View the latest version' => (stash('latest_url') // stash('cpan')) %>
           % }
         </div>
       % }
