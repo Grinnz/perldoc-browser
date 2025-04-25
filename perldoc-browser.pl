@@ -168,8 +168,8 @@ my $csp = join '; ',
   q{default-src 'self'},
   q{connect-src 'self' *.google-analytics.com},
   q{img-src 'self' data: www.google-analytics.com www.googletagmanager.com},
-  q{script-src 'self' 'unsafe-inline' cdnjs.cloudflare.com code.jquery.com stackpath.bootstrapcdn.com www.google-analytics.com www.googletagmanager.com},
-  q{style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com stackpath.bootstrapcdn.com},
+  q{script-src 'self' 'unsafe-inline' www.google-analytics.com www.googletagmanager.com},
+  q{style-src 'self' 'unsafe-inline'},
   q{report-uri /csp-reports};
 
 hook after_render => sub ($c, @) { $c->res->headers->content_security_policy($csp) };
