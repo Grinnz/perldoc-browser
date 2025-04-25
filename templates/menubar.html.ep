@@ -95,7 +95,7 @@
         }
         function toggle_expand () {
           var expand = set_expand(null);
-          document.cookie = 'perldoc_expand=' + (expand ? 1 : 0) + '; path=/; expires=Tue, 19 Jan 2038 03:14:07 UTC';
+          document.cookie = 'perldoc_expand=' + (expand ? 1 : 0) + '; path=/; max-age=31536000; samesite=Lax';
         }
         function read_expand () {
           return document.cookie.split(';').some(function (item) { return item.indexOf('perldoc_expand=1') >= 0 });
