@@ -118,8 +118,16 @@
 %   foreach my $name (keys %$search_params) {
       <input type="hidden" name="<%= $name %>" value="<%= $search_params->{$name} %>">
 %   }
-      <input class="form-control me-3" type="search" name="q" placeholder="Search" aria-label="Search" value="<%= param('q') %>">
+      <input id="search-input" class="form-control me-3" type="search" name="q" placeholder="(S)earch" aria-label="Search" value="<%= param('q') %>">
     </form>
+    <script>
+      document.addEventListener('keydown', function (event) {
+        if ((event.key === 's' || event.key === 'S') && document.activeElement.tagName.toLowerCase() !== 'input') {
+          document.getElementById('search-input').focus();
+          event.preventDefault();
+        }
+      });
+    </script>
 % }
   </div>
 </div></nav>
