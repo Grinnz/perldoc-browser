@@ -84,11 +84,11 @@
             perldocdiv.style.setProperty('max-width', expand ? 'none' : '960px');
             var button_classlist = document.getElementById('content-expand-button').classList;
             if (expand) {
-              button_classlist.add('btn-light');
-              button_classlist.remove('btn-outline-light');
+              button_classlist.add('btn-secondary');
+              button_classlist.remove('btn-dark');
             } else {
-              button_classlist.add('btn-outline-light');
-              button_classlist.remove('btn-light');
+              button_classlist.add('btn-dark');
+              button_classlist.remove('btn-secondary');
             }
           }
           return expand;
@@ -110,7 +110,7 @@
           set_expand(true);
         }
       </script>
-      <button id="content-expand-button" type="button" class="btn btn-outline-light d-none d-lg-inline-block me-4" onclick="toggle_expand()">Expand</button>
+      <button id="content-expand-button" type="button" class="btn btn-dark d-none d-lg-inline-block me-4" onclick="toggle_expand()">Expand</button>
     </ul>
 % if (defined app->search_backend) {
 %   my $search_params = config('search_params') // {};
