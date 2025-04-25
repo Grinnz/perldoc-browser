@@ -13,6 +13,7 @@ use Config;
 use File::Spec;
 use IPC::Run3;
 use Mojo::File 'path';
+use Mojo::Log;
 use Mojo::Util 'dumper';
 use Pod::Simple::Search;
 use Sort::Versions;
@@ -30,6 +31,12 @@ plugin Config => {file => 'perldoc-browser.conf', default => {}};
 if (defined(my $logfile = app->config->{logfile})) {
   app->log->with_roles('+Clearable')->path($logfile);
 }
+
+my $csp_log;
+if (defined(my $csp_logfile = app->config->{csp_log})) {
+  $csp_log = Mojo::Log->new(path => $csp_logfile);
+}
+helper csp_log => sub ($c) { $csp_log };
 
 my %inc_dirs;
 helper warmup_inc_dirs => sub ($c, $perl_version) {
@@ -177,7 +184,11 @@ hook after_render => sub ($c, @) { $c->res->headers->content_security_policy($cs
 post '/csp-reports' => sub ($c) {
   if (defined(my $violation = $c->req->json)) {
     my $serialized = dumper $violation;
-    $c->app->log->error("CSP violation: $serialized");
+    if (defined(my $log = $c->csp_log)) {
+      $log->info($serialized);
+    } else {
+      $c->app->log->error("CSP violation: $serialized");
+    }
   }
   $c->render(data => '');
 };
