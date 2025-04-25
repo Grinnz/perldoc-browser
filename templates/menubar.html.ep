@@ -118,7 +118,7 @@
 %   foreach my $name (keys %$search_params) {
       <input type="hidden" name="<%= $name %>" value="<%= $search_params->{$name} %>">
 %   }
-      <input id="search-input" class="form-control me-3" type="search" name="q" placeholder="[S]earch" aria-label="Search" value="<%= param('q') %>">
+      <input id="search-input" class="form-control me-3" type="search" name="q" placeholder="🔍 [S]earch" aria-label="Search" value="<%= param('q') %>">
     </form>
     <script>
       document.addEventListener('keydown', function (event) {
