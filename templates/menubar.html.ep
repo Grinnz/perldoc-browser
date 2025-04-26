@@ -72,44 +72,7 @@
 % }
     </ul>
     <ul class="navbar-nav">
-      <script>
-        function set_expand (expand) {
-          var perldocdiv = document.getElementById('perldocdiv');
-          var width = window.getComputedStyle(perldocdiv).getPropertyValue('max-width');
-          var expanded = (width == '' || width == 'none') ? true : false;
-          if (expand === null) {
-            expand = !expanded;
-          }
-          if ((expand && !expanded) || (!expand && expanded)) {
-            perldocdiv.style.setProperty('max-width', expand ? 'none' : '960px');
-            var button_classlist = document.getElementById('content-expand-button').classList;
-            if (expand) {
-              button_classlist.add('btn-secondary');
-              button_classlist.remove('btn-dark');
-            } else {
-              button_classlist.add('btn-dark');
-              button_classlist.remove('btn-secondary');
-            }
-          }
-          return expand;
-        }
-        function toggle_expand () {
-          var expand = set_expand(null);
-          document.cookie = 'perldoc_expand=' + (expand ? 1 : 0) + '; path=/; max-age=31536000; samesite=Lax';
-        }
-        function read_expand () {
-          return document.cookie.split(';').some(function (item) { return item.indexOf('perldoc_expand=1') >= 0 });
-        }
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', function () {
-            if (read_expand()) {
-              set_expand(true);
-            }
-          });
-        } else if (read_expand()) {
-          set_expand(true);
-        }
-      </script>
+      %= javascript '/js/perldoc-expand-page.js';
       <button id="content-expand-button" type="button" class="btn btn-dark d-none d-lg-inline-block me-4" onclick="toggle_expand()">Expand</button>
     </ul>
 % if (defined app->search_backend) {
@@ -120,16 +83,7 @@
 %   }
       <input id="search-input" class="form-control me-3" type="search" name="q" placeholder="[S]earch" aria-label="Search" value="<%= param('q') %>">
     </form>
-    <script>
-      document.addEventListener('keydown', function (event) {
-        if ((event.key === 's' || event.key === 'S')
-            && !event.ctrlKey && !event.altKey && !event.metaKey
-            && document.activeElement.tagName.toLowerCase() !== 'input') {
-          document.getElementById('search-input').focus();
-          event.preventDefault();
-        }
-      });
-    </script>
+    %= javascript '/js/perldoc-focus-search.js';
 % }
   </div>
 </div></nav>
