@@ -176,7 +176,7 @@ my $csp = join '; ',
   q{connect-src 'self' *.google-analytics.com},
   q{img-src 'self' data: www.google-analytics.com www.googletagmanager.com},
   q{script-src 'self' 'unsafe-inline' www.google-analytics.com www.googletagmanager.com},
-  q{style-src 'self' 'unsafe-inline'},
+  q{style-src 'self'},
   q{report-uri /csp-reports};
 
 hook after_render => sub ($c, @) { $c->res->headers->content_security_policy($csp) };
