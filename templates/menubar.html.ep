@@ -72,8 +72,8 @@
 % }
     </ul>
     <ul class="navbar-nav">
+      <button id="content-expand-button" type="button" class="btn btn-dark d-none d-lg-inline-block me-4">Expand</button>
       %= javascript '/js/perldoc-expand-page.js';
-      <button id="content-expand-button" type="button" class="btn btn-dark d-none d-lg-inline-block me-4" onclick="toggle_expand()">Expand</button>
     </ul>
 % if (defined app->search_backend) {
 %   my $search_params = config('search_params') // {};

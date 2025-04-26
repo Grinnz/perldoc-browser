@@ -33,7 +33,11 @@ if (document.readyState === 'loading') {
     if (read_expand()) {
       set_expand(true);
     }
+    document.getElementById('content-expand-button').addEventListener('click', toggle_expand);
   });
-} else if (read_expand()) {
-  set_expand(true);
+} else {
+  if (read_expand()) {
+    set_expand(true);
+  }
+  document.getElementById('content-expand-button').addEventListener('click', toggle_expand);
 }
