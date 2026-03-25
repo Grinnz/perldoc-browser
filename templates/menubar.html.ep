@@ -79,7 +79,7 @@
 %   }
       <input id="search-input" class="form-control me-3" type="search" name="q" placeholder="[S]earch" aria-label="Search" value="<%= param('q') %>">
     </form>
-    %= javascript '/js/perldoc-focus-search.js';
+    %= javascript '/js/perldoc-focus-search.js?v2';
 % }
   </div>
 </div></nav>
