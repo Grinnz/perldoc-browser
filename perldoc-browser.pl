@@ -128,9 +128,13 @@ helper warmup_perl_versions => sub ($c) {
       if ($perl_version eq 'blead' or $perl_version =~ m/-RC[0-9]+$/
           or ($v < version->parse('v5.6.0') and ($v->{version}[2] // 0) >= 500)
           or ($v >= version->parse('v5.6.0') and ($v->{version}[1] // 0) % 2)) {
+        my $last_v = @dev_versions ? app->perl_version_object($dev_versions[-1]) : undef;
+        push @dev_versions, '-' if defined $v and defined $last_v and $v->{version}[1] != $last_v->{version}[1];
         push @dev_versions, $perl_version;
         $version_is_dev{$perl_version} = 1;
       } else {
+        my $last_v = @perl_versions ? app->perl_version_object($perl_versions[-1]) : undef;
+        push @perl_versions, '-' if defined $v and defined $last_v and $v->{version}[1] != $last_v->{version}[1];
         push @perl_versions, $perl_version;
         $version_is_dev{$perl_version} = 0;
         $latest_version //= $perl_version if defined $v;

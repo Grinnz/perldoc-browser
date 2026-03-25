@@ -16,15 +16,13 @@
           <a class="dropdown-item" href="<%= url_with(current_doc_path) %>">Latest</a>
 %   if (@{perl_versions()}) {
           <hr class="dropdown-divider">
-%     my $last_major;
 %     foreach my $perl_option (@{perl_versions()}) {
-%       my $major = perl_version_object($perl_option)->{version}[1] // 0;
-%       if (defined $last_major and $major != $last_major) {
+%       if ($perl_option eq '-') {
           <hr class="dropdown-divider">
-%       }
-%       my $prefix = append_url_path('/', $perl_option);
+%       } else {
+%         my $prefix = append_url_path('/', $perl_option);
           <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with($prefix . current_doc_path) %>"><%= $perl_option %></a>
-%       $last_major = $major;
+%       }
 %     }
 %   }
         </div>
@@ -33,15 +31,13 @@
       <li class="nav-item dropdown text-nowrap">
         <a class="nav-link dropdown-toggle" href="#" id="dropdownlink-dev" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Dev</a>
         <div class="dropdown-menu" aria-labelledby="dropdownlink-dev">
-%     my $last_major;
 %     foreach my $perl_option (@{dev_versions()}) {
-%       my $major = perl_version_object($perl_option)->{version}[1] // 0;
-%       if (defined $last_major and $major != $last_major) {
+%       if ($perl_option eq '-') {
           <hr class="dropdown-divider">
-%       }
-%       my $prefix = append_url_path('/', $perl_option);
+%       } else {
+%         my $prefix = append_url_path('/', $perl_option);
           <a class="dropdown-item<%= $perl_option eq $perl_version ? ' active' : '' %>" href="<%= url_with($prefix . current_doc_path) %>"><%= $perl_option %></a>
-%       $last_major = $major;
+%       }
 %     }
         </div>
       </li>
