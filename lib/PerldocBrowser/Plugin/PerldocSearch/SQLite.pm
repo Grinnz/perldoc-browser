@@ -6,8 +6,8 @@ package PerldocBrowser::Plugin::PerldocSearch::SQLite;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
+use File::Slurper 'read_binary';
 use List::Util 1.33 'any';
-use Mojo::File 'path';
 use Mojo::SQLite;
 use experimental 'signatures';
 
@@ -118,26 +118,26 @@ sub _index_perl_version ($c, $perl_version, $pods, $types = undef) {
     $db->delete('pods', {perl_version => $perl_version});
     foreach my $pod (keys %$pods) {
       print "Indexing $pod for $perl_version ($pods->{$pod})\n";
-      my $src = path($pods->{$pod})->slurp;
+      my $src = read_binary $pods->{$pod};
       _index_pod($db, $perl_version, $c->prepare_index_pod($pod, $src));
     }
   }
   if ((!$types or $types->{functions}) and exists $pods->{perlfunc}) {
     $db->delete('functions', {perl_version => $perl_version});
-    my $perlfunc = path($pods->{perlfunc})->slurp;
+    my $perlfunc = read_binary $pods->{perlfunc};
     print "Indexing functions for $perl_version\n";
     _index_functions($db, $perl_version, $c->prepare_index_functions($perlfunc));
   }
   if ((!$types or $types->{variables}) and exists $pods->{perlvar}) {
     $db->delete('variables', {perl_version => $perl_version});
-    my $perlvar = path($pods->{perlvar})->slurp;
+    my $perlvar = read_binary $pods->{perlvar};
     print "Indexing variables for $perl_version\n";
     _index_variables($db, $perl_version, $c->prepare_index_variables($perlvar));
   }
   if ((!$types or $types->{faqs}) and any { exists $pods->{"perlfaq$_"} } 1..9) {
     $db->delete('faqs', {perl_version => $perl_version});
     foreach my $pod (grep { m/^perlfaq[1-9]$/ } keys %$pods) {
-      my $perlfaq = path($pods->{$pod})->slurp;
+      my $perlfaq = read_binary $pods->{$pod};
       print "Indexing $pod FAQs for $perl_version\n";
       _index_faqs($db, $perl_version, $pod, $c->prepare_index_faqs($perlfaq));
     }
@@ -145,7 +145,7 @@ sub _index_perl_version ($c, $perl_version, $pods, $types = undef) {
   if ((!$types or $types->{perldeltas}) and any { m/^perl[0-9]+delta$/ } keys %$pods) {
     $db->delete('perldeltas', {perl_version => $perl_version});
     foreach my $pod (grep { m/^perl[0-9]+delta$/ } keys %$pods) {
-      my $perldelta = path($pods->{$pod})->slurp;
+      my $perldelta = read_binary $pods->{$pod};
       print "Indexing $pod deltas for $perl_version\n";
       _index_perldelta($db, $perl_version, $pod, $c->prepare_index_perldelta($perldelta));
     }

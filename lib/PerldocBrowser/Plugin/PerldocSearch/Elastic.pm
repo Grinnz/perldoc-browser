@@ -6,8 +6,8 @@ package PerldocBrowser::Plugin::PerldocSearch::Elastic;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
+use File::Slurper 'read_binary';
 use List::Util 1.33 'any';
-use Mojo::File 'path';
 use Mojo::JSON 'true';
 use Mojo::Util 'dumper';
 use Search::Elasticsearch;
@@ -259,31 +259,31 @@ sub _index_perl_version ($c, $perl_version, $pods, $types = undef) {
       my $bulk_pod = _bulk_helper($es, $index_name{pods});
       foreach my $pod (keys %$pods) {
         print "Indexing $pod for $perl_version ($pods->{$pod})\n";
-        my $src = path($pods->{$pod})->slurp;
+        my $src = read_binary $pods->{$pod};
         _index_pod($bulk_pod, $c->prepare_index_pod($pod, $src));
       }
       $bulk_pod->flush;
     }
     if (defined $index_name{functions}) {
-      my $perlfunc = path($pods->{perlfunc})->slurp;
+      my $perlfunc = read_binary $pods->{perlfunc};
       print "Indexing functions for $perl_version\n";
       _index_functions($es, $index_name{functions}, $c->prepare_index_functions($perlfunc));
     }
     if (defined $index_name{variables}) {
-      my $perlvar = path($pods->{perlvar})->slurp;
+      my $perlvar = read_binary $pods->{perlvar};
       print "Indexing variables for $perl_version\n";
       _index_variables($es, $index_name{variables}, $c->prepare_index_variables($perlvar));
     }
     if (defined $index_name{faqs}) {
       foreach my $pod (grep { m/^perlfaq[1-9]$/ } keys %$pods) {
-        my $perlfaq = path($pods->{$pod})->slurp;
+        my $perlfaq = read_binary $pods->{$pod};
         print "Indexing $pod FAQs for $perl_version\n";
         _index_faqs($es, $index_name{faqs}, $pod, $c->prepare_index_faqs($perlfaq));
       }
     }
     if (defined $index_name{perldeltas}) {
       foreach my $pod (grep { m/^perl[0-9]+delta$/ } keys %$pods) {
-        my $perldelta = path($pods->{$pod})->slurp;
+        my $perldelta = read_binary $pods->{$pod};
         print "Indexing $pod deltas for $perl_version\n";
         _index_perldelta($es, $index_name{perldeltas}, $pod, $c->prepare_index_perldelta($perldelta));
       }

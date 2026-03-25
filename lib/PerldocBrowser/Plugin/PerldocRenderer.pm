@@ -6,15 +6,15 @@ package PerldocBrowser::Plugin::PerldocRenderer;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Plugin';
+use File::Slurper qw(read_binary read_text write_text);
 use Lingua::EN::Sentence 'get_sentences';
 use List::Util 'first';
 use MetaCPAN::Pod::HTML;
 use Module::Metadata;
 use Mojo::ByteStream;
 use Mojo::DOM;
-use Mojo::File 'path';
 use Mojo::URL;
-use Mojo::Util qw(decode encode sha1_sum trim url_unescape);
+use Mojo::Util qw(encode sha1_sum trim url_unescape);
 use Pod::Simple::Search;
 use Pod::Simple::TextContent;
 use Scalar::Util 'weaken';
@@ -390,7 +390,7 @@ sub _perldoc ($c) {
   $c->respond_to(
     txt => sub {
       my $path = _find_pod($c, $perl_version, $module) // return $c->reply->not_found;
-      $c->render(data => path($path)->slurp);
+      $c->render(data => read_binary $path);
     },
     html => sub {
       $c->stash(cpan => $c->append_url_path('https://metacpan.org/pod', $module));
@@ -398,9 +398,9 @@ sub _perldoc ($c) {
 
       my $dom;
       if (defined(my $html_path = _find_html($c, $url_perl_version, $perl_version, $module))) {
-        $dom = Mojo::DOM->new(decode 'UTF-8', path($html_path)->slurp);
+        $dom = Mojo::DOM->new(read_text $html_path);
       } elsif (defined(my $pod_path = _find_pod($c, $perl_version, $module))) {
-        $dom = $c->prepare_perldoc_html(path($pod_path)->slurp, $url_perl_version, $c->pod_paths($perl_version), $module);
+        $dom = $c->prepare_perldoc_html(read_binary($pod_path), $url_perl_version, $c->pod_paths($perl_version), $module);
       } else {
         return $c->reply->not_found;
       }
@@ -437,7 +437,7 @@ sub _function ($c) {
 
       my $dom;
       if (defined(my $html_path = _find_html($c, $url_perl_version, $perl_version, 'functions', $function))) {
-        $dom = Mojo::DOM->new(decode 'UTF-8', path($html_path)->slurp);
+        $dom = Mojo::DOM->new(read_text $html_path);
       } elsif (defined(my $src = _get_function_pod($c, $perl_version, $function))) {
         $dom = $c->prepare_perldoc_html($src, $url_perl_version, $c->pod_paths($perl_version), 'functions', $function);
       } else {
@@ -461,7 +461,7 @@ sub _function ($c) {
 
 sub _get_function_pod ($c, $perl_version, $function) {
   my $path = _find_pod($c, $perl_version, 'perlfunc') // return undef;
-  my $src = path($path)->slurp;
+  my $src = read_binary $path;
   return $c->function_pod_page($src, $function);
 }
 
@@ -483,7 +483,7 @@ sub _variable ($c) {
 
       my $dom;
       if (defined(my $html_path = _find_html($c, $url_perl_version, $perl_version, 'variables', $variable))) {
-        $dom = Mojo::DOM->new(decode 'UTF-8', path($html_path)->slurp);
+        $dom = Mojo::DOM->new(read_text $html_path);
       } elsif (defined(my $src = _get_variable_pod($c, $perl_version, $variable))) {
         $dom = $c->prepare_perldoc_html($src, $url_perl_version, $c->pod_paths($perl_version), 'variables', undef, $variable);
       } else {
@@ -502,7 +502,7 @@ sub _variable ($c) {
 
 sub _get_variable_pod ($c, $perl_version, $variable) {
   my $path = _find_pod($c, $perl_version, 'perlvar') // return undef;
-  my $src = path($path)->slurp;
+  my $src = read_binary $path;
   return $c->variable_pod_page($src, $variable);
 }
 
@@ -525,7 +525,7 @@ sub _index ($c) {
 
       my $dom;
       if (defined(my $html_path = _find_html($c, $url_perl_version, $perl_version, $page))) {
-        $dom = Mojo::DOM->new(decode 'UTF-8', path($html_path)->slurp);
+        $dom = Mojo::DOM->new(read_text $html_path);
       } elsif (defined(my $src = _get_index_page($c, $perl_version, $page))) {
         $dom = $c->prepare_perldoc_html($src, $url_perl_version, $c->pod_paths($perl_version), $page);
       } else {
@@ -541,7 +541,7 @@ sub _index ($c) {
 sub _get_index_page ($c, $perl_version, $page) {
   my $pod = $c->index_stash($page)->{pod_source} // return undef;
   my $path = _find_pod($c, $perl_version, $pod) // return undef;
-  my $src = path($path)->slurp;
+  my $src = read_binary $path;
   return $c->index_page($src, $perl_version, $page);
 }
 
@@ -970,8 +970,8 @@ sub _cache_perl_to_html ($c, $perl_version, $types = undef) {
     foreach my $pod (keys %$pod_paths) {
       my $filename = sha1_sum(encode 'UTF-8', $pod) . '.html';
       print "Rendering $pod for $perl_version to $filename\n";
-      my $dom = $c->app->prepare_perldoc_html(path($pod_paths->{$pod})->slurp, $url_version, $pod_paths, $pod);
-      $version_dir->child($filename)->spew(encode 'UTF-8', $dom->to_string);
+      my $dom = $c->app->prepare_perldoc_html(read_binary($pod_paths->{$pod}), $url_version, $pod_paths, $pod);
+      write_text $version_dir->child($filename), $dom->to_string;
     }
   }
 
@@ -981,9 +981,9 @@ sub _cache_perl_to_html ($c, $perl_version, $types = undef) {
       next unless defined $pod_paths->{$pod_source};
       my $filename = sha1_sum(encode 'UTF-8', $index) . '.html';
       print "Rendering index page $index for $perl_version to $filename\n";
-      my $src = $c->app->index_page(path($pod_paths->{$pod_source})->slurp, $real_version, $index);
+      my $src = $c->app->index_page(read_binary($pod_paths->{$pod_source}), $real_version, $index);
       my $dom = $c->app->prepare_perldoc_html($src, $url_version, $pod_paths, $index);
-      $version_dir->child($filename)->spew(encode 'UTF-8', $dom->to_string);
+      write_text $version_dir->child($filename), $dom->to_string;
     }
   }
 
@@ -991,7 +991,7 @@ sub _cache_perl_to_html ($c, $perl_version, $types = undef) {
     if (defined $pod_paths->{perlfunc}) {
       my $functions_dir = $version_dir->child('functions')->make_path;
 
-      my $perlfunc_pod = path($pod_paths->{perlfunc})->slurp;
+      my $perlfunc_pod = read_binary($pod_paths->{perlfunc});
       my %functions = map { ($_ => 1) } map { @{$_->{names}} } @{$c->split_functions($perlfunc_pod)};
 
       foreach my $function (keys %functions) {
@@ -999,7 +999,7 @@ sub _cache_perl_to_html ($c, $perl_version, $types = undef) {
         print "Rendering function $function for $perl_version to $filename\n";
         my $function_pod = $c->function_pod_page($perlfunc_pod, $function);
         my $dom = $c->app->prepare_perldoc_html($function_pod, $url_version, $pod_paths, 'functions', $function);
-        $functions_dir->child($filename)->spew(encode 'UTF-8', $dom->to_string);
+        write_text $functions_dir->child($filename), $dom->to_string;
       }
     }
   }
@@ -1008,7 +1008,7 @@ sub _cache_perl_to_html ($c, $perl_version, $types = undef) {
     if (defined $pod_paths->{perlvar}) {
       my $variables_dir = $version_dir->child('variables')->make_path;
 
-      my $perlvar_pod = path($pod_paths->{perlvar})->slurp;
+      my $perlvar_pod = read_binary($pod_paths->{perlvar});
       my %variables = map { ($_ => 1) } map { @{$_->{names}} } @{$c->split_variables($perlvar_pod)};
 
       foreach my $variable (keys %variables) {
@@ -1016,7 +1016,7 @@ sub _cache_perl_to_html ($c, $perl_version, $types = undef) {
         print "Rendering variable $variable for $perl_version to $filename\n";
         my $variable_pod = $c->variable_pod_page($perlvar_pod, $variable);
         my $dom = $c->app->prepare_perldoc_html($variable_pod, $url_version, $pod_paths, 'variables', undef, $variable);
-        $variables_dir->child($filename)->spew(encode 'UTF-8', $dom->to_string);
+        write_text $variables_dir->child($filename), $dom->to_string;
       }
     }
   }

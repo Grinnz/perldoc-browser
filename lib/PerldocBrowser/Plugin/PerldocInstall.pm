@@ -11,11 +11,11 @@ use File::Basename 'fileparse';
 use File::Copy;
 use File::Path 'make_path';
 use File::pushd;
+use File::Slurper 'read_binary';
 use File::Spec;
 use File::Temp;
 use IPC::Run3;
 use List::Util 1.50 qw(first head);
-use Mojo::File 'path';
 use Mojo::Util 'trim';
 use Pod::Simple::Search;
 use Syntax::Keyword::Try;
@@ -33,7 +33,7 @@ sub register ($self, $app, $conf) {
 
 sub _missing_core_modules ($c, $inc_dirs) {
   my $search = Pod::Simple::Search->new->inc(0);
-  my $perlmodlib = path($search->find('perlmodlib', @$inc_dirs))->slurp;
+  my $perlmodlib = read_binary $search->find('perlmodlib', @$inc_dirs);
   my $in_modules;
   my @modules;
   foreach my $directive (grep { m/^=/ } split /\n\n/, $perlmodlib) {
