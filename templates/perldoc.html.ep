@@ -13,19 +13,10 @@
     %= stylesheet '/css/bootstrap.min.css';
     %= stylesheet '/css/stackoverflow-light.min.css';
     %= stylesheet '/css/perldoc.css';
-% if (defined(my $gtags = config->{google_analytics_tracking_id})) {
-    % $gtags = [$gtags] unless ref $gtags eq 'ARRAY';
+% if (defined(my $gtag_script = stash('google_analytics_gtag_script'))) {
     <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=<%= $gtags->[0] %>"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-    % foreach my $gtag (@$gtags) {
-      gtag('config', '<%= $gtag %>');
-    % }
-    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=<%= stash('google_analytics_first_gtag') %>"></script>
+    <script><%== $gtag_script %></script>
 % }
   </head>
   <body>

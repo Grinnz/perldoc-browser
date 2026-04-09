@@ -10,11 +10,13 @@ BEGIN { @current_inc = grep { !ref and $_ ne '.' } @INC }
 
 use Mojolicious::Lite;
 use Config;
+use Digest::SHA 'sha256';
 use File::Spec;
 use IPC::Run3;
 use Mojo::File 'path';
 use Mojo::Log;
-use Mojo::Util 'dumper';
+use Mojo::Template;
+use Mojo::Util qw(b64_encode dumper);
 use Pod::Simple::Search;
 use Sort::Versions;
 use version;
@@ -175,11 +177,32 @@ helper perl_version_is_dev => sub ($c, $perl_version) { $version_is_dev{$perl_ve
 
 app->warmup_perl_versions;
 
+my $gtag_hash;
+if (defined(my $gtags = app->config->{google_analytics_tracking_id})) {
+  $gtags = [$gtags] unless ref $gtags eq 'ARRAY';
+  app->defaults(google_analytics_first_gtag => $gtags->[0]);
+  my $gtag_script = Mojo::Template->new(auto_escape => 1, vars => 1)->render(<<'GTAG', {gtags => $gtags});
+
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+
+% foreach my $gtag (@$gtags) {
+gtag('config', '<%= $gtag %>');
+% }
+GTAG
+
+  app->defaults(google_analytics_gtag_script => $gtag_script);
+  $gtag_hash = b64_encode sha256($gtag_script), '';
+}
+
 my $csp = join '; ',
   q{default-src 'self'},
   q{connect-src 'self' *.google-analytics.com},
   q{img-src 'self' data: www.google-analytics.com www.googletagmanager.com},
-  q{script-src 'self' 'unsafe-inline' www.google-analytics.com www.googletagmanager.com},
+  q{script-src 'self' www.google-analytics.com www.googletagmanager.com}
+  . (defined $gtag_hash ? qq{ 'sha256-$gtag_hash'} : '')
+  . q{ 'sha256-O6piNkhLv4BI/Oje+MccCmgUSrS1sIp+CMaOsvD/VWU='}, # hljs.highlightAll();
   q{style-src 'self' 'unsafe-hashes'}
   . q{ 'sha256-WNfaHXSw9mxMVgOvSbG/K9X39EMhSDF8QPNCwXRvWpg='}  # white-space: nowrap;
   . q{ 'sha256-b6klWVx2BEG3L0uLISmT9Hs8N+oTu8s4Re5uJku7rfU='}  # default not found page
