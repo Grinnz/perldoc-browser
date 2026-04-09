@@ -198,7 +198,7 @@ GTAG
 
 my $csp = join '; ',
   q{default-src 'self'},
-  q{connect-src 'self' *.google-analytics.com},
+  q{connect-src 'self' *.google-analytics.com www.googletagmanager.com},
   q{img-src 'self' data: www.google-analytics.com www.googletagmanager.com},
   q{script-src 'self' www.google-analytics.com www.googletagmanager.com}
   . (defined $gtag_hash ? qq{ 'sha256-$gtag_hash'} : '')
