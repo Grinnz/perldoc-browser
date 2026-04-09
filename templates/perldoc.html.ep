@@ -89,7 +89,7 @@
       %= content 'perldoc'
       </div>
       <div id="footer">
-        %== footer_html
+        %== $footer_html
       </div>
     </div>
     %= javascript '/js/bootstrap.bundle.min.js';
