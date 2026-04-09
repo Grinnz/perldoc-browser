@@ -180,7 +180,10 @@ my $csp = join '; ',
   q{connect-src 'self' *.google-analytics.com},
   q{img-src 'self' data: www.google-analytics.com www.googletagmanager.com},
   q{script-src 'self' 'unsafe-inline' www.google-analytics.com www.googletagmanager.com},
-  q{style-src 'self' 'unsafe-hashes' 'sha256-WNfaHXSw9mxMVgOvSbG/K9X39EMhSDF8QPNCwXRvWpg=' 'sha256-b6klWVx2BEG3L0uLISmT9Hs8N+oTu8s4Re5uJku7rfU='},
+  q{style-src 'self' 'unsafe-hashes'}
+  . q{ 'sha256-WNfaHXSw9mxMVgOvSbG/K9X39EMhSDF8QPNCwXRvWpg='}  # white-space: nowrap;
+  . q{ 'sha256-b6klWVx2BEG3L0uLISmT9Hs8N+oTu8s4Re5uJku7rfU='}  # default not found page
+  . q{ 'sha256-RibizAXJuHelmcHSQCCNgmYAlW+KxSwbYTpX504RScE='}, # default exception page
   q{report-uri /csp-reports};
 
 hook after_render => sub ($c, @) { $c->res->headers->content_security_policy($csp) };
