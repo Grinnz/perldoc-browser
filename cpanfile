@@ -1,4 +1,5 @@
 requires 'perl' => '5.020';
+requires 'Digest::SHA';
 requires 'File::Basename';
 requires 'File::Copy';
 requires 'File::Path';
