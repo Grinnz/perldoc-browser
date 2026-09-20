@@ -12,9 +12,10 @@
     % $canonical->host(config('canonical_host')) if defined config('canonical_host');
     <link rel="canonical" href="<%= $canonical->to_string %>">
     %= stylesheet '/css/bootstrap.min.css';
-    %= stylesheet "/css/stackoverflow-$theme.min.css", id => 'stylesheet-highlight';
-    %= stylesheet "/css/perldoc-$theme.css", id => 'stylesheet-perldoc';
     %= stylesheet '/css/perldoc-navbar.css';
+    %= stylesheet '/css/perldoc-common.css';
+    %= stylesheet "/css/perldoc-$theme.css", id => 'stylesheet-perldoc';
+    %= stylesheet "/css/stackoverflow-$theme.min.css", id => 'stylesheet-highlight';
     %= javascript '/js/perldoc-theme.js?v1';
 % if (defined(my $gtag_script = stash('google_analytics_gtag_script'))) {
     <!-- Global site tag (gtag.js) - Google Analytics -->
@@ -25,7 +26,7 @@
   <body>
     %= include 'menubar'
     <div id="wrapperlicious" class="container-fluid">
-      <div id="perldocdiv" style="max-width: <%= perldoc_expand ? 'none' : '960px' %>;">
+      <div id="perldocdiv"<%== perldoc_expand ? ' class="wide"' : '' %>>
       % my $url_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
       % if ($module ne 'index') {
         <div id="links">

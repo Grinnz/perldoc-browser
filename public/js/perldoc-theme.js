@@ -48,6 +48,9 @@ function read_preferred_theme() {
   }
 }
 
+// set immediately to reflect preference if no cookie
+// this runs in <head> after main document attribute and style sheets
+// button behavior must be set after document is loaded
 set_perldoc_theme(read_preferred_theme());
 
 if (document.readyState === 'loading') {

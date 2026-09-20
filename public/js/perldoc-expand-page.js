@@ -1,17 +1,18 @@
 function set_expand (expand) {
   var perldocdiv = document.getElementById('perldocdiv');
-  var width = window.getComputedStyle(perldocdiv).getPropertyValue('max-width');
-  var expanded = (width == '' || width == 'none') ? true : false;
+  var expanded = perldocdiv.classList.contains('wide') ? true : false;
   if (expand === null) {
     expand = !expanded;
   }
   if ((expand && !expanded) || (!expand && expanded)) {
-    perldocdiv.style.setProperty('max-width', expand ? 'none' : '960px');
+    var div_classlist = perldocdiv.classList;
     var button_classlist = document.getElementById('content-expand-button').classList;
     if (expand) {
+      div_classlist.add('wide');
       button_classlist.add('btn-secondary');
       button_classlist.remove('btn-dark');
     } else {
+      div_classlist.remove('wide');
       button_classlist.add('btn-dark');
       button_classlist.remove('btn-secondary');
     }
@@ -30,14 +31,8 @@ function read_expand () {
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', function () {
-    if (read_expand()) {
-      set_expand(true);
-    }
     document.getElementById('content-expand-button').addEventListener('click', toggle_expand);
   });
 } else {
-  if (read_expand()) {
-    set_expand(true);
-  }
   document.getElementById('content-expand-button').addEventListener('click', toggle_expand);
 }

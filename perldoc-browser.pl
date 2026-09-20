@@ -213,8 +213,6 @@ my $csp = join '; ',
   . q{ 'sha256-O6piNkhLv4BI/Oje+MccCmgUSrS1sIp+CMaOsvD/VWU='}, # hljs.highlightAll();
   q{style-src 'self' 'unsafe-hashes'}
   . q{ 'sha256-WNfaHXSw9mxMVgOvSbG/K9X39EMhSDF8QPNCwXRvWpg='}  # white-space: nowrap;
-  . q{ 'sha256-r428WC8umRLM4YppJQBv+1/2d52pEu7Baxd2KoMXqBc='}  # max-width: 960px;
-  . q{ 'sha256-TNLXAMJY3kksVy9VdUDEFBNE679Y1vLFV6pq6uuIphg='}  # max-width: none;
   . q{ 'sha256-b6klWVx2BEG3L0uLISmT9Hs8N+oTu8s4Re5uJku7rfU='}  # default not found page
   . q{ 'sha256-RibizAXJuHelmcHSQCCNgmYAlW+KxSwbYTpX504RScE='}, # default exception page
   q{report-uri /csp-reports};
