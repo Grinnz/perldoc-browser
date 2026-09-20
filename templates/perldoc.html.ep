@@ -93,7 +93,7 @@
       </div>
     </div>
     %= javascript '/js/bootstrap.bundle.min.js';
-    %= javascript '/js/highlight.pack.js';
+    %= javascript '/js/highlight.pack.js?v11.12.0';
     <script>hljs.highlightAll();</script>
   </body>
 </html>
