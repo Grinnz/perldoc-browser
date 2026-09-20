@@ -1,17 +1,7 @@
 body {
-  background: #f4f4f5;
-  color: #020202;
+  background: #212529;
+  color: #dee2e6;
 }
-.navbar {
-  background-image: -webkit-linear-gradient(top, #005f85 0, #002e49 100%);
-  background-image: -o-linear-gradient(top, #005f85 0, #002e49 100%);
-  background-image: linear-gradient(to bottom, #005f85 0, #002e49 100%);
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff005f85', endColorstr='#ff002e49', GradientType=0);
-  background-repeat: repeat-x;
-}
-.navbar .navbar-nav .nav-link,
-.navbar .navbar-nav .nav-link:focus { color: #fff }
-.navbar .navbar-nav .nav-link:hover { color: #ffef68 }
 #wrapperlicious {
   margin: 0 auto;
   font: 0.9em 'Helvetica Neue', Helvetica, sans-serif;
@@ -26,7 +16,7 @@ body {
 #wrapperlicious h4 { font-size: 0.9em }
 #wrapperlicious h1, #wrapperlicious h2, #wrapperlicious h3,
 #wrapperlicious h4, #wrapperlicious dt {
-  color: #020202;
+  color: #dee2e6;
   margin-top: 1em;
   margin-bottom: 1em;
   position: relative;
@@ -34,7 +24,7 @@ body {
 }
 #wrapperlicious a { color: inherit; text-decoration: underline }
 #wrapperlicious #toc { text-decoration: none }
-#wrapperlicious a:hover { color: #2a2a2a }
+#wrapperlicious a:hover { color: #fafafa }
 #wrapperlicious a img { border: 0 }
 #wrapperlicious :not(pre) > code {
   color: inherit;
@@ -48,7 +38,7 @@ body {
   margin-left: 2em;
 }
 #wrapperlicious dt {
-  color: #2a2a2a;
+  color: #fafafa;
   font-weight: bold;
   margin-left: 0.9em;
 }
@@ -61,7 +51,7 @@ body {
   margin-top: 0;
 }
 #wrapperlicious pre {
-  border: 1px solid #c1c1c1;
+  border: 1px solid #3c3c3c;
   border-radius: 3px;
   font: 100% Consolas, Menlo, Monaco, monospace;
   margin-bottom: 1em;
@@ -69,7 +59,7 @@ body {
 }
 #wrapperlicious pre > code {
   display: block;
-  background-color: #f6f6f6;
+  background-color: #1a1a1a;
   font: 0.9em Consolas, Menlo, Monaco, monospace;
   line-height: 1.5em;
   text-align: left;
@@ -97,8 +87,8 @@ body {
   font-size: 0.8em;
 }
 #perldocdiv {
-  background-color: #fff;
-  border: 1px solid #c1c1c1;
+  background-color: #000;
+  border: 1px solid #3c3c3c;
   border-bottom-left-radius: 5px;
   border-bottom-right-radius: 5px;
   margin-left: auto;

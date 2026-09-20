@@ -1,0 +1,10 @@
+.navbar {
+  background-image: -webkit-linear-gradient(top, #005f85 0, #002e49 100%);
+  background-image: -o-linear-gradient(top, #005f85 0, #002e49 100%);
+  background-image: linear-gradient(to bottom, #005f85 0, #002e49 100%);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff005f85', endColorstr='#ff002e49', GradientType=0);
+  background-repeat: repeat-x;
+}
+.navbar .navbar-nav .nav-link,
+.navbar .navbar-nav .nav-link:focus { color: #fff }
+.navbar .navbar-nav .nav-link:hover { color: #ffef68 }

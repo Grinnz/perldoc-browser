@@ -11,8 +11,10 @@
     % $canonical->host(config('canonical_host')) if defined config('canonical_host');
     <link rel="canonical" href="<%= $canonical->to_string %>">
     %= stylesheet '/css/bootstrap.min.css';
-    %= stylesheet '/css/stackoverflow-light.min.css';
-    %= stylesheet '/css/perldoc-light.css';
+    %= stylesheet '/css/stackoverflow-light.min.css', id => 'stylesheet-highlight';
+    %= stylesheet '/css/perldoc-light.css', id => 'stylesheet-perldoc';
+    %= stylesheet '/css/perldoc-navbar.css';
+    %= javascript '/js/perldoc-theme.js?v1';
 % if (defined(my $gtag_script = stash('google_analytics_gtag_script'))) {
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=<%= stash('google_analytics_first_gtag') %>"></script>

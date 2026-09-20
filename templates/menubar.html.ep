@@ -68,7 +68,8 @@
 % }
     </ul>
     <ul class="navbar-nav">
-      <button id="content-expand-button" type="button" class="btn btn-dark d-none d-lg-inline-block me-4">Wide</button>
+      <button id="perldoc-theme-button" type="button" class="btn btn-dark mb-2 mb-sm-0 me-sm-3">Dark</button>
+      <button id="content-expand-button" type="button" class="btn btn-dark d-none d-lg-inline-block me-3">Wide</button>
       %= javascript '/js/perldoc-expand-page.js';
     </ul>
 % if (defined app->search_backend) {
