@@ -1,6 +1,7 @@
 % use Mojo::Util;
 <!DOCTYPE html>
-<html lang="en">
+% my $theme = perldoc_theme;
+<html lang="en" data-bs-theme="<%= $theme %>">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -11,8 +12,8 @@
     % $canonical->host(config('canonical_host')) if defined config('canonical_host');
     <link rel="canonical" href="<%= $canonical->to_string %>">
     %= stylesheet '/css/bootstrap.min.css';
-    %= stylesheet '/css/stackoverflow-light.min.css', id => 'stylesheet-highlight';
-    %= stylesheet '/css/perldoc-light.css', id => 'stylesheet-perldoc';
+    %= stylesheet "/css/stackoverflow-$theme.min.css", id => 'stylesheet-highlight';
+    %= stylesheet "/css/perldoc-$theme.css", id => 'stylesheet-perldoc';
     %= stylesheet '/css/perldoc-navbar.css';
     %= javascript '/js/perldoc-theme.js?v1';
 % if (defined(my $gtag_script = stash('google_analytics_gtag_script'))) {
@@ -24,7 +25,7 @@
   <body>
     %= include 'menubar'
     <div id="wrapperlicious" class="container-fluid">
-      <div id="perldocdiv">
+      <div id="perldocdiv" style="max-width: <%= perldoc_expand ? 'none' : '960px' %>;">
       % my $url_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
       % if ($module ne 'index') {
         <div id="links">

@@ -52,10 +52,12 @@ set_perldoc_theme(read_preferred_theme());
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', function () {
+    set_perldoc_theme(read_preferred_theme());
     set_perldoc_theme_button();
     document.getElementById('perldoc-theme-button').addEventListener('click', toggle_dark_mode);
   });
 } else {
+  set_perldoc_theme(read_preferred_theme());
   set_perldoc_theme_button();
   document.getElementById('perldoc-theme-button').addEventListener('click', toggle_dark_mode);
 }
