@@ -12,7 +12,7 @@
     <link rel="canonical" href="<%= $canonical->to_string %>">
     %= stylesheet '/css/bootstrap.min.css';
     %= stylesheet '/css/stackoverflow-light.min.css';
-    %= stylesheet '/css/perldoc.css';
+    %= stylesheet '/css/perldoc-light.css';
 % if (defined(my $gtag_script = stash('google_analytics_gtag_script'))) {
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=<%= stash('google_analytics_first_gtag') %>"></script>
