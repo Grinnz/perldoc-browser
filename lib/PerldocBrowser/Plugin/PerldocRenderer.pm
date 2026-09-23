@@ -667,7 +667,7 @@ sub _index_page_variables ($c, $src, $perl_version) {
     } elsif ($para =~ m/^=back/) {
       $level--;
       push @section, $para unless $level;
-    } elsif ($para =~ m/^=head[23]/ and $para !~ m/^=head\d Performance issues/) {
+    } elsif ($para =~ m/^=head[23]/ and $para !~ m/^=head\d (Performance issues|Scoping Rules)/) {
       push @result, $heading, @section if @section;
       @section = ();
       $heading = $para;
