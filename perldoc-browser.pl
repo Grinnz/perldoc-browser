@@ -175,14 +175,6 @@ helper latest_perl_version => sub ($c) { $latest_version };
 
 helper perl_version_is_dev => sub ($c, $perl_version) { $version_is_dev{$perl_version} };
 
-helper perldoc_theme => sub ($c) {
-  return ($c->cookie('perldoc_theme') || 'light') eq 'dark' ? 'dark' : 'light';
-};
-
-helper perldoc_expand => sub ($c) {
-  return !!$c->cookie('perldoc_expand');
-};
-
 app->warmup_perl_versions;
 
 my $gtag_hash;

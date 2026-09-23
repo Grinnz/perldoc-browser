@@ -29,10 +29,17 @@ function read_expand () {
   return document.cookie.split(';').some(function (item) { return item.indexOf('perldoc_expand=1') >= 0 });
 }
 
+// must be done in JS as pages are cached independently of user preference
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', function () {
+    if (read_expand()) {
+      set_expand(true);
+    }
     document.getElementById('content-expand-button').addEventListener('click', toggle_expand);
   });
 } else {
+  if (read_expand()) {
+    set_expand(true);
+  }
   document.getElementById('content-expand-button').addEventListener('click', toggle_expand);
 }

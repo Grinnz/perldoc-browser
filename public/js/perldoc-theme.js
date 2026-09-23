@@ -48,6 +48,7 @@ function read_preferred_theme() {
   }
 }
 
+// must be done in JS as pages are cached independently of user preference
 // set immediately to reflect preference if no cookie
 // this runs in <head> after main document attribute and style sheets
 // button behavior must be set after document is loaded

@@ -1,7 +1,6 @@
 % use Mojo::Util;
 <!DOCTYPE html>
-% my $theme = perldoc_theme;
-<html lang="en" data-bs-theme="<%= $theme %>">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,8 +13,8 @@
     %= stylesheet '/css/bootstrap.min.css';
     %= stylesheet '/css/perldoc-navbar.css';
     %= stylesheet '/css/perldoc-common.css';
-    %= stylesheet "/css/perldoc-$theme.css", id => 'stylesheet-perldoc';
-    %= stylesheet "/css/stackoverflow-$theme.min.css", id => 'stylesheet-highlight';
+    %= stylesheet "/css/perldoc-light.css", id => 'stylesheet-perldoc';
+    %= stylesheet "/css/stackoverflow-light.min.css", id => 'stylesheet-highlight';
     %= javascript '/js/perldoc-theme.js?v1';
 % if (defined(my $gtag_script = stash('google_analytics_gtag_script'))) {
     <!-- Global site tag (gtag.js) - Google Analytics -->
@@ -26,7 +25,7 @@
   <body>
     %= include 'menubar'
     <div id="wrapperlicious" class="container-fluid">
-      <div id="perldocdiv"<%== perldoc_expand ? ' class="wide"' : '' %>>
+      <div id="perldocdiv">
       % my $url_prefix = $url_perl_version ? append_url_path('/', $url_perl_version) : '';
       % if ($module ne 'index') {
         <div id="links">

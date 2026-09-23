@@ -68,9 +68,9 @@
 % }
     </ul>
     <ul class="navbar-nav">
-      <button id="perldoc-theme-button" type="button" class="btn btn-dark mb-2 mb-md-0 me-md-3"><%= perldoc_theme eq 'dark' ? 'Light' : 'Dark' %></button>
-      <button id="content-expand-button" type="button" class="btn <%= perldoc_expand ? 'btn-secondary' : 'btn-dark' %> d-none d-lg-inline-block me-3">Wide</button>
-      %= javascript '/js/perldoc-expand-page.js?v2';
+      <button id="perldoc-theme-button" type="button" class="btn btn-dark mb-2 mb-md-0 me-md-3">Dark</button>
+      <button id="content-expand-button" type="button" class="btn btn-dark d-none d-lg-inline-block me-3">Wide</button>
+      %= javascript '/js/perldoc-expand-page.js?v3';
     </ul>
 % if (defined app->search_backend) {
 %   my $search_params = config('search_params') // {};
