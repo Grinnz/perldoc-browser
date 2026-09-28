@@ -70,7 +70,6 @@
     <ul class="navbar-nav">
       <button id="perldoc-theme-button" type="button" class="btn btn-dark mb-2 mb-md-0 me-md-3">Dark</button>
       <button id="content-expand-button" type="button" class="btn btn-dark d-none d-lg-inline-block me-3">Wide</button>
-      %= javascript '/js/perldoc-expand-page.js?v3';
     </ul>
 % if (defined app->search_backend) {
 %   my $search_params = config('search_params') // {};
@@ -80,7 +79,6 @@
 %   }
       <input id="search-input" class="form-control me-3" type="search" name="q" placeholder="[S]earch" aria-label="Search" value="<%= param('q') %>">
     </form>
-    %= javascript '/js/perldoc-focus-search.js?v2';
 % }
   </div>
 </div></nav>

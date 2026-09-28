@@ -12,10 +12,11 @@
     <link rel="canonical" href="<%= $canonical->to_string %>">
     %= stylesheet '/css/bootstrap.min.css';
     %= stylesheet '/css/perldoc-navbar.css';
-    %= stylesheet '/css/perldoc-common.css';
+    %= stylesheet '/css/perldoc-common.css?v2';
     %= stylesheet "/css/perldoc-light.css", id => 'stylesheet-perldoc';
     %= stylesheet "/css/stackoverflow-light.min.css", id => 'stylesheet-highlight';
-    %= javascript '/js/perldoc-theme.js?v1';
+    %= javascript '/js/perldoc-theme.js?v2';
+    %= javascript '/js/perldoc-expand-page.js?v4';
 % if (defined(my $gtag_script = stash('google_analytics_gtag_script'))) {
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=<%= stash('google_analytics_first_gtag') %>"></script>
@@ -79,6 +80,7 @@
         %== $footer_html
       </div>
     </div>
+    %= javascript '/js/perldoc-focus-search.js?v2';
     %= javascript '/js/bootstrap.bundle.min.js';
     %= javascript '/js/highlight.pack.js?v11.12.0';
     <script>hljs.highlightAll();</script>

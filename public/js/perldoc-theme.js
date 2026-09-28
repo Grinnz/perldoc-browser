@@ -38,6 +38,11 @@ function toggle_dark_mode() {
   set_perldoc_theme_cookie();
 }
 
+function setup_perldoc_theme_button() {
+  set_perldoc_theme_button();
+  document.getElementById('perldoc-theme-button').addEventListener('click', toggle_dark_mode);
+}
+
 function read_preferred_theme() {
   if (document.cookie.split(';').some(function (item) { return item.indexOf('perldoc_theme=dark') >= 0 })) {
     return 'dark';
@@ -49,19 +54,15 @@ function read_preferred_theme() {
 }
 
 // must be done in JS as pages are cached independently of user preference
-// set immediately to reflect preference if no cookie
+// set immediately to reflect preference or cookie
 // this runs in <head> after main document attribute and style sheets
 // button behavior must be set after document is loaded
 set_perldoc_theme(read_preferred_theme());
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', function () {
-    set_perldoc_theme(read_preferred_theme());
-    set_perldoc_theme_button();
-    document.getElementById('perldoc-theme-button').addEventListener('click', toggle_dark_mode);
+    setup_perldoc_theme_button();
   });
 } else {
-  set_perldoc_theme(read_preferred_theme());
-  set_perldoc_theme_button();
-  document.getElementById('perldoc-theme-button').addEventListener('click', toggle_dark_mode);
+  setup_perldoc_theme_button();
 }

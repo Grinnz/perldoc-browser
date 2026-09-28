@@ -83,7 +83,7 @@
   padding-top: 1em;
   max-width: 960px;
 }
-#perldocdiv.wide {
+.perldoc-wide #perldocdiv,#perldocdiv.wide {
   max-width: none;
 }
 #moduleversion { float: right }
