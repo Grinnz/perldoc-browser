@@ -67,6 +67,7 @@ sub register ($self, $app, $conf) {
   $app->helper(append_url_path => sub ($c, @args) { _append_url_path(@args) });
   $app->helper(current_doc_path => \&_current_doc_path);
   $app->helper(prepare_perldoc_html => \&_prepare_html);
+  $app->helper(prepare_perldoc_toc => \&_prepare_toc);
   $app->helper(render_perldoc_html => \&_render_html);
   $app->helper(index_pages => sub ($c, @args) { _index_pages(@args) });
   $app->helper(index_stash => sub ($c, @args) { _index_stash(@args) });
@@ -171,6 +172,8 @@ my %perlglossary_anchors = (
   'lexical scope' => 'lexical-scoping',
   qualifying      => 'qualified',
 );
+
+my %toc_level = (h1 => 1, h2 => 2, h3 => 3, h4 => 4);
 
 # Called from command line when pre-rendering docs, so cannot use the stash
 sub _prepare_html ($c, $src, $url_perl_version, $pod_paths, $module, $function = undef, $variable = undef) {
@@ -308,22 +311,6 @@ sub _prepare_html ($c, $src, $url_perl_version, $pod_paths, $module, $function =
     $e->content($permalink . $e->content);
   }
 
-  return $dom;
-}
-
-my %toc_level = (h1 => 1, h2 => 2, h3 => 3, h4 => 4);
-
-sub _render_html ($c, $dom) {
-  my $module = $c->stash('module');
-  # Try to find a title
-  my $title = $c->stash('page_name') // $module;
-  $dom->find('h1')->first(sub {
-    return unless $_->all_text =~ m/^\s*#?\s*NAME\s*$/i;
-    my $p = $_->next;
-    return unless $p->tag eq 'p';
-    $title = trim($p->all_text);
-  });
-
   # Assemble table of contents
   my @toc;
   unless ($module eq 'index') {
@@ -344,9 +331,43 @@ sub _render_html ($c, $dom) {
     }
   }
 
+  if (@toc) {
+    my $toc_fragment = Mojo::DOM->new('<h1 id="toc"></h1>');
+    $toc_fragment->at('#toc')->content($module eq 'search' ? 'SEARCH RESULTS' : 'CONTENTS');
+    $toc_fragment->child_nodes->last->append("\n" . $c->prepare_perldoc_toc(\@toc) . "\n");
+    $dom->child_nodes->first->prepend($toc_fragment);
+  }
+
+  return $dom;
+}
+
+sub _prepare_toc ($c, $entries) {
+  my $ul = Mojo::DOM->new("<ul>\n</ul>\n");
+  foreach my $entry (@$entries) {
+    my $li = Mojo::DOM->new("<li></li>");
+    $li->at('li')->content($c->link_to(@$entry{'text','link'}, class => 'text-decoration-none'));
+    $ul->at('ul')->append_content($li)->append_content("\n");
+    if (defined $entry->{contents}) {
+      $ul->at('ul')->append_content($c->prepare_perldoc_toc($entry->{contents}));
+    }
+  }
+  return $ul;
+}
+
+sub _render_html ($c, $dom) {
+  my $module = $c->stash('module');
+  # Try to find a title
+  my $title = $c->stash('page_name') // $module;
+  $dom->find('h1')->first(sub {
+    return unless $_->all_text =~ m/^\s*#?\s*NAME\s*$/i;
+    my $p = $_->next;
+    return unless $p->tag eq 'p';
+    $title = trim($p->all_text);
+  });
+
   # Combine everything to a proper response
   $c->content_for(perldoc => "$dom");
-  $c->render('perldoc', title => $title, toc => \@toc);
+  $c->render('perldoc', title => $title);
 }
 
 my %index_redirects = (

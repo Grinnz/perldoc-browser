@@ -73,22 +73,6 @@
           <strong><%= stash('page_name') %></strong> may also refer to the <%= $alt_type %>: <%= link_to $alt_name => $alt_url %>
         </div>
       % }
-      % if (@{stash('toc') // []}) {
-        <h1><a id="toc"><%= stash('module') eq 'search' ? 'SEARCH RESULTS' : 'CONTENTS' %></a></h1>
-        % my $render_contents; $render_contents = begin
-          <ul>
-            % for my $entry (@{$_[0]}) {
-              <li>
-                %= link_to @$entry{'text','link'}, class => 'text-decoration-none'
-                % if (defined $entry->{contents}) {
-                  %= $render_contents->($entry->{contents})
-                % }
-              </li>
-            % }
-          </ul>
-        % end
-        %= $render_contents->(stash 'toc')
-      % }
       %= content 'perldoc'
       </div>
       <div id="footer">
