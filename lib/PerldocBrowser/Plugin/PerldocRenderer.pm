@@ -986,9 +986,12 @@ sub _cache_perl_to_html ($c, $perl_version, $types = undef) {
   my $pod_paths = $c->app->pod_paths($real_version) // {};
   return unless keys %$pod_paths;
 
-  my $version_dir = $c->app->home->child('html', $path_version)->remove_tree({keep_root => 1})->make_path;
+  my $version_dir = $c->app->home->child('html', $path_version)->make_path;
+  $version_dir->remove_tree({keep_root => 1}) unless defined $types;
 
   if (!defined $types or $types->{pods}) {
+    my %index_files = map { (sha1_sum(encode 'UTF-8', $_) . '.html' => 1) } @{$c->app->index_pages};
+    $version_dir->list_tree({dir => 0, max_depth => 1})->each(sub { $_->remove unless exists $index_files{$_->basename} });
     foreach my $pod (keys %$pod_paths) {
       my $filename = sha1_sum(encode 'UTF-8', $pod) . '.html';
       print "Rendering $pod for $perl_version to $filename\n";
@@ -1012,6 +1015,7 @@ sub _cache_perl_to_html ($c, $perl_version, $types = undef) {
   if (!defined $types or $types->{functions}) {
     if (defined $pod_paths->{perlfunc}) {
       my $functions_dir = $version_dir->child('functions')->make_path;
+      $functions_dir->remove_tree({keep_root => 1});
 
       my $perlfunc_pod = read_binary($pod_paths->{perlfunc});
       my %functions = map { ($_ => 1) } map { @{$_->{names}} } @{$c->split_functions($perlfunc_pod)};
@@ -1029,6 +1033,7 @@ sub _cache_perl_to_html ($c, $perl_version, $types = undef) {
   if (!defined $types or $types->{variables}) {
     if (defined $pod_paths->{perlvar}) {
       my $variables_dir = $version_dir->child('variables')->make_path;
+      $variables_dir->remove_tree({keep_root => 1});
 
       my $perlvar_pod = read_binary($pod_paths->{perlvar});
       my %variables = map { ($_ => 1) } map { @{$_->{names}} } @{$c->split_variables($perlvar_pod)};
