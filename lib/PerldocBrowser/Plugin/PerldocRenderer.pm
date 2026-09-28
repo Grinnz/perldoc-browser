@@ -134,6 +134,7 @@ sub _current_doc_path ($c) {
 }
 
 sub _find_pod ($c, $perl_version, $module) {
+  return undef if $module =~ m/^::/ or $module =~ m/::\z/ or $module =~ m/::::/;
   my $inc_dirs = $c->inc_dirs($perl_version);
   my $path = Pod::Simple::Search->new->inc(0)->find($module, @$inc_dirs);
   return undef unless defined $path and -r $path;
