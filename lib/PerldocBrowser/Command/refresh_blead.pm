@@ -6,12 +6,15 @@ package PerldocBrowser::Command::refresh_blead;
 
 use 5.020;
 use Mojo::Base 'Mojolicious::Command';
+use Mojo::Util 'getopt';
 use experimental 'signatures';
 
 has description => 'Refresh Blead Perl for Perldoc Browser';
-has usage => "Usage: $0 refresh_blead\n";
+has usage => "Usage: $0 refresh_blead [--render]\n";
 
-sub run ($self) {
+sub run ($self, @args) {
+  getopt \@args, render => \my $render;
+  die $self->usage if @args;
   my $bleads_dir = $self->app->perls_dir->child('bleads')->make_path;
   my $log_dir = $self->app->home->child('log')->make_path;
   my $date = time;
@@ -33,6 +36,8 @@ sub run ($self) {
     my $pod_paths = $self->app->pod_paths('blead', 1);
     $self->app->index_perl_version('blead', $pod_paths);
   }
+
+  $self->app->cache_perl_to_html('blead') if $render;
 }
 
 1;
